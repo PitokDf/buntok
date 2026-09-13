@@ -42,7 +42,8 @@ export function generateService(
 				break;
 		}
 
-		return `import { Dependencies, BaseService } from "@buntok/core";
+		return `import { Dependencies } from "@buntok/core";
+import { BaseService } from "@buntok/core/base";
 import { ${pascalName}Repository } from "./${entityName}.repository";
 ${typeImport}
 

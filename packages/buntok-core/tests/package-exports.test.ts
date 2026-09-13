@@ -64,23 +64,27 @@ describe("Package exports", () => {
 		expect(typeof mod.Logger).toBe("function");
 	});
 
-	it("exports middleware functions", async () => {
+	it("exports cors from core", async () => {
 		const mod = await import(join(DIST, "core-exports.js"));
 		expect(typeof mod.cors).toBe("function");
+	});
+
+	it("exports middleware functions from subpath", async () => {
+		const mod = await import(join(DIST, "middlewares-exports.js"));
 		expect(typeof mod.helmet).toBe("function");
 		expect(typeof mod.compress).toBe("function");
 		expect(typeof mod.requestId).toBe("function");
 		expect(typeof mod.timeout).toBe("function");
 	});
 
-	it("exports Queue and drivers", async () => {
-		const mod = await import(join(DIST, "core-exports.js"));
+	it("exports Queue and drivers from subpath", async () => {
+		const mod = await import(join(DIST, "queue-exports.js"));
 		expect(mod.Queue).toBeDefined();
 		expect(mod.MemoryQueueDriver).toBeDefined();
 	});
 
-	it("exports helpers", async () => {
-		const mod = await import(join(DIST, "core-exports.js"));
+	it("exports helpers from subpath", async () => {
+		const mod = await import(join(DIST, "helpers-exports.js"));
 		expect(typeof mod.delay).toBe("function");
 		expect(typeof mod.retry).toBe("function");
 		expect(typeof mod.nanoid).toBe("function");

@@ -78,7 +78,7 @@ import { PayPalDriver } from "./drivers/paypal";
  *
  * @example
  * ```ts
- * import { createPayment } from "@buntok/core";
+ * import { createPayment } from "@buntok/core/payment";
  *
  * const stripe = createPayment.stripe({
  *   secretKey: process.env.STRIPE_SECRET_KEY!,

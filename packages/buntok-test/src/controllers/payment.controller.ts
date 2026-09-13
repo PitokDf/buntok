@@ -1,4 +1,5 @@
-import { Context, Controller, generateCode, Post } from "@buntok/core";
+import { Context, Controller, Post } from "@buntok/core";
+import { generateCode } from "@buntok/core/helpers";
 import { createPayment } from "@buntok/core/payment";
 
 const midtrans = createPayment.midtrans({

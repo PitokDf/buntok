@@ -50,7 +50,7 @@ export default function FactoryPage() {
       </p>
       <CodeBlock
         code={`// src/factories/user.factory.ts
-import { Factory } from "@buntok/core";
+import { Factory } from "@buntok/core/factory";
 import { faker } from "@faker-js/faker";
 import type { User } from "@prisma/client";
 

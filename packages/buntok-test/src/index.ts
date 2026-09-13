@@ -1,10 +1,10 @@
-import { App, metricsEndpoint, metricsMiddleware } from "@buntok/core";
 import "./env";
 import { TestController } from "./controllers/test.controller";
-import { Container } from "@buntok/core";
+import { Container, App } from "@buntok/core";
 import { MailerController } from "./controllers/mailer.controller";
 import { PaymentController } from "./controllers/payment.controller";
-import { Metrics } from "@buntok/core";
+import { SchemaDemoController } from "./controllers/schema-demo.controller";
+import { Metrics, metricsEndpoint, metricsMiddleware } from "@buntok/core/metrics";
 
 export const app = new App({ handleSignals: true });
 
@@ -31,11 +31,12 @@ app.apiDocs({
 });
 
 const container = new Container();
-container.scan([TestController]);
+container.scan([TestController, SchemaDemoController]);
 app.setContainer(container);
 
 app.registerController([
 	TestController,
 	MailerController,
-	PaymentController
+	PaymentController,
+	SchemaDemoController,
 ]);

@@ -57,7 +57,7 @@ import { AppleProvider } from "./providers/apple";
  *
  * @example
  * ```ts
- * import { createOAuth } from "@buntok/core";
+ * import { createOAuth } from "@buntok/core/oauth";
  *
  * const google = createOAuth.google({
  *   clientId: process.env.GOOGLE_CLIENT_ID!,

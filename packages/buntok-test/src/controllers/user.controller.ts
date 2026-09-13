@@ -1,10 +1,11 @@
-import { Controller, Get, handleUploads, Post, Use } from "@buntok/core";
+import { Controller, Get, Post, Use } from "@buntok/core";
 import { z, zValidator } from "@buntok/core/middlewares/validator";
-import { generateInitialAvatar, LocalDiskStorage, serveFileOrFallback } from "@buntok/core";
+import { handleUploads, LocalDiskStorage } from "@buntok/core/upload";
 import { users } from "../../data.json";
 import type { Context } from "@buntok/core";
 import { NotFoundError } from "@buntok/core";
 import { write } from "bun";
+import { generateInitialAvatar, serveFileOrFallback } from "@buntok/core/helpers";
 
 @Controller("/user")
 export class UserController {

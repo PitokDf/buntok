@@ -772,7 +772,7 @@ app.cors({
 ### Compress
 
 ```ts
-import { compress } from "@buntok/core";
+import { compress } from "@buntok/core/middlewares";
 
 app.use(compress({
   threshold: 1024,   // only if Content-Length >= threshold
@@ -785,7 +785,7 @@ Requires `Content-Length` header — if missing or below threshold, skips compre
 ### Rate Limiter
 
 ```ts
-import { rateLimiter, slidingWindowRateLimiter } from "@buntok/core";
+import { rateLimiter, slidingWindowRateLimiter } from "@buntok/core/middlewares";
 
 // Fixed window
 app.use(rateLimiter({ max: 100, windowMs: 60_000 }));
@@ -810,7 +810,7 @@ app.use(rateLimiter({
 ### Request ID
 
 ```ts
-import { requestId, shortId, uuid } from "@buntok/core";
+import { requestId, shortId, uuid } from "@buntok/core/middlewares";
 app.use(requestId()); // RequestIdOptions {header="x-request-id", generator=uuid, store=true, storeKey="requestId"}
 app.use(requestId({ header: "x-correlation-id", generator: shortId })); // 8-char
 ```
@@ -818,14 +818,14 @@ app.use(requestId({ header: "x-correlation-id", generator: shortId })); // 8-cha
 ### Response Time
 
 ```ts
-import { responseTime } from "@buntok/core";
+import { responseTime } from "@buntok/core/middlewares";
 app.use(responseTime()); // ResponseTimeOptions {header="x-response-time", format="ms"|"s", store, storeKey="responseTime"}
 ```
 
 ### Helmet (Security Headers)
 
 ```ts
-import { helmet } from "@buntok/core";
+import { helmet } from "@buntok/core/middlewares";
 app.use(helmet());
 // HelmetOptions {contentTypeOptions, frameOptions, xssProtection, referrerPolicy, hsts, dnsPrefetch, permissionsPolicy, additionalHeaders}
 app.use(helmet({ hsts: { maxAge: 31536000, includeSubDomains: true } }));
@@ -834,7 +834,7 @@ app.use(helmet({ hsts: { maxAge: 31536000, includeSubDomains: true } }));
 ### Timeout
 
 ```ts
-import { timeout, TimeoutError } from "@buntok/core";
+import { timeout, TimeoutError } from "@buntok/core/middlewares";
 app.get("/slow", timeout(5000), async (ctx) => {
   await longOperation();
   return ctx.json({ ok: true });
@@ -846,9 +846,100 @@ app.get("/slow2", timeout(5000, "Custom timeout message"), handler);
 ### Body Size Limit
 
 ```ts
-import { bodySizeLimit } from "@buntok/core";
+import { bodySizeLimit } from "@buntok/core/middlewares";
 app.use(bodySizeLimit({ maxSize: 10 * 1024 * 1024, statusCode: 413, message: "Payload Too Large" }));
 // BodySizeLimitOptions {maxSize=10MB, statusCode=413, message} — checks Content-Length before parsing
+```
+
+### Circuit Breaker
+
+Fail-fast resilience pattern for protecting against cascading failures. Supports count-based and time-based sliding windows, slow call detection, fallbacks, and event system.
+
+```ts
+import { CircuitBreaker, CircuitOpenError } from "@buntok/core";
+import { circuitBreaker, getCircuitBreakers } from "@buntok/core/middlewares";
+```
+
+#### As Middleware (recommended)
+
+```ts
+app.post("/pay",
+  circuitBreaker("payment", {
+    failureThreshold: 5,          // consecutive failures to trip
+    successThreshold: 2,          // successes in half-open to close
+    timeout: 30000,               // ms in open before half-open
+    slidingWindowType: "count",   // "count" | "time"
+    slidingWindowSize: 10,        // calls or seconds
+    minimumNumberOfCalls: 5,      // min calls before failure rate applies
+    failureRateThreshold: 50,     // % to trip
+    halfOpenMaxCalls: 1,          // concurrent trial calls
+    slowCallDurationThreshold: 5000,
+    slowCallRateThreshold: 100,   // 100 = disabled
+    onOpen: (ctx) => ctx.json({ error: "Service temporarily unavailable" }, 503),
+  }),
+  async (ctx) => {
+    return ctx.json(await processPayment());
+  },
+);
+```
+
+#### Programmatic Usage
+
+```ts
+const breaker = new CircuitBreaker("payment", {
+  failureThreshold: 5,
+  timeout: 30000,
+});
+
+try {
+  const result = await breaker.fire(() => processPayment());
+} catch (err) {
+  if (err instanceof CircuitOpenError) {
+    console.log(`Circuit open, retry after: ${err.retryAfter}`);
+  }
+}
+
+// Fallback on circuit open
+const result = await breaker.fire(() => processPayment(), {
+  fallback: () => cachedPaymentResult,
+});
+```
+
+#### Manual Control
+
+```ts
+breaker.reset();      // force back to closed
+breaker.disable();    // all calls pass through
+breaker.enable();     // re-enable
+```
+
+#### Events
+
+```ts
+breaker.on("open", () => log("Circuit opened!"));
+breaker.on("close", () => log("Circuit closed!"));
+breaker.on("halfOpen", () => log("Testing recovery..."));
+breaker.on("success", (e) => log(`Success in ${e.duration}ms`));
+breaker.on("failure", (e) => log(`Failed: ${e.error.message}`));
+breaker.on("stateChange", (e) => log(`${e.from} → ${e.to}`));
+breaker.on("callNotPermitted", () => log("Rejected"));
+```
+
+#### Health Checks
+
+```ts
+import { getCircuitBreakers } from "@buntok/core/middlewares";
+
+app.get("/health", (ctx) => {
+  const breakers = getCircuitBreakers();
+  const status = Object.fromEntries(
+    [...breakers.entries()].map(([name, b]) => [name, {
+      state: b.getState(),
+      metrics: b.getMetrics(),
+    }])
+  );
+  return ctx.json(status);
+});
 ```
 
 ---
@@ -993,17 +1084,19 @@ Stage 3 TC39 decorators — no `experimentalDecorators` needed.
 
 ### Route Decorators
 
+All route decorators accept an **optional** `path` parameter (defaults to `""` = root `/`).
+
 | Decorator | Method |
 |-----------|--------|
-| `@Get(path)` | GET |
-| `@Post(path)` | POST |
-| `@Put(path)` | PUT |
-| `@Patch(path)` | PATCH |
-| `@Delete(path)` | DELETE |
-| `@Options(path)` | OPTIONS |
-| `@Head(path)` | HEAD |
-| `@All(path)` | Declares an `ALL` route metadata entry; verify router support before using it. The functional `app.all()` method is the supported all-method route API. |
-| `@Query(path)` | QUERY (RFC 10008) |
+| `@Get(path?)` | GET |
+| `@Post(path?)` | POST |
+| `@Put(path?)` | PUT |
+| `@Patch(path?)` | PATCH |
+| `@Delete(path?)` | DELETE |
+| `@Options(path?)` | OPTIONS |
+| `@Head(path?)` | HEAD |
+| `@All(path?)` | Declares an `ALL` route metadata entry; verify router support before using it. The functional `app.all()` method is the supported all-method route API. |
+| `@Query(path?)` | QUERY (RFC 10008) |
 
 ### Response Decorators (zero-cost, AOT <1%)
 
@@ -1208,7 +1301,7 @@ Throw directly from handler — framework auto-catches and returns proper respon
 | `ServiceUnavailableError` | 503 | Service unavailable |
 
 ```ts
-import { NotFoundError, BadRequestError } from "@buntok/core";
+import { NotFoundError, BadRequestError } from "@buntok/core/helpers";
 
 app.get("/users/:id", async (ctx) => {
   const user = await findUser(ctx.params.id);
@@ -1235,7 +1328,7 @@ app.onError((err, ctx) => {
 Auto-catch errors and return proper response:
 
 ```ts
-import { asyncHandler } from "@buntok/core";
+import { asyncHandler } from "@buntok/core/helpers";
 
 app.get("/users/:id", asyncHandler(async (ctx) => {
   const user = await findUser(ctx.params.id);
@@ -1304,7 +1397,7 @@ const authPlugin = createPlugin({
   name: "@buntok/auth",
   install: async (app) => {
     // Lazy import — zero startup cost if plugin not installed
-    const { JwtService } = await import("@buntok/core");
+    const { JwtService } = await import("@buntok/core/auth");
     const jwt = new JwtService(process.env.JWT_SECRET!);
     app.use(requireAuth(jwt));
   },
@@ -1469,7 +1562,7 @@ app.registerController([UserController, PostController]);  // array works too
 import {
   uploader, handleUploads, deleteUploadedFile,
   LocalDiskStorage, MemoryStorage,
-} from "@buntok/core";
+} from "@buntok/core/upload";
 ```
 
 ### Upload Options
@@ -1574,7 +1667,7 @@ fields: {
 ### Custom Storage Driver (S3, GCS, R2)
 
 ```ts
-import type { StorageDriver, UploadedFile } from "@buntok/core";
+import type { StorageDriver, UploadedFile } from "@buntok/core/upload";
 
 class S3Storage implements StorageDriver {
   constructor(private bucket: string) {}
@@ -1611,7 +1704,7 @@ class S3Storage implements StorageDriver {
 ### File Deletion
 
 ```ts
-import { deleteUploadedFile } from "@buntok/core";
+import { deleteUploadedFile } from "@buntok/core/upload";
 
 const result = await handleUploads(ctx, options);
 const avatar = result.fields.avatar;
@@ -1625,7 +1718,7 @@ const deleted = await deleteUploadedFile(options.storage, avatar);
 Request metrics collector with Prometheus export. Tracks request count, duration, errors, and in-flight requests.
 
 ```ts
-import { Metrics, metricsEndpoint, metricsMiddleware } from "@buntok/core";
+import { Metrics, metricsEndpoint, metricsMiddleware } from "@buntok/core/metrics";
 
 const metrics = new Metrics();
 
@@ -1661,7 +1754,7 @@ const prometheus = metrics.toPrometheus();
 Kubernetes-ready liveness and readiness probes.
 
 ```ts
-import { livenessCheck, readinessCheck } from "@buntok/core";
+import { livenessCheck, readinessCheck } from "@buntok/core/middlewares";
 
 // Liveness probe — is the process alive?
 livenessCheck(app, { path: "/health/live" });  // default: "/health/live"
@@ -1698,7 +1791,8 @@ readinessCheck(app, {
 Combine with the built-in rate limiter to prevent upload abuse:
 
 ```ts
-import { uploader, rateLimiter, LocalDiskStorage } from "@buntok/core";
+import { uploader, LocalDiskStorage } from "@buntok/core/upload";
+import { rateLimiter } from "@buntok/core/middlewares";
 
 // Rate limit uploads to 10 per hour per user
 app.post("/upload",
@@ -1745,7 +1839,7 @@ import {
   downloadFile, downloadBuffer,
   exportCSV, exportJSON,
   createZIP,
-} from "@buntok/core";
+} from "@buntok/core/helpers";
 ```
 
 ### serveFileOrFallback
@@ -2092,7 +2186,7 @@ For multi-instance deployments, replace in-memory PubSub and rate limit stores:
 import {
   MemoryWSPubSub,        // default in-memory PubSub
   MemoryWSRateLimitStore, // default in-memory rate limit store
-} from "@buntok/core";
+} from "@buntok/core/ws-helpers";
 
 // Custom PubSub (e.g., Redis-backed for cluster-wide broadcasting)
 const pubSub = new RedisWSPubSub({ url: "redis://localhost:6379" });
@@ -2120,7 +2214,8 @@ const room = new Room("general", {
 ## Logger
 
 ```ts
-import { logger, Logger, LogLevel } from "@buntok/core";
+import { logger, LogLevel } from "@buntok/core/helpers";
+import { Logger } from "@buntok/core";
 
 logger.info("Server started", { port: 1212 });
 logger.warn("High memory usage", { mb: 512 });
@@ -2163,7 +2258,7 @@ import {
   hash, sha256, sha512, md5, hmac, hashVerify,
   randomBytes, randomHex, randomAlphaNumeric, randomToken,
   encrypt, decrypt,
-} from "@buntok/core";
+} from "@buntok/core/helpers";
 
 // Hashing — hash/sha256/sha512 are SYNC (Bun.CryptoHasher), hmac/hashVerify are async (WebCrypto)
 const digest = hash("password", "SHA-256"); // "SHA-1"|"SHA-256"|"SHA-384"|"SHA-512"
@@ -2191,7 +2286,7 @@ const plain = await decrypt(ciphertext, "my-key", iv);
 Password hashing using **Bun.password** with argon2id — 2-10x faster than `node:crypto` scrypt.
 
 ```ts
-import { hashPassword, verifyPassword } from "@buntok/core";
+import { hashPassword, verifyPassword } from "@buntok/core/helpers";
 
 // Hash a password (returns argon2id format via Bun.password)
 const hashed = await hashPassword("mypassword");
@@ -2213,7 +2308,7 @@ await verifyPassword("password", legacyHash); // still works
 ## String Helpers
 
 ```ts
-import { slugify, truncate, capitalize, camelCase, snakeCase, kebabCase } from "@buntok/core";
+import { slugify, truncate, capitalize, camelCase, snakeCase, kebabCase } from "@buntok/core/helpers";
 
 slugify("Hello World!");            // "hello-world"
 truncate("Lorem ipsum dolor", 10); // "Lorem ipsu..."
@@ -2228,7 +2323,7 @@ kebabCase("helloWorld");           // "hello-world"
 ## Object Helpers
 
 ```ts
-import { pick, omit, groupBy, uniq, flatten, chunk, deepMerge, flattenObject } from "@buntok/core";
+import { pick, omit, groupBy, uniq, flatten, chunk, deepMerge, flattenObject } from "@buntok/core/helpers";
 
 pick({ a: 1, b: 2, c: 3 }, ["a", "c"]);   // { a: 1, c: 3 }
 omit({ a: 1, b: 2, c: 3 }, ["b"]);        // { a: 1, c: 3 }
@@ -2244,7 +2339,7 @@ flattenObject({ a: { b: { c: 1 } } });    // { "a.b.c": 1 }
 ## Number Helpers
 
 ```ts
-import { clamp, random, randomFloat, formatNumber, formatBytes, formatCurrency } from "@buntok/core";
+import { clamp, random, randomFloat, formatNumber, formatBytes, formatCurrency } from "@buntok/core/helpers";
 
 clamp(15, 0, 10);              // 10
 random(1, 100);                // 42  (int inclusive)
@@ -2263,7 +2358,7 @@ import {
   formatDate, timeAgo, formatDuration,
   addDays, daysBetween, startOfDay, endOfDay,
   isBefore, isAfter,
-} from "@buntok/core";
+} from "@buntok/core/helpers";
 
 formatDate(new Date());                    // "2024-01-15T10:30:00.000Z" (uses Temporal if available)
 timeAgo(new Date(Date.now() - 180000));   // "3 minutes ago"
@@ -2282,7 +2377,7 @@ isAfter(new Date("2024-01-02"), new Date("2024-01-01"));  // true
 ## ID & Code Generators
 
 ```ts
-import { generateCode, nanoid, ulid, resetCounter } from "@buntok/core";
+import { generateCode, nanoid, ulid, resetCounter } from "@buntok/core/helpers";
 
 generateCode("T");       // "T0001"
 generateCode("T");       // "T0002"
@@ -2295,7 +2390,7 @@ ulid();                  // "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 ## Network Helpers
 
 ```ts
-import { getClientIP, isPrivateIP, parseUserAgent } from "@buntok/core";
+import { getClientIP, isPrivateIP, parseUserAgent } from "@buntok/core/helpers";
 
 const ip = getClientIP(request);
 isPrivateIP("192.168.1.1");  // true
@@ -2307,7 +2402,7 @@ const ua = parseUserAgent(request);
 ## Async Helpers
 
 ```ts
-import { delay, retry } from "@buntok/core";
+import { delay, retry } from "@buntok/core/helpers";
 
 await delay(1000);
 
@@ -2323,7 +2418,7 @@ const data = await retry(
 ## Cookie Helpers
 
 ```ts
-import { getCookie, setCookie, deleteCookie, parseCookies, serializeCookie, getCookies } from "@buntok/core";
+import { getCookie, setCookie, deleteCookie, parseCookies, serializeCookie, getCookies } from "@buntok/core/helpers";
 
 const token = ctx.getCookie("token");
 const all = ctx.getCookies(); // or getCookies(request)
@@ -2509,7 +2604,7 @@ The CLI generator currently produces a Prisma-oriented scaffold with a TODO fact
 ### Factory API
 
 ```ts
-import { Factory } from "@buntok/core";
+import { Factory } from "@buntok/core/factory";
 import { faker } from "@faker-js/faker";
 import type { User } from "@prisma/client";
 
@@ -2632,7 +2727,7 @@ export class UserRepository extends BaseRepository<User, CreateUserInput, Update
 }
 
 // Service
-import { BaseService } from "@buntok/core";
+import { BaseService } from "@buntok/core/base";
 export class UserService extends BaseService<User, CreateUserInput, UpdateUserInput> {
   constructor(private userRepo: UserRepository) {
     super(userRepo);
@@ -2640,7 +2735,8 @@ export class UserService extends BaseService<User, CreateUserInput, UpdateUserIn
 }
 
 // Controller
-import { BaseController, Controller } from "@buntok/core";
+import { BaseController } from "@buntok/core/base";
+import { Controller } from "@buntok/core";
 @Controller("/users")
 export class UserController extends BaseController<User, CreateUserInput, UpdateUserInput> {
   constructor(private userService: UserService) {
@@ -2805,6 +2901,7 @@ my-app/
 
 ### Notes
 
+- **`package.json` must include `"type": "module"`** — without it, Vercel's Node.js runtime treats `.js` files as CommonJS, causing `SyntaxError: Unexpected token '{'. import call expects one or two arguments`
 - `server.ts` is the local/production Bun server entry point
 - `src/index.ts` must export `app` — used by `buntok make:docs`
 - WebSocket routes require a runtime that supports WebSockets; verify platform support before deploying
@@ -2816,7 +2913,7 @@ my-app/
 Zero-dependency JWT implementation using WebCrypto (built-in). Supports HMAC-SHA256 with expiration.
 
 ```ts
-import { JwtService, requireAuth } from "@buntok/core";
+import { JwtService, requireAuth } from "@buntok/core/auth";
 ```
 
 ### JwtService
@@ -2901,7 +2998,7 @@ app.post("/logout", (ctx) => {
 Built-in OAuth 2.0 support for Google, GitHub, and Apple with PKCE and automatic state management.
 
 ```ts
-import { createOAuth, storeOAuthState, verifyOAuthState, getCodeVerifier, clearOAuthCookies } from "@buntok/core";
+import { createOAuth, storeOAuthState, verifyOAuthState, getCodeVerifier, clearOAuthCookies } from "@buntok/core/oauth";
 // Advanced types/helpers (optional — import only if needed):
 // import type { OAuthProvider, OAuthProviderConfig, AppleProviderConfig, OAuth2Tokens, OAuthUser, CreateAuthorizationURLOptions, ValidateAuthorizationCodeOptions } from "@buntok/core";
 // import { BaseOAuthProvider, AppleProvider, GoogleProvider, GitHubProvider, OAuthError, generatePKCE, decodeIdToken, generateCodeVerifier, generateCodeChallenge, createOAuth2AuthorizationURL, validateOAuth2AuthorizationCode } from "@buntok/core";
@@ -2972,7 +3069,7 @@ app.get("/auth/google/callback", async (ctx) => {
 ### Custom Providers
 
 ```ts
-import { createOAuth2AuthorizationURL, validateOAuth2AuthorizationCode } from "@buntok/core";
+import { createOAuth2AuthorizationURL, validateOAuth2AuthorizationCode } from "@buntok/core/oauth";
 
 // Use generic helpers for any OAuth2 provider
 const url = createOAuth2AuthorizationURL("https://provider.com/authorize", {
@@ -3010,7 +3107,7 @@ interface OAuthUser {
 ## RBAC (Role-Based Access Control)
 
 ```ts
-import { requireRole, requirePermission } from "@buntok/core";
+import { requireRole, requirePermission } from "@buntok/core/middlewares";
 ```
 
 > **⚠️ KEY DIFFERENCE:** `requireRole` uses **OR** logic (user needs ANY of the specified roles). `requirePermission` uses **AND** logic (user needs ALL of the specified permissions). Mixing them up is a common security mistake.
@@ -3123,8 +3220,8 @@ async createPost(ctx: Context) {
 ## Event Emitter
 
 ```ts
-import { emitter, EventEmitter } from "@buntok/core";
-import type { AppEvents } from "@buntok/core";  // type-only export
+import { emitter, EventEmitter } from "@buntok/core/emitter";
+import type { AppEvents } from "@buntok/core/emitter";  // type-only export
 ```
 
 ### Basic Usage
@@ -3198,7 +3295,8 @@ const emitter = new EventEmitter<AppEvents>();
 In-memory cache with LRU eviction. Zero dependencies.
 
 ```ts
-import { Cache, MemoryCacheDriver, type CacheDriver } from "@buntok/core";
+import { Cache, MemoryCacheDriver } from "@buntok/core/cache";
+import type { CacheDriver } from "@buntok/core/cache";
 ```
 
 `CacheDriver {get(key), set(key,value,ttl?), delete(key), clear(), keys?()}` — `Cache` uses `MemoryCacheDriver` (LRU) by default.
@@ -3240,7 +3338,7 @@ const keys = await cache.keys();
 ### Custom Driver
 
 ```ts
-import type { CacheDriver } from "@buntok/core";
+import type { CacheDriver } from "@buntok/core/cache";
 
 class RedisCacheDriver implements CacheDriver {
   async get(key: string) { ... }
@@ -3366,14 +3464,16 @@ import {
 
 ## Mailer
 
-Email sending with built-in support for Resend, SendGrid, and Mailgun (zero-deps HTTP). SMTP via optional `nodemailer` import. Supports attachments, CC/BCC, reply-to, and inline images.
+Email sending with built-in support for Resend, SendGrid, and Mailgun (zero-deps HTTP). SMTP via optional `nodemailer` import. Supports attachments, CC/BCC, reply-to, inline images, and template-based sending.
 
 ```ts
-import { Mailer } from "@buntok/core";
+import { Mailer, Mailable } from "@buntok/core/mailer";
 // Types (optional — for type-checking only):
 // MailerConfig { provider: "resend"|"sendgrid"|"mailgun"|"smtp", apiKey?: string, domain?: string (mailgun), smtp?: { host, port, secure?, auth:{user,pass} } }
 // MailOptions { from: string, to: string|string[], cc?: string|string[], bcc?: string|string[], replyTo?: string|string[], subject: string, text?: string, html?: string, attachments?: MailAttachment[] }
 // MailAttachment { filename: string, content?: Buffer|string (base64), path?: string (remote URL — Resend only), contentType?: string, cid?: string }
+// SendTemplateOptions { from, to, cc?, bcc?, replyTo?, subject, template: string, context?: Record<string, unknown> }
+// SendProviderTemplateOptions { from, to, cc?, bcc?, replyTo?, subject, templateId: string, templateData?: Record<string, unknown> }
 ```
 
 ### Providers
@@ -3485,6 +3585,123 @@ await mailer.send({
   ],
 });
 ```
+
+### Template Integration (Level 2)
+
+Use the built-in TemplateEngine with `sendTemplate()`:
+
+```ts
+import { Mailer } from "@buntok/core/mailer";
+
+const mailer = new Mailer({ provider: "resend", apiKey: process.env.RESEND_API_KEY });
+
+// Register templates (Handlebars-like syntax)
+mailer.registerTemplate("welcome", `
+  <h1>Selamat datang, {{name}}!</h1>
+  <p>Email: {{email}}</p>
+  <p>Gunakan kode <strong>{{code}}</strong> untuk verifikasi.</p>
+`);
+
+// Register partials (layouts)
+mailer.registerPartial("email-layout", `
+  <div style="max-width:600px;margin:0 auto;">
+    {{{body}}}
+    <hr>
+    <p style="font-size:12px;color:#999;">BunTok Framework</p>
+  </div>
+`);
+
+// Register custom helpers
+mailer.registerHelper("upper", (text: string) => text.toUpperCase());
+
+// Send with template
+await mailer.sendTemplate({
+  from: "noreply@example.com",
+  to: "user@example.com",
+  subject: "Welcome!",
+  template: "welcome",
+  context: { name: "Tok", email: "tok@example.com", code: "ABC123" },
+});
+```
+
+**Template Syntax**: `{{var}}` (HTML-escaped), `{{{var}}}` (unescaped), `{{#if condition}}...{{else}}...{{/if}}`, `{{#each items}}...{{/each}}`, `{{> partialName}}`.
+
+### Provider-Side Templates (Level 4)
+
+Use Resend/SendGrid native template systems:
+
+```ts
+// Resend — template UUID from Resend dashboard
+await mailer.sendProviderTemplate({
+  from: "noreply@example.com",
+  to: "user@example.com",
+  subject: "Welcome!",
+  templateId: "template-uuid-123",
+  templateData: { name: "Tok", action_url: "https://example.com/verify" },
+});
+
+// SendGrid — template_id from SendGrid dashboard
+await mailer.sendProviderTemplate({
+  from: "noreply@example.com",
+  to: "user@example.com",
+  subject: "Welcome!",
+  templateId: "d-abc123",
+  templateData: { name: "Tok", action_url: "https://example.com/verify" },
+});
+```
+
+### Mailable Classes (Level 3)
+
+Laravel-style class-based email definitions:
+
+```ts
+import { Mailer, Mailable } from "@buntok/core/mailer";
+
+class WelcomeEmail extends Mailable {
+  template = "welcome";
+  subject = "Welcome to BunTok!";
+
+  constructor(private name: string, private email: string) {
+    super();
+  }
+
+  build() {
+    return { context: { name: this.name, email: this.email } };
+  }
+}
+
+class PasswordResetEmail extends Mailable {
+  template = "password-reset";
+  subject = "Reset your password";
+  from = "security@example.com";
+
+  constructor(private token: string) {
+    super();
+  }
+
+  build() {
+    return { context: { token: this.token, expires: "30 minutes" } };
+  }
+}
+
+// Usage
+const mailer = new Mailer({ provider: "resend", apiKey: process.env.RESEND_API_KEY });
+await mailer.sendMailable(new WelcomeEmail("Tok", "tok@example.com"));
+await mailer.sendMailable(new PasswordResetEmail("abc123"));
+```
+
+### Mailable Properties
+
+| Property | Description |
+|----------|-------------|
+| `template` | Template name (registered via `registerTemplate`) |
+| `subject` | Email subject line |
+| `from` | Override sender address |
+| `to` | Override recipient |
+| `cc` | CC recipients |
+| `bcc` | BCC recipients |
+| `replyTo` | Reply-To address |
+| `build()` | Returns `{ context?, from?, to? }` |
 
 ---
 
@@ -3709,7 +3926,7 @@ Request arrives
 Handlebars-like template engine with zero dependencies. Perfect for email templates.
 
 ```ts
-import { render, TemplateEngine } from "@buntok/core";
+import { render, TemplateEngine } from "@buntok/core/template";
 ```
 
 > **⚠️ Strict mode is ON by default.** If you reference a variable that doesn't exist in the context (e.g., `{{ usre.name }}` instead of `{{ user.name }}`), the template will throw an error with a "did you mean?" suggestion. To disable strict mode, pass `{ strict: false }` as the third argument to `render()` or set it in `TemplateEngine` constructor options.
@@ -3795,7 +4012,7 @@ render("Hello {{ usre.name }}", { user: { name: "Budi" } });
 Background job processing with pluggable drivers. Supports Memory, Redis (ioredis), Bun native Redis, BullMQ, and RabbitMQ.
 
 ```ts
-import { Queue } from "@buntok/core";
+import { Queue } from "@buntok/core/queue";
 ```
 
 > **⚠️ `name` is the first argument and is REQUIRED.** Each queue must have a unique name (e.g., `"email"`, `"notifications"`). This name is used for logging, debugging, and driver isolation.
@@ -3819,7 +4036,7 @@ import {
   BullmqQueueDriver,
   RabbitmqQueueDriver,
   MemoryQueueDriver,
-} from "@buntok/core";
+} from "@buntok/core/queue";
 
 // Pass driver instance directly
 const redisDriver = new RedisQueueDriver({ url: "redis://localhost:6379" });
@@ -3898,7 +4115,7 @@ await queue.drain(10_000);     // wait up to 10 seconds
 ### Custom Driver
 
 ```ts
-import type { QueueDriver, Job, JobHandler } from "@buntok/core";
+import type { QueueDriver, Job, JobHandler } from "@buntok/core/queue";
 
 class MyCustomDriver implements QueueDriver<{ to: string }> {
   async add(data: { to: string }, opts?: { priority?: number; delay?: number }): Promise<void> { ... }
@@ -3917,7 +4134,7 @@ const queue = new Queue("email", new MyCustomDriver());
 Cron-based task scheduling with pluggable drivers. `CronJob` is a **method decorator** (uses `context.addInitializer` so `this` is bound to instance).
 
 ```ts
-import { Scheduler, CronJob, MemorySchedulerDriver, BunCronSchedulerDriver, setDefaultSchedulerDriver } from "@buntok/core";
+import { Scheduler, CronJob, MemorySchedulerDriver, BunCronSchedulerDriver, setDefaultSchedulerDriver } from "@buntok/core/schedule";
 ```
 
 ### Scheduler (programmatic)
@@ -3944,7 +4161,8 @@ setDefaultSchedulerDriver(new BunCronSchedulerDriver());
 ### CronJob Decorator
 
 ```ts
-import { Controller, CronJob } from "@buntok/core";
+import { Controller } from "@buntok/core";
+import { CronJob } from "@buntok/core/schedule";
 
 @Controller("/tasks")
 export class TaskController {
@@ -3973,7 +4191,7 @@ export class TaskController {
 Request logging middleware with customizable storage.
 
 ```ts
-import { auditLog } from "@buntok/core";
+import { auditLog } from "@buntok/core/middlewares";
 ```
 
 > **⚠️ Default storage is `logger.info`.** If you call `app.use(auditLog())` without a `storage` function, audit entries are logged via `logger.info()` (which writes to console/file based on your logger config). To persist to a database, provide a custom `storage` function.
@@ -4024,7 +4242,7 @@ interface AuditLogEntry {
 > **🚫 DO NOT wrap `healthCheck` with `app.get`.** The `healthCheck()` function registers the route itself. Wrapping it will create duplicate routes or cause unexpected behavior.
 
 ```ts
-import { healthCheck, createHealthCheck, createDatabaseCheck } from "@buntok/core";
+import { healthCheck, createHealthCheck, createDatabaseCheck } from "@buntok/core/middlewares";
 
 // ✅ CORRECT — registers GET /health automatically
 healthCheck(app, {
@@ -4069,7 +4287,7 @@ import {
   toISOWithTimezone, nowInTimezone, getTimezoneOffset,
   getTimezoneOffsetString, isValidTimezone,
   groupByTimezone, getGroupLabels, formatGroupLabel,
-} from "@buntok/core";
+} from "@buntok/core/helpers";
 ```
 
 ### parseTime
@@ -4169,7 +4387,7 @@ if (isNativeAvailable()) {
 Built-in AI integration with caching and Vercel AI SDK Data Stream compatibility.
 
 ```ts
-import { streamAI, AICache, injectSystemPrompt } from "@buntok/core";
+import { streamAI, AICache, injectSystemPrompt } from "@buntok/core/ai";
 ```
 
 ### streamAI
@@ -4177,7 +4395,7 @@ import { streamAI, AICache, injectSystemPrompt } from "@buntok/core";
 Transforms an `AsyncIterable` (OpenAI/Anthropic stream) into a `Response` with `text/x-unknown` + `x-vercel-ai-data-stream: v1` (protocol `0:"text"`, `d:{"finishReason":"stop"}`, `e:{"message"}`).
 
 ```ts
-import { streamAI } from "@buntok/core";
+import { streamAI } from "@buntok/core/ai";
 
 // ctx is required (first arg) — streamAI returns a Response directly, no ctx.sse needed
 app.post("/chat", async (ctx) => {
@@ -4205,7 +4423,8 @@ Supports chunk shapes: `chunk.choices[0].delta.content`, `chunk.message.content`
 Semantic cache for exact conversation matches (hashes last 3 user/assistant messages via 32-bit hash — not cryptographic). Requires a `CacheDriver`.
 
 ```ts
-import { AICache, MemoryCacheDriver } from "@buntok/core";
+import { AICache } from "@buntok/core/ai";
+import { MemoryCacheDriver } from "@buntok/core/cache";
 
 const cache = new AICache(new MemoryCacheDriver());
 
@@ -4249,7 +4468,7 @@ Buntok uses several built-in optimizations. No configuration needed — they're 
 ### fastHash — for cache keys
 
 ```ts
-import { fastHash } from "@buntok/core";
+import { fastHash } from "@buntok/core/helpers";
 
 const key = fastHash({ userId: 123, action: "view" });
 // Uses Bun.hash() — fast but NOT cryptographic
@@ -4260,7 +4479,7 @@ For cryptographic hashes (e.g. API keys, tokens), use `sha256Hex()` or `sha512He
 ### Password hashing
 
 ```ts
-import { hashPassword, verifyPassword } from "@buntok/core";
+import { hashPassword, verifyPassword } from "@buntok/core/helpers";
 
 const hash = await hashPassword("mySecret");          // Bun.password.hash → argon2id
 const valid = await verifyPassword("mySecret", hash); // auto-detects format

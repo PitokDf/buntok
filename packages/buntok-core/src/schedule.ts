@@ -46,7 +46,7 @@ export class MemorySchedulerDriver implements SchedulerDriver {
  * Requires Bun >= 1.3.11.
  *
  * @example
- * import { Scheduler, BunCronSchedulerDriver } from "@buntok/core";
+ * import { Scheduler, BunCronSchedulerDriver } from "@buntok/core/schedule";
  *
  * const scheduler = new Scheduler(new BunCronSchedulerDriver());
  * scheduler.schedule("0 0 * * *", () => cleanup());

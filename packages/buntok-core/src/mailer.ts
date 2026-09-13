@@ -87,8 +87,93 @@ function inferMimeType(filename: string): string {
  * Supports Resend, SendGrid, and Mailgun (HTTP-based, zero-deps).
  * Also supports SMTP via dynamic import of 'nodemailer' (requires user installation).
  */
+// ─── Template Integration ──────────────────────────────────────────────────────
+
+import { TemplateEngine } from "./template";
+
+export interface SendTemplateOptions extends Omit<MailOptions, "html" | "text"> {
+	/** Template name (registered via registerTemplate) */
+	template: string;
+	/** Context data for template rendering */
+	context?: Record<string, unknown>;
+}
+
+export interface SendProviderTemplateOptions extends Omit<MailOptions, "html" | "text"> {
+	/** Provider-side template ID (Resend template UUID or SendGrid template_id) */
+	templateId: string;
+	/** Variables for provider-side rendering */
+	templateData?: Record<string, unknown>;
+}
+
+/**
+ * Mailable — base class for class-based email definitions (Laravel-style).
+ *
+ * @example
+ * ```ts
+ * class WelcomeEmail extends Mailable {
+ *   template = "welcome";
+ *   subject = "Welcome to BunTok!";
+ *
+ *   constructor(private name: string, private email: string) {
+ *     super();
+ *   }
+ *
+ *   build() {
+ *     return { context: { name: this.name, email: this.email } };
+ *   }
+ * }
+ *
+ * await mailer.send(new WelcomeEmail("Tok", "tok@example.com"));
+ * ```
+ */
+export abstract class Mailable {
+	abstract template: string;
+	abstract subject: string;
+	from?: string;
+	to?: string | string[];
+	cc?: string | string[];
+	bcc?: string | string[];
+	replyTo?: string | string[];
+
+	abstract build(): { context?: Record<string, unknown>; from?: string; to?: string | string[] };
+}
+
 export class Mailer {
-	constructor(private config: MailerConfig) {}
+	private engine: TemplateEngine;
+	private templates = new Map<string, string>();
+
+	constructor(private config: MailerConfig) {
+		this.engine = new TemplateEngine();
+	}
+
+	/**
+	 * Register a named email template.
+	 *
+	 * @example
+	 * ```ts
+	 * mailer.registerTemplate("welcome", `
+	 *   <h1>Selamat datang, {{name}}!</h1>
+	 *   <p>Email: {{email}}</p>
+	 * `);
+	 * ```
+	 */
+	registerTemplate(name: string, template: string): void {
+		this.templates.set(name, template);
+	}
+
+	/**
+	 * Register a partial (layout) for email templates.
+	 */
+	registerPartial(name: string, template: string): void {
+		this.engine.registerPartial(name, template);
+	}
+
+	/**
+	 * Register a custom helper for email templates.
+	 */
+	registerHelper(name: string, fn: (...args: any[]) => string): void {
+		this.engine.registerHelper(name, fn);
+	}
 
 	/**
 	 * Send an email asynchronously.
@@ -118,17 +203,116 @@ export class Mailer {
 
 	// ─── Resend ──────────────────────────────────────────────────────────────
 
+	/**
+	 * Send an email using a registered template.
+	 *
+	 * @example
+	 * ```ts
+	 * await mailer.sendTemplate({
+	 *   from: "hello@buntok.dev",
+	 *   to: "user@example.com",
+	 *   subject: "Welcome!",
+	 *   template: "welcome",
+	 *   context: { name: "Tok" },
+	 * });
+	 * ```
+	 */
+	async sendTemplate(
+		options: SendTemplateOptions,
+	): Promise<{ success: boolean; id?: string; error?: string }> {
+		const tpl = this.templates.get(options.template);
+		if (!tpl) {
+			return { success: false, error: `Template "${options.template}" not found` };
+		}
+		const html = this.engine.render(tpl, options.context ?? {});
+		return this.send({ ...options, html });
+	}
+
+	/**
+	 * Send an email using a provider-side template (Resend/SendGrid).
+	 *
+	 * @example
+	 * ```ts
+	 * // Resend
+	 * await mailer.sendProviderTemplate({
+	 *   from: "hello@buntok.dev",
+	 *   to: "user@example.com",
+	 *   subject: "Welcome!",
+	 *   templateId: "template-uuid",
+	 *   templateData: { name: "Tok" },
+	 * });
+	 * ```
+	 */
+	async sendProviderTemplate(
+		options: SendProviderTemplateOptions,
+	): Promise<{ success: boolean; id?: string; error?: string }> {
+		if (this.config.provider === "resend") {
+			return this.sendResend({
+				...options,
+				html: undefined,
+				text: undefined,
+			} as MailOptions, options.templateId, options.templateData);
+		}
+		if (this.config.provider === "sendgrid") {
+			return this.sendSendGrid({
+				...options,
+				html: undefined,
+				text: undefined,
+			} as MailOptions, options.templateId, options.templateData);
+		}
+		return { success: false, error: "Provider templates only supported for Resend and SendGrid" };
+	}
+
+	/**
+	 * Send a Mailable instance.
+	 *
+	 * @example
+	 * ```ts
+	 * await mailer.send(new WelcomeEmail("Tok", "tok@example.com"));
+	 * ```
+	 */
+	async sendMailable(
+		mailable: Mailable,
+	): Promise<{ success: boolean; id?: string; error?: string }> {
+		const built = mailable.build();
+		const from = mailable.from ?? built.from;
+		const to = mailable.to ?? built.to;
+		if (!from || !to) {
+			return { success: false, error: "Mailable must define from and to (via properties or build())" };
+		}
+		return this.sendTemplate({
+			from,
+			to,
+			subject: mailable.subject,
+			template: mailable.template,
+			context: built.context,
+			cc: mailable.cc,
+			bcc: mailable.bcc,
+			replyTo: mailable.replyTo,
+		});
+	}
+
+	// ─── Resend ──────────────────────────────────────────────────────────────
+
 	private async sendResend(
 		options: MailOptions,
+		templateId?: string,
+		templateData?: Record<string, unknown>,
 	): Promise<{ success: boolean; id?: string; error?: string }> {
 		try {
 			const payload: Record<string, unknown> = {
 				from: options.from,
 				to: toArray(options.to),
 				subject: options.subject,
-				text: options.text,
-				html: options.html,
 			};
+
+			// Provider-side template or local rendering
+			if (templateId) {
+				payload.template = { id: templateId, variables: templateData ?? {} };
+			} else {
+				payload.text = options.text;
+				payload.html = options.html;
+			}
 
 			if (options.cc) payload.cc = toArray(options.cc);
 			if (options.bcc) payload.bcc = toArray(options.bcc);
@@ -182,22 +366,34 @@ export class Mailer {
 
 	private async sendSendGrid(
 		options: MailOptions,
+		templateId?: string,
+		templateData?: Record<string, unknown>,
 	): Promise<{ success: boolean; id?: string; error?: string }> {
 		try {
-			const toArray = (v: string | string[]) =>
+			const toArr = (v: string | string[]) =>
 				(Array.isArray(v) ? v : [v]).map((email) => ({ email }));
 
 			const personalization: Record<string, unknown> = {
-				to: toArray(options.to),
+				to: toArr(options.to),
 			};
-			if (options.cc) personalization.cc = toArray(options.cc);
-			if (options.bcc) personalization.bcc = toArray(options.bcc);
+			if (options.cc) personalization.cc = toArr(options.cc);
+			if (options.bcc) personalization.bcc = toArr(options.bcc);
+
+			// Provider-side template data
+			if (templateId && templateData) {
+				personalization.dynamic_template_data = templateData;
+			}
 
 			const payload: Record<string, unknown> = {
 				personalizations: [personalization],
 				from: { email: options.from },
 				subject: options.subject,
 			};
+
+			// SendGrid template_id
+			if (templateId) {
+				payload.template_id = templateId;
+			}
 
 			if (options.replyTo) {
 				const replyToArr = toArray(options.replyTo);

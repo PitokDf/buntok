@@ -23,7 +23,7 @@ export interface WebhookMiddlewareOptions {
  *
  * @example
  * ```ts
- * import { paymentWebhook } from "@buntok/core";
+ * import { paymentWebhook } from "@buntok/core/payment";
  *
  * const stripe = new StripeDriver({ secretKey: "sk_..." });
  *

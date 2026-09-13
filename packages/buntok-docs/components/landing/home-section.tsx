@@ -315,7 +315,8 @@ export function HomeSection() {
                     lineHeight: "1.55",
                     minWidth: "300px",
                   }}
-                >{`import { Controller, Get, Post, Use, zValidator, ZodCtx, z } from '@buntok/core';
+                >{`import { Controller, Get, Post } from '@buntok/core';
+import { Use, zValidator, ZodCtx, z } from '@buntok/core/middlewares/validator';
 import type { Context } from '@buntok/core';
 
 const UserSchema = z.object({

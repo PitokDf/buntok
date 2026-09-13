@@ -356,11 +356,14 @@ app.post("/users",
       </div>
 
       <CodeBlock
-        code={`import {
-  requireAuth, requireRole, requirePermission,
-  cors, rateLimiter, slidingWindowRateLimiter,
-  compress, bodySizeLimit, requestId, responseTime, helmet, timeout, auditLog, zValidator,
-} from "@buntok/core";`}
+        code={`import { requireAuth } from "@buntok/core/auth";
+import {
+  requireRole, requirePermission,
+  rateLimiter, slidingWindowRateLimiter,
+  compress, bodySizeLimit, requestId, responseTime, helmet, timeout, auditLog,
+} from "@buntok/core/middlewares";
+import { cors } from "@buntok/core";
+import { zValidator } from "@buntok/core/middlewares/validator";`}
       />
 
       {/* ──────────────── CORS ──────────────── */}
@@ -403,7 +406,7 @@ app.cors({
         Adds <code>X-Request-Id</code> (uuid) to every request. Also available <code>shortId</code> (8-char) and <code>uuid</code> helpers.
       </p>
       <CodeBlock
-        code={`import { requestId, shortId, uuid } from "@buntok/core";
+        code={`import { requestId, shortId, uuid } from "@buntok/core/middlewares";
 
 app.use(requestId());
 // RequestIdOptions { header="x-request-id", generator=uuid, store=true, storeKey="requestId" }
@@ -423,7 +426,7 @@ app.use(requestId({ header: "x-request-id", generator: () => crypto.randomUUID()
         Adds <code>X-Response-Time</code> header with request duration.
       </p>
       <CodeBlock
-        code={`import { responseTime } from "@buntok/core";
+        code={`import { responseTime } from "@buntok/core/middlewares";
 
 app.use(responseTime());
 // ResponseTimeOptions { header="x-response-time", format="ms"|"s", store, storeKey="responseTime" }
@@ -442,7 +445,7 @@ app.use(responseTime({ header: "x-response-time", format: "s" }));`}
         Security headers (X-Content-Type-Options, X-Frame-Options, XSS-Protection, Referrer-Policy, HSTS, DNS-Prefetch, Permissions-Policy).
       </p>
       <CodeBlock
-        code={`import { helmet } from "@buntok/core";
+        code={`import { helmet } from "@buntok/core/middlewares";
 
 app.use(helmet());
 // HelmetOptions { contentTypeOptions, frameOptions, xssProtection, referrerPolicy, hsts, dnsPrefetch, permissionsPolicy, additionalHeaders }
@@ -464,7 +467,7 @@ app.use(helmet({
         Aborts handler if it exceeds <code>ms</code>. Throws <code>TimeoutError &#123; timeoutMs &#125;</code> caught by <code>app.onError</code>.
       </p>
       <CodeBlock
-        code={`import { timeout, TimeoutError } from "@buntok/core";
+        code={`import { timeout, TimeoutError } from "@buntok/core/middlewares";
 
 app.get("/slow", timeout(5000), async (ctx) => {
   await longOperation();
@@ -683,7 +686,7 @@ app.use(rateLimiter({
         Full Example
       </Heading>
       <CodeBlock
-        code={`import { z } from "@buntok/core";
+        code={`import { z } from "@buntok/core/middlewares/validator";
 
 const app = new App();
 const secret = process.env.JWT_SECRET!;

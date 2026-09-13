@@ -6,7 +6,7 @@ import type { QueueDriver, Job, JobHandler, QueueCapabilities } from "../queue";
  *
  * @example
  * ```ts
- * import { Queue } from "@buntok/core";
+ * import { Queue } from "@buntok/core/queue";
  * import { BullmqQueueDriver } from "@buntok/core/queue-drivers";
  *
  * const queue = new Queue<{ to: string }>("email", new BullmqQueueDriver({

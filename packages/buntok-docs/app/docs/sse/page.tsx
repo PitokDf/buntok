@@ -359,7 +359,7 @@ es.addEventListener("order-placed", (e) => {
         Stream AI responses token-by-token:
       </p>
       <CodeBlock
-        code={`import { streamAI } from "@buntok/core";
+        code={`import { streamAI } from "@buntok/core/ai";
 
 app.post("/chat", async (ctx) => {
   const { message } = await ctx.body();

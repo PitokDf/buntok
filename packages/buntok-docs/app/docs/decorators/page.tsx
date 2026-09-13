@@ -145,15 +145,15 @@ class UserController {
           </thead>
           <tbody>
             {[
-              ["@Get(path)", "GET", "Retrieve resources"],
-              ["@Post(path)", "POST", "Create resources"],
-              ["@Put(path)", "PUT", "Replace resources"],
-              ["@Patch(path)", "PATCH", "Partial update"],
-              ["@Delete(path)", "DELETE", "Remove resources"],
-              ["@Options(path)", "OPTIONS", "CORS preflight"],
-              ["@Head(path)", "HEAD", "Headers only"],
-              ["@All(path)", "All standard", "Matches all methods"],
-              ["@Query(path)", "QUERY", "Bun-specific: GET with body"],
+              ["@Get(path?)", "GET", "Retrieve resources"],
+              ["@Post(path?)", "POST", "Create resources"],
+              ["@Put(path?)", "PUT", "Replace resources"],
+              ["@Patch(path?)", "PATCH", "Partial update"],
+              ["@Delete(path?)", "DELETE", "Remove resources"],
+              ["@Options(path?)", "OPTIONS", "CORS preflight"],
+              ["@Head(path?)", "HEAD", "Headers only"],
+              ["@All(path?)", "All standard", "Matches all methods"],
+              ["@Query(path?)", "QUERY", "Bun-specific: GET with body"],
             ].map(([decorator, method, notes]) => (
               <tr
                 key={decorator}
@@ -349,7 +349,8 @@ class UserController {
         <code>SetMetadata("isPublic", true)</code>.
       </p>
       <CodeBlock
-        code={`import { SetMetadata, Public, getMetadata } from "@buntok/core";
+        code={`import { SetMetadata, Public } from "@buntok/core";
+import { getMetadata } from "@buntok/core/helpers";
 
 @SetMetadata("roles", ["admin"])
 @Get("/admin")
@@ -526,8 +527,9 @@ class UserController {
       <CodeBlock
         code={`import {
   App, Controller, Get, Post, Use, UseGuard, Dependencies,
-  Container, zValidator, z
+  Container,
 } from "@buntok/core";
+import { zValidator, z } from "@buntok/core/middlewares/validator";
 import type { Context, ZodCtx } from "@buntok/core";
 
 // Service — plain class, no decorator

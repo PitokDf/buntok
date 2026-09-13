@@ -1,6 +1,6 @@
 {
 	"name": "@buntok/core",
-	"version": "2.1.16",
+	"version": "2.2.0",
 	"description": "Blazing-fast, type-safe HTTP framework for Bun - AOT-compiled routing, decorators, Zod validation & IoC",
 	"module": "dist/core-exports.js",
 	"type": "module",
@@ -22,6 +22,156 @@
 			"require": {
 				"types": "./dist/core-exports.d.cts",
 				"default": "./dist/core-exports.cjs"
+			}
+		},
+		"./helpers": {
+			"import": {
+				"types": "./dist/helpers-exports.d.ts",
+				"default": "./dist/helpers-exports.js"
+			},
+			"require": {
+				"types": "./dist/helpers-exports.d.cts",
+				"default": "./dist/helpers-exports.cjs"
+			}
+		},
+		"./auth": {
+			"import": {
+				"types": "./dist/auth-exports.d.ts",
+				"default": "./dist/auth-exports.js"
+			},
+			"require": {
+				"types": "./dist/auth-exports.d.cts",
+				"default": "./dist/auth-exports.cjs"
+			}
+		},
+		"./ai": {
+			"import": {
+				"types": "./dist/ai-exports.d.ts",
+				"default": "./dist/ai-exports.js"
+			},
+			"require": {
+				"types": "./dist/ai-exports.d.cts",
+				"default": "./dist/ai-exports.cjs"
+			}
+		},
+		"./factory": {
+			"import": {
+				"types": "./dist/factory-exports.d.ts",
+				"default": "./dist/factory-exports.js"
+			},
+			"require": {
+				"types": "./dist/factory-exports.d.cts",
+				"default": "./dist/factory-exports.cjs"
+			}
+		},
+		"./oauth": {
+			"import": {
+				"types": "./dist/oauth-exports.d.ts",
+				"default": "./dist/oauth-exports.js"
+			},
+			"require": {
+				"types": "./dist/oauth-exports.d.cts",
+				"default": "./dist/oauth-exports.cjs"
+			}
+		},
+		"./cache": {
+			"import": {
+				"types": "./dist/cache-exports.d.ts",
+				"default": "./dist/cache-exports.js"
+			},
+			"require": {
+				"types": "./dist/cache-exports.d.cts",
+				"default": "./dist/cache-exports.cjs"
+			}
+		},
+		"./emitter": {
+			"import": {
+				"types": "./dist/emitter-exports.d.ts",
+				"default": "./dist/emitter-exports.js"
+			},
+			"require": {
+				"types": "./dist/emitter-exports.d.cts",
+				"default": "./dist/emitter-exports.cjs"
+			}
+		},
+		"./mailer": {
+			"import": {
+				"types": "./dist/mailer-exports.d.ts",
+				"default": "./dist/mailer-exports.js"
+			},
+			"require": {
+				"types": "./dist/mailer-exports.d.cts",
+				"default": "./dist/mailer-exports.cjs"
+			}
+		},
+		"./template": {
+			"import": {
+				"types": "./dist/template-exports.d.ts",
+				"default": "./dist/template-exports.js"
+			},
+			"require": {
+				"types": "./dist/template-exports.d.cts",
+				"default": "./dist/template-exports.cjs"
+			}
+		},
+		"./schedule": {
+			"import": {
+				"types": "./dist/schedule-exports.d.ts",
+				"default": "./dist/schedule-exports.js"
+			},
+			"require": {
+				"types": "./dist/schedule-exports.d.cts",
+				"default": "./dist/schedule-exports.cjs"
+			}
+		},
+		"./metrics": {
+			"import": {
+				"types": "./dist/metrics-exports.d.ts",
+				"default": "./dist/metrics-exports.js"
+			},
+			"require": {
+				"types": "./dist/metrics-exports.d.cts",
+				"default": "./dist/metrics-exports.cjs"
+			}
+		},
+		"./upload": {
+			"import": {
+				"types": "./dist/upload-exports.d.ts",
+				"default": "./dist/upload-exports.js"
+			},
+			"require": {
+				"types": "./dist/upload-exports.d.cts",
+				"default": "./dist/upload-exports.cjs"
+			}
+		},
+		"./queue": {
+			"import": {
+				"types": "./dist/queue-exports.d.ts",
+				"default": "./dist/queue-exports.js"
+			},
+			"require": {
+				"types": "./dist/queue-exports.d.cts",
+				"default": "./dist/queue-exports.cjs"
+			}
+		},
+		"./base": {
+			"import": {
+				"types": "./dist/base-exports.d.ts",
+				"default": "./dist/base-exports.js"
+			},
+			"require": {
+				"types": "./dist/base-exports.d.cts",
+				"default": "./dist/base-exports.cjs"
+			}
+		},
+		"./middlewares": {
+			"import": {
+				"types": "./dist/middlewares-exports.d.ts",
+				"default": "./dist/middlewares-exports.js"
+			},
+			"require": {
+				"types": "./dist/middlewares-exports.d.cts",
+				"default": "./dist/middlewares-exports.cjs"
 			}
 		},
 		"./client": {

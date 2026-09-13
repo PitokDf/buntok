@@ -40,7 +40,8 @@ export default function AppConfigPage() {
         as needed:
       </p>
       <CodeBlock
-        code={`import { App, z } from "@buntok/core";
+        code={`import { App } from "@buntok/core";
+import { z } from "@buntok/core/middlewares/validator";
 
 export const env = App.validateEnv({
   PORT: z.coerce.number().default(1212),

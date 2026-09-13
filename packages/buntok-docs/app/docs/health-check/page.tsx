@@ -36,7 +36,7 @@ export default function HealthCheckPage() {
         Basic Usage
       </Heading>
       <CodeBlock
-        code={`import { healthCheck } from "@buntok/core";
+        code={`import { healthCheck } from "@buntok/core/middlewares";
 
 // Simple health check at /health
 healthCheck(app);`}
@@ -105,7 +105,7 @@ healthCheck(app);`}
         Database Check
       </Heading>
       <CodeBlock
-        code={`import { healthCheck, createDatabaseCheck } from "@buntok/core";
+        code={`import { healthCheck, createDatabaseCheck } from "@buntok/core/middlewares";
 
 healthCheck(app, {
   check: createDatabaseCheck(async () => {
@@ -126,7 +126,7 @@ healthCheck(app, {
         Use <code>createHealthCheck</code> to combine multiple checks:
       </p>
       <CodeBlock
-        code={`import { healthCheck, createHealthCheck } from "@buntok/core";
+        code={`import { healthCheck, createHealthCheck } from "@buntok/core/middlewares";
 
 healthCheck(app, {
   version: "1.0.0",
@@ -197,7 +197,7 @@ healthCheck(app, {
         Kubernetes-ready health check endpoints for container orchestration.
       </p>
       <CodeBlock
-        code={`import { livenessCheck, readinessCheck } from "@buntok/core";
+        code={`import { livenessCheck, readinessCheck } from "@buntok/core/middlewares";
 
 // Liveness probe — is the process alive?
 livenessCheck(app, { path: "/health/live" });  // default: "/health/live"

@@ -30,7 +30,7 @@ export default function AuditLogPage() {
         Basic Usage
       </Heading>
       <CodeBlock
-        code={`import { auditLog } from "@buntok/core";
+        code={`import { auditLog } from "@buntok/core/middlewares";
 
 // Log all requests to console
 app.use(auditLog());`}

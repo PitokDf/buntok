@@ -82,7 +82,7 @@ export default function QueuePage() {
   BunRedisQueueDriver,
   BullmqQueueDriver,
   RabbitmqQueueDriver,
-} from "@buntok/core";
+} from "@buntok/core/queue";
 
 // Pass driver instance directly
 const redisDriver = new RedisQueueDriver({ url: "redis://localhost:6379" });
@@ -97,7 +97,7 @@ const queue = new Queue("email", redisDriver);`}
         Basic Usage
       </Heading>
       <CodeBlock
-        code={`import { Queue } from "@buntok/core";
+        code={`import { Queue } from "@buntok/core/queue";
 
 // Memory driver (default — development)
 const emailQueue = new Queue<{ to: string; subject: string }>("emails");
@@ -130,7 +130,7 @@ emailQueue.process(async (job) => {
         <code>ioredis</code> first: <code>bun add ioredis</code>
       </p>
       <CodeBlock
-        code={`import { Queue } from "@buntok/core";
+        code={`import { Queue } from "@buntok/core/queue";
 import Redis from "ioredis";
 
 const redis = new Redis();
@@ -161,7 +161,7 @@ const queue = new Queue<Job>("tasks", {
         Uses Bun&apos;s built-in Redis client (zero dependencies, requires Bun &gt;= 1.3).
       </p>
       <CodeBlock
-        code={`import { Queue } from "@buntok/core";
+        code={`import { Queue } from "@buntok/core/queue";
 
 const emailQueue = new Queue<{ to: string }>("emails", {
   driver: "bun-redis",
@@ -182,7 +182,7 @@ const emailQueue = new Queue<{ to: string }>("emails", {
         <code>bun add bullmq</code>
       </p>
       <CodeBlock
-        code={`import { Queue } from "@buntok/core";
+        code={`import { Queue } from "@buntok/core/queue";
 
 const emailQueue = new Queue<{ to: string }>("emails", {
   driver: "bullmq",
@@ -222,7 +222,7 @@ const emailQueue = new Queue<{ to: string }>("emails", {
         Install <code>amqplib</code> first: <code>bun add amqplib</code>
       </p>
       <CodeBlock
-        code={`import { Queue } from "@buntok/core";
+        code={`import { Queue } from "@buntok/core/queue";
 
 const emailQueue = new Queue<{ to: string }>("emails", {
   driver: "rabbitmq",
@@ -380,7 +380,8 @@ const queue = new Queue("tasks", {
         Full Example
       </Heading>
       <CodeBlock
-        code={`import { App, Queue } from "@buntok/core";
+        code={`import { App } from "@buntok/core";
+import { Queue } from "@buntok/core/queue";
 
 const emailQueue = new Queue<{
   to: string;
@@ -419,7 +420,7 @@ app.listen(1212);`}
         Implement the <code>QueueDriver</code> interface for custom backends:
       </p>
       <CodeBlock
-        code={`import type { QueueDriver, Job, JobHandler } from "@buntok/core";
+        code={`import type { QueueDriver, Job, JobHandler } from "@buntok/core/queue";
 
 class MyCustomDriver implements QueueDriver<{ to: string }> {
   async add(data: { to: string }, opts?: { priority?: number; delay?: number }): Promise<void> {

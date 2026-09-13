@@ -126,7 +126,8 @@ app.listen(env.PORT);`}
         Type-safe environment schema with sensible defaults:
       </p>
       <CodeBlock
-        code={`import { App, z } from "@buntok/core";
+        code={`import { App } from "@buntok/core";
+import { z } from "@buntok/core/middlewares/validator";
 
 export const env = App.validateEnv({
   PORT: z.coerce.number().default(1212),
@@ -269,7 +270,8 @@ export const env = App.validateEnv({
         startup with sensible defaults:
       </p>
       <CodeBlock
-        code={`import { App, z } from "@buntok/core";
+        code={`import { App } from "@buntok/core";
+import { z } from "@buntok/core/middlewares/validator";
 
 export const env = App.validateEnv({
   PORT: z.coerce.number().default(1212),
@@ -463,7 +465,7 @@ export class UserRepository extends BaseRepository<
 
       <CodeBlock
         code={`// src/services/user.service.ts
-import { BaseService } from "@buntok/core";
+import { BaseService } from "@buntok/core/base";
 import { UserRepository } from "@/repositories/user.repository";
 import type { User } from "@prisma/client";
 
@@ -592,7 +594,7 @@ export class UserRepository extends BaseRepository<User, PrismaClient> {
 }
 
 // 2. Service - extends BaseService
-import { BaseService } from "@buntok/core";
+import { BaseService } from "@buntok/core/base";
 
 export class UserService extends BaseService<User, CreateUser, UpdateUser> {
   constructor(private repo: UserRepository) {
@@ -601,7 +603,8 @@ export class UserService extends BaseService<User, CreateUser, UpdateUser> {
 }
 
 // 3. Controller - extends BaseController (auto-registers 5 CRUD routes!)
-import { BaseController, Controller } from "@buntok/core";
+import { Controller } from "@buntok/core";
+import { BaseController } from "@buntok/core/base";
 
 @Controller("/users")
 export class UserController extends BaseController<User, CreateUser, UpdateUser> {

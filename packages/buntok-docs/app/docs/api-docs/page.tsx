@@ -134,7 +134,7 @@ app.listen(1212);
       </Heading>
       <CodeBlock
         code={`
-import { z } from "@buntok/core";
+import { z } from "@buntok/core/middlewares/validator";
 
 const CreateUserSchema = z.object({
   name: z.string().min(1).max(100),
@@ -224,7 +224,8 @@ app.get(
       </Heading>
       <CodeBlock
         code={`
-import { App, z } from "@buntok/core";
+import { App } from "@buntok/core";
+import { z } from "@buntok/core/middlewares/validator";
 
 const app = new App();
 

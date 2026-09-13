@@ -204,6 +204,35 @@ vercel --prod`}
         level={3}
         className="text-lg font-semibold mt-6 mb-2 text-text-primary"
       >
+        SyntaxError: Unexpected token in import call
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        This error occurs when <code>package.json</code> is missing{" "}
+        <code>&quot;type&quot;: &quot;module&quot;</code>. Without it, Vercel&apos;s
+        Node.js runtime treats <code>.js</code> files as CommonJS, causing ESM
+        import syntax to fail.
+      </p>
+      <Callout type="warning">
+        <strong>Fix:</strong> Ensure your <code>package.json</code> includes{" "}
+        <code>&quot;type&quot;: &quot;module&quot;</code>. BunTok requires ESM.
+      </Callout>
+      <CodeBlock
+        language="json"
+        code={`{
+  "name": "my-app",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch server.ts",
+    "build": "bun run build.ts",
+    "start": "node dist/index.js"
+  }
+}`}
+      />
+
+      <Heading
+        level={3}
+        className="text-lg font-semibold mt-6 mb-2 text-text-primary"
+      >
         `cannot read properties of undefined (reading 'readFile')`
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">

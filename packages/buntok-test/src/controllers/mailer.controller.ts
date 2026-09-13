@@ -1,6 +1,8 @@
-import { Controller, Mailer, Post, Queue } from "@buntok/core";
+import { Controller, Post } from "@buntok/core";
 import Redis from "ioredis";
 import { renderEmail } from "../emails";
+import { Mailer } from "@buntok/core/mailer";
+import { Queue } from "@buntok/core/queue";
 
 const mailer = new Mailer({
 	provider: "smtp",

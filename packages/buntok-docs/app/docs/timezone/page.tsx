@@ -32,7 +32,7 @@ export default function TimezonePage() {
         Parse a time string in a specific timezone:
       </p>
       <CodeBlock
-        code={`import { parseTime } from "@buntok/core";
+        code={`import { parseTime } from "@buntok/core/helpers";
 
 // Time only
 const date = parseTime("14:30", "Asia/Jakarta");
@@ -54,7 +54,7 @@ const date = parseTime("2024-01-15 14:30", "America/New_York");
         Format a Date object in a specific timezone:
       </p>
       <CodeBlock
-        code={`import { formatInTimezone } from "@buntok/core";
+        code={`import { formatInTimezone } from "@buntok/core/helpers";
 
 // 3rd arg is enum: "short" | "default" | "full" (not custom pattern)
 const formatted = formatInTimezone(new Date(), "Asia/Jakarta", "short");
@@ -78,7 +78,7 @@ formatInTimezone(new Date(), "Asia/Jakarta", "full");
         Get individual timezone parts:
       </p>
       <CodeBlock
-        code={`import { toTimezoneParts } from "@buntok/core";
+        code={`import { toTimezoneParts } from "@buntok/core/helpers";
 
 const parts = toTimezoneParts(new Date(), "Asia/Jakarta");
 // { year: 2024, month: 1, day: 15, hour: 14, minute: 30, second: 0 }
@@ -97,7 +97,7 @@ const parts = toTimezoneParts(new Date(), "Asia/Jakarta");
         Get current time in a specific timezone:
       </p>
       <CodeBlock
-        code={`import { nowInTimezone } from "@buntok/core";
+        code={`import { nowInTimezone } from "@buntok/core/helpers";
 
 const jakartaTime = nowInTimezone("Asia/Jakarta");
 const nyTime = nowInTimezone("America/New_York");`}
@@ -114,7 +114,7 @@ const nyTime = nowInTimezone("America/New_York");`}
         Get timezone offset in minutes from UTC:
       </p>
       <CodeBlock
-        code={`import { getTimezoneOffset, getTimezoneOffsetString } from "@buntok/core";
+        code={`import { getTimezoneOffset, getTimezoneOffsetString } from "@buntok/core/helpers";
 
 getTimezoneOffset("Asia/Jakarta");      // -420 (UTC+7, negative = ahead)
 getTimezoneOffset("America/New_York");  // 240 or 300 (DST, positive = behind)
@@ -136,7 +136,7 @@ getTimezoneOffsetString("America/New_York"); // "-05:00" or "-04:00" (DST)
         Check if a timezone string is valid:
       </p>
       <CodeBlock
-        code={`import { isValidTimezone } from "@buntok/core";
+        code={`import { isValidTimezone } from "@buntok/core/helpers";
 
 isValidTimezone("Asia/Jakarta");     // true
 isValidTimezone("America/New_York"); // true
@@ -177,7 +177,7 @@ isValidTimezone("Invalid/Zone");     // false`}
       <CodeBlock
         code={`import {
   toISOWithTimezone, groupByTimezone, getGroupLabels, formatGroupLabel,
-} from "@buntok/core";
+} from "@buntok/core/helpers";
 // Types: GroupByKey = "hour"|"day"|"month"|"year", GroupByTimezoneOptions { locale?, labelFormatter? }
 
 toISOWithTimezone(new Date(), "Asia/Jakarta");
@@ -201,7 +201,7 @@ formatGroupLabel("2024-01-15", "day", "Asia/Jakarta"); // "15 Jan 2024"`}
         code={`import {
   parseTime, formatInTimezone, nowInTimezone,
   getTimezoneOffset, getTimezoneOffsetString, isValidTimezone, toTimezoneParts,
-} from "@buntok/core";
+} from "@buntok/core/helpers";
 
 // API endpoint returning user's local time
 app.get("/time/:timezone", (ctx) => {

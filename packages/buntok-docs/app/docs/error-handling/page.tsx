@@ -91,7 +91,7 @@ export default function ErrorHandlingPage() {
   ForbiddenError,
   ConflictError,
   BadRequestError,
-} from "@buntok/core";
+} from "@buntok/core/helpers";
 
 app.get("/users/:id", async (ctx) => {
   const user = await db.user.findUnique({ where: { id: ctx.params.id } });
@@ -166,7 +166,7 @@ app.onError((error, ctx) => {
         Extend <code>HttpError</code> for domain-specific errors:
       </p>
       <CodeBlock
-        code={`import { HttpError } from "@buntok/core";
+        code={`import { HttpError } from "@buntok/core/helpers";
 
 // Extend HttpError for custom errors
 class ValidationError extends HttpError {

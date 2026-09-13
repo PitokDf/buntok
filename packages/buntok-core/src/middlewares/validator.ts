@@ -220,6 +220,20 @@ export function zValidator(
 							fields[key] = value.toString();
 						}
 					}
+					// Auto-split comma-separated strings for array fields
+					if (rawSchema instanceof z.ZodObject) {
+						const shape = rawSchema.shape;
+						for (const [key, fieldSchema] of Object.entries(shape)) {
+							let inner: z.ZodTypeAny = fieldSchema as z.ZodTypeAny;
+							// Unwrap optional/nullable wrappers to check inner type
+							while (inner instanceof z.ZodOptional || inner instanceof z.ZodNullable || inner instanceof z.ZodDefault) {
+								inner = (inner._def as any).innerType as z.ZodTypeAny;
+							}
+							if (inner instanceof z.ZodArray && typeof fields[key] === 'string' && fields[key]) {
+								(fields as any)[key] = (fields[key] as string).split(',').map((s: string) => s.trim()).filter(Boolean);
+							}
+						}
+					}
 					raw = fields;
 			} catch {
 				return ctx.error("Validation Failed", 422, [

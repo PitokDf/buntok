@@ -61,7 +61,7 @@ export default function HelpersPage() {
         </table>
       </div>
       <CodeBlock
-        code={`import { hashPassword, verifyPassword } from "@buntok/core";
+        code={`import { hashPassword, verifyPassword } from "@buntok/core/helpers";
 
 // Hash
 const hash = await hashPassword("my-password");
@@ -168,7 +168,7 @@ const isValid = await verifyPassword("my-password", hash);`}
   parseTime, formatInTimezone, toTimezoneParts,
   nowInTimezone, getTimezoneOffset, getTimezoneOffsetString, isValidTimezone,
   groupByTimezone, getGroupLabels, formatGroupLabel, toISOWithTimezone,
-} from "@buntok/core";
+} from "@buntok/core/helpers";
 
 const date = parseTime("14:30", "Asia/Jakarta");
 const formatted = formatInTimezone(new Date(), "Asia/Jakarta", "short"); // "short"|"default"|"full"
@@ -217,7 +217,7 @@ toISOWithTimezone(new Date(), "Asia/Jakarta"); // "2024-01-15T17:30:00+07:00"`}
         </table>
       </div>
       <CodeBlock
-        code={`import { delay, retry } from "@buntok/core";
+        code={`import { delay, retry } from "@buntok/core/helpers";
 
 // Promise-based sleep
 await delay(1000); // 1 second
@@ -324,7 +324,7 @@ await retry(
           </tbody>
         </table>
       </div>
-      <CodeBlock code={`import { asyncHandler, NotFoundError } from "@buntok/core";
+      <CodeBlock code={`import { asyncHandler, NotFoundError } from "@buntok/core/helpers";
 
 app.get("/users/:id", asyncHandler(async (ctx) => {
   const user = await findUser(ctx.params.id);
@@ -343,7 +343,7 @@ app.get("/users/:id", asyncHandler(async (ctx) => {
         File Upload
       </Heading>
       <CodeBlock
-        code={`import { handleUploads, LocalDiskStorage } from "@buntok/core";
+        code={`import { handleUploads, LocalDiskStorage } from "@buntok/core/upload";
 
 const result = await handleUploads(ctx, {
   storage: new LocalDiskStorage("./uploads"),
@@ -413,7 +413,7 @@ result.files         // (UploadedFile | ImageUploadedFile)[]`}
         </table>
       </div>
       <CodeBlock
-        code={`import { hash, sha256, md5, randomHex, randomToken, encrypt, decrypt } from "@buntok/core";
+        code={`import { hash, sha256, md5, randomHex, randomToken, encrypt, decrypt } from "@buntok/core/helpers";
 
 // hash/sha256/sha512 are SYNC (Bun.CryptoHasher)
 const h = hash("hello world"); // default SHA-256, or hash("data", "SHA-512")
@@ -470,7 +470,7 @@ const decrypted = await decrypt(ciphertext, key, iv);`}
         </table>
       </div>
       <CodeBlock
-        code={`import { timeAgo, addDays, formatDuration, startOfDay } from "@buntok/core";
+        code={`import { timeAgo, addDays, formatDuration, startOfDay } from "@buntok/core/helpers";
 
 timeAgo(new Date("2024-01-01")); // "3 months ago"
 const tomorrow = addDays(new Date(), 1);
@@ -520,7 +520,7 @@ startOfDay(new Date()); // 00:00:00 today`}
         </table>
       </div>
       <CodeBlock
-        code={`import { slugify, truncate, camelCase, kebabCase } from "@buntok/core";
+        code={`import { slugify, truncate, camelCase, kebabCase } from "@buntok/core/helpers";
 
 slugify("Hello World!"); // "hello-world"
 truncate("Long text here", 10); // "Long te..."
@@ -570,7 +570,7 @@ kebabCase("helloWorld"); // "hello-world"`}
         </table>
       </div>
       <CodeBlock
-        code={`import { clamp, formatBytes, formatCurrency } from "@buntok/core";
+        code={`import { clamp, formatBytes, formatCurrency } from "@buntok/core/helpers";
 
 clamp(15, 0, 10); // 10
 formatBytes(1536); // "1.5 KB"
@@ -621,7 +621,7 @@ formatCurrency(25000, "IDR"); // "Rp 25.000"`}
         </table>
       </div>
       <CodeBlock
-        code={`import { pick, omit, groupBy, uniq, deepMerge } from "@buntok/core";
+        code={`import { pick, omit, groupBy, uniq, deepMerge } from "@buntok/core/helpers";
 
 pick({ a: 1, b: 2, c: 3 }, ["a", "c"]); // { a: 1, c: 3 }
 omit({ a: 1, b: 2 }, ["b"]); // { a: 1 }
@@ -670,7 +670,7 @@ deepMerge({ a: 1 }, { b: 2 }); // { a: 1, b: 2 }`}
         </table>
       </div>
       <CodeBlock
-        code={`import { getClientIP, isPrivateIP, parseUserAgent } from "@buntok/core";
+        code={`import { getClientIP, isPrivateIP, parseUserAgent } from "@buntok/core/helpers";
 
 const ip = getClientIP(request);
 isPrivateIP("192.168.1.1"); // true
@@ -720,7 +720,7 @@ const ua = parseUserAgent(request);
         </table>
       </div>
       <CodeBlock
-        code={`import { setCookie, deleteCookie, getCookie } from "@buntok/core";
+        code={`import { setCookie, deleteCookie, getCookie } from "@buntok/core/helpers";
 
 // Set cookie on response
 const response = ctx.json({ ok: true });
@@ -776,7 +776,7 @@ return deleteCookie(response, "token", { path: "/" });`}
         </table>
       </div>
       <CodeBlock
-        code={`import { nanoid, ulid, generateCode } from "@buntok/core";
+        code={`import { nanoid, ulid } from "@buntok/core/helpers";
 
 nanoid(); // "V1StGXR8_Z5jdHi6B-myT"
 ulid(); // "01ARZ3NDEKTSV4RRFFQ69G5FAV"

@@ -4,7 +4,7 @@ import { Callout } from "@/components/ui/Callout";
 
 export const metadata = {
   title: "Mailer",
-  description: "Send emails with Resend, SendGrid, Mailgun, or SMTP providers. Supports attachments, CC/BCC, reply-to, and inline images.",
+  description: "Send emails with Resend, SendGrid, Mailgun, or SMTP providers. Templates, Mailable classes, provider-side templates, attachments, CC/BCC, and inline images.",
 };
 
 
@@ -20,7 +20,8 @@ export default function MailerPage() {
       <p className="my-3 text-text-secondary leading-relaxed">
         Email sending with built-in support for Resend, SendGrid, and Mailgun
         (zero-deps HTTP). SMTP via optional <code>nodemailer</code> import.
-        Supports attachments, CC/BCC, reply-to, and inline images.
+        Supports attachments, CC/BCC, reply-to, inline images, template-based
+        sending, provider-side templates, and Laravel-style Mailable classes.
       </p>
 
       {/* ──────────────── PROVIDERS ──────────────── */}
@@ -75,7 +76,7 @@ export default function MailerPage() {
         Resend
       </Heading>
       <CodeBlock
-        code={`import { Mailer } from "@buntok/core";
+        code={`import { Mailer } from "@buntok/core/mailer";
 
 const mailer = new Mailer({
   provider: "resend",
@@ -305,6 +306,231 @@ await mailer.send({
 });`}
       />
 
+      {/* ──────────────── TEMPLATE INTEGRATION ──────────────── */}
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        Template Integration
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Use the built-in TemplateEngine to register, render, and send
+        Handlebars-like email templates. Templates support variables, conditionals,
+        loops, partials, and custom helpers.
+      </p>
+      <CodeBlock
+        code={`import { Mailer } from "@buntok/core/mailer";
+
+const mailer = new Mailer({
+  provider: "resend",
+  apiKey: process.env.RESEND_API_KEY,
+});
+
+// Register a template (Handlebars-like syntax)
+mailer.registerTemplate("welcome", \`
+  <h1>Selamat datang, {{name}}!</h1>
+  <p>Email: {{email}}</p>
+  <p>Gunakan kode <strong>{{code}}</strong> untuk verifikasi.</p>
+\`);
+
+// Register a partial (layout)
+mailer.registerPartial("email-layout", \`
+  <div style="max-width:600px;margin:0 auto;">
+    {{{body}}}
+    <hr>
+    <p style="font-size:12px;color:#999;">BunTok Framework</p>
+  </div>
+\`);
+
+// Register a custom helper
+mailer.registerHelper("upper", (text) => text.toUpperCase());
+
+// Send with template
+await mailer.sendTemplate({
+  from: "noreply@example.com",
+  to: "user@example.com",
+  subject: "Welcome!",
+  template: "welcome",
+  context: { name: "Tok", email: "tok@example.com", code: "ABC123" },
+});`}
+      />
+
+      <Heading
+        level={3}
+        className="text-lg font-semibold mt-6 mb-2 text-text-primary"
+      >
+        Template Syntax
+      </Heading>
+      <div className="my-4 overflow-x-auto">
+        <table className="w-full text-sm text-text-secondary border border-border-primary rounded-lg overflow-hidden">
+          <thead className="bg-bg-tertiary border-b border-border-primary">
+            <tr>
+              <th className="px-4 py-2 text-left font-semibold text-text-primary">
+                Syntax
+              </th>
+              <th className="px-4 py-2 text-left font-semibold text-text-primary">
+                Description
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ["{{var}}", "Variable (HTML-escaped)"],
+              ["{{{var}}}", "Variable (unescaped HTML)"],
+              ["{{#if condition}}...{{/if}}", "Conditional block"],
+              ["{{#if}}...{{else}}...{{/if}}", "Conditional with else"],
+              ["{{#unless condition}}...{{/unless}}", "Inverse conditional"],
+              ["{{#each items}}...{{/each}}", "Loop over array"],
+              ["{{> partialName}}", "Include a partial"],
+              ["{{! comment }}", "Comment (not rendered)"],
+            ].map(([syntax, desc]) => (
+              <tr
+                key={syntax}
+                className="border-b border-border-primary/50 hover:bg-bg-tertiary/50 transition-colors"
+              >
+                <td className="px-4 py-2 font-mono text-accent">{syntax}</td>
+                <td className="px-4 py-2">{desc}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ──────────────── PROVIDER-SIDE TEMPLATES ──────────────── */}
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        Provider-Side Templates
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Use Resend or SendGrid native template systems. Templates are managed
+        in the provider&apos;s dashboard and referenced by ID.
+      </p>
+      <CodeBlock
+        code={`// Resend — template UUID from Resend dashboard
+await mailer.sendProviderTemplate({
+  from: "noreply@example.com",
+  to: "user@example.com",
+  subject: "Welcome!",
+  templateId: "template-uuid-123",
+  templateData: {
+    name: "Tok",
+    action_url: "https://example.com/verify",
+  },
+});
+
+// SendGrid — template_id from SendGrid dashboard
+await mailer.sendProviderTemplate({
+  from: "noreply@example.com",
+  to: "user@example.com",
+  subject: "Welcome!",
+  templateId: "d-abc123",
+  templateData: {
+    name: "Tok",
+    action_url: "https://example.com/verify",
+  },
+});`}
+      />
+      <Callout type="info">
+        Provider-side templates are only supported for Resend and SendGrid.
+        Mailgun and SMTP use local template rendering.
+      </Callout>
+
+      {/* ──────────────── MAILABLE CLASSES ──────────────── */}
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        Mailable Classes
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Laravel-style class-based email definitions. Extend{" "}
+        <code>Mailable</code>, define template/subject, and build context in{" "}
+        <code>build()</code>.
+      </p>
+      <CodeBlock
+        code={`import { Mailer, Mailable } from "@buntok/core/mailer";
+
+class WelcomeEmail extends Mailable {
+  template = "welcome";
+  subject = "Welcome to BunTok!";
+
+  constructor(private name: string, private email: string) {
+    super();
+  }
+
+  build() {
+    return { context: { name: this.name, email: this.email } };
+  }
+}
+
+class PasswordResetEmail extends Mailable {
+  template = "password-reset";
+  subject = "Reset your password";
+  from = "security@example.com";
+
+  constructor(private token: string) {
+    super();
+  }
+
+  build() {
+    return { context: { token: this.token, expires: "30 minutes" } };
+  }
+}
+
+// Usage
+const mailer = new Mailer({ provider: "resend", apiKey: process.env.RESEND_API_KEY });
+
+// Register templates first
+mailer.registerTemplate("welcome", "<h1>Halo, {{name}}!</h1><p>{{email}}</p>");
+mailer.registerTemplate("password-reset", "<p>Reset link: {{token}}</p>");
+
+await mailer.sendMailable(new WelcomeEmail("Tok", "tok@example.com"));
+await mailer.sendMailable(new PasswordResetEmail("abc123"));`}
+      />
+
+      <Heading
+        level={3}
+        className="text-lg font-semibold mt-6 mb-2 text-text-primary"
+      >
+        Mailable Properties
+      </Heading>
+      <div className="my-4 overflow-x-auto">
+        <table className="w-full text-sm text-text-secondary border border-border-primary rounded-lg overflow-hidden">
+          <thead className="bg-bg-tertiary border-b border-border-primary">
+            <tr>
+              <th className="px-4 py-2 text-left font-semibold text-text-primary">
+                Property
+              </th>
+              <th className="px-4 py-2 text-left font-semibold text-text-primary">
+                Description
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ["template", "Template name (registered via registerTemplate)"],
+              ["subject", "Email subject line"],
+              ["from", "Override sender address"],
+              ["to", "Override recipient"],
+              ["cc", "CC recipients"],
+              ["bcc", "BCC recipients"],
+              ["replyTo", "Reply-To address"],
+              ["build()", "Returns { context?, from?, to? }"],
+            ].map(([prop, desc]) => (
+              <tr
+                key={prop}
+                className="border-b border-border-primary/50 hover:bg-bg-tertiary/50 transition-colors"
+              >
+                <td className="px-4 py-2 font-mono text-accent">{prop}</td>
+                <td className="px-4 py-2">{desc}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       {/* ──────────────── MAIL OPTIONS ──────────────── */}
       <Heading
         level={2}
@@ -418,7 +644,7 @@ await mailer.send({
         Fire-and-Forget
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        Don't await for non-critical emails - they'll send in the background:
+        Don&apos;t await for non-critical emails - they&apos;ll send in the background:
       </p>
       <CodeBlock
         code={`// Don't await - runs in background

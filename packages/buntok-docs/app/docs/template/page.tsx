@@ -30,7 +30,7 @@ export default function TemplatePage() {
         Quick Start
       </Heading>
       <CodeBlock
-        code={`import { render } from "@buntok/core";
+        code={`import { render } from "@buntok/core/template";
 
 const html = render("Hello {{ name }}!", { name: "World" });
 // → "Hello World!"`}
@@ -135,7 +135,7 @@ render("{{#each items}}{{#if @first}}FIRST{{/if}} {{/each}}", {
         Reusable template fragments. Register once, use anywhere.
       </p>
       <CodeBlock
-        code={`import { TemplateEngine } from "@buntok/core";
+        code={`import { TemplateEngine } from "@buntok/core/template";
 
 const engine = new TemplateEngine();
 
@@ -243,7 +243,7 @@ compiled({ name: "B" }); // → "Hello B!"`}
         Full Email Template Example
       </Heading>
       <CodeBlock
-        code={`import { render, TemplateEngine } from "@buntok/core";
+        code={`import { render, TemplateEngine } from "@buntok/core/template";
 
 const engine = new TemplateEngine();
 engine.registerPartial("header", '<div class="header"><h1>{{ company }}</h1></div>');

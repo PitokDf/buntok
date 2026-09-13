@@ -713,7 +713,7 @@ app.get("/users/:id", (ctx) => {
       </Heading>
       <CodeBlock
         code={`
-import { z } from "@buntok/core";
+import { z } from "@buntok/core/middlewares/validator";
 
 const app = new App();
 

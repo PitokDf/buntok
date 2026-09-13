@@ -565,7 +565,7 @@ app.notFound((ctx) => {
         </table>
       </div>
       <CodeBlock
-        code={`import { NotFoundError, ForbiddenError } from "@buntok/core";
+        code={`import { NotFoundError, ForbiddenError } from "@buntok/core/helpers";
 
 app.get("/users/:id", async (ctx) => {
   const user = await findUser(ctx.params.id);

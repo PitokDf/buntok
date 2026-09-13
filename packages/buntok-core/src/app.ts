@@ -259,7 +259,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 	public di = {} as DI;
 	private wsRoutes: Map<string, WSHandler<DI>> = new Map();
 	private wsOpts: WSOptions = {};
-	private poweredByHeaderEnabled: boolean = true;
+	private poweredByHeaderEnabled: boolean = process.env.NODE_ENV !== "production";
 	private _reusePort: boolean = false;
 	private _skipLogResponse: boolean = false;
 	// Cache sucrose analysis per handler to avoid AST analysis per request

@@ -224,7 +224,7 @@ await stripe.cancelSubscription(sub.id);`}
         Handle webhook events with signature verification:
       </p>
       <CodeBlock
-        code={`import { paymentWebhook } from "@buntok/core";
+        code={`import { paymentWebhook } from "@buntok/core/payment";
 
 app.post("/webhooks/stripe",
   paymentWebhook({
@@ -338,7 +338,7 @@ app.post("/webhooks/stripe",
   PaymentVerificationError,  // 400 — webhook signature mismatch
   PaymentIdempotencyError,   // 409 — idempotency key reuse
   PaymentConfigurationError, // 500 — invalid driver config
-} from "@buntok/core";`}
+} from "@buntok/core/payment";`}
       />
 
       <div className="my-4 overflow-x-auto">

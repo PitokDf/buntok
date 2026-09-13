@@ -94,7 +94,8 @@ export default function CLIPage() {
         and are validated at startup.
       </p>
       <CodeBlock
-        code={`import { App, z } from "@buntok/core";
+        code={`import { App } from "@buntok/core";
+import { z } from "@buntok/core/middlewares/validator";
 
 export const env = App.validateEnv({
   PORT: z.coerce.number().default(1212),
@@ -327,7 +328,8 @@ Creating User entity (orm: prisma)...
       </Heading>
       <CodeBlock
         code={`// src/modules/user/user.controller.ts
-import { Dependencies, Controller, BaseController } from "@buntok/core";
+import { Dependencies, Controller } from "@buntok/core";
+import { BaseController } from "@buntok/core/base";
 import { UserService } from "./user.service";
 import type { User } from "@prisma/client";
 
@@ -348,7 +350,8 @@ export class UserController extends BaseController<User> {
       </Heading>
       <CodeBlock
         code={`// src/modules/user/user.service.ts
-import { Dependencies, BaseService } from "@buntok/core";
+import { Dependencies } from "@buntok/core";
+import { BaseService } from "@buntok/core/base";
 import { UserRepository } from "./user.repository";
 import type { User } from "@prisma/client";
 
@@ -391,7 +394,7 @@ export class UserRepository extends BaseRepository<
       </Heading>
       <CodeBlock
         code={`// src/modules/user/user.schema.ts
-import { z } from "@buntok/core";
+import { z } from "@buntok/core/middlewares/validator";
 
 export const CreateUserSchema = z.object({
   name: z.string().min(1).max(100),
@@ -651,7 +654,7 @@ Usage:
       </p>
       <CodeBlock
         code={`// src/factories/user.factory.ts
-import { Factory } from "@buntok/core";
+import { Factory } from "@buntok/core/factory";
 import { faker } from "@faker-js/faker";
 import type { User } from "@prisma/client";
 

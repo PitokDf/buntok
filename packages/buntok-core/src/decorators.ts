@@ -85,7 +85,7 @@ type MethodDecoratorFn = (
 ) => void;
 
 function createRouteDecorator(method: string) {
-	return (path: string): MethodDecoratorFn => {
+	return (path: string = ""): MethodDecoratorFn => {
 		return (_originalMethod, context) => {
 			if (context.kind !== "method") {
 				throw new Error(`@${method} can only decorate methods`);

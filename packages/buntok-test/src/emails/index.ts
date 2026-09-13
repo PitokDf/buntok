@@ -1,4 +1,5 @@
-import { TemplateEngine } from "@buntok/core";
+
+import { TemplateEngine } from "@buntok/core/template";
 import { readFileSync } from "fs";
 import { join } from "path";
 

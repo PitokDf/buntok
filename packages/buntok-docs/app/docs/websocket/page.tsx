@@ -251,7 +251,7 @@ app.ws("/chat", {
         Use the <code>Room</code> class for higher-level room management:
       </p>
       <CodeBlock
-        code={`import { Room } from "@buntok/core";
+        code={`import { Room } from "@buntok/core/ws-helpers";
 
 const rooms = new Map<string, Room>();
 
@@ -351,7 +351,7 @@ app.ws("/chat", {
         Use <code>wsHeartbeat</code> to detect stale connections:
       </p>
       <CodeBlock
-        code={`import { wsHeartbeat } from "@buntok/core";
+        code={`import { wsHeartbeat } from "@buntok/core/ws-helpers";
 
 app.ws("/chat", {
   ...wsHeartbeat(30_000), // 30 second interval
@@ -564,7 +564,7 @@ app.listen(1212);`}
         Limit the number of messages per connection to prevent abuse.
       </p>
       <CodeBlock
-        code={`import { wsRateLimit } from "@buntok/core";
+        code={`import { wsRateLimit } from "@buntok/core/ws-helpers";
 
 app.ws("/chat", {
   ...wsRateLimit({
@@ -590,7 +590,7 @@ app.ws("/chat", {
         code={`import {
   MemoryWSPubSub,        // default in-memory PubSub
   MemoryWSRateLimitStore, // default in-memory rate limit store
-} from "@buntok/core";
+} from "@buntok/core/ws-helpers";
 
 // Custom PubSub (e.g., Redis-backed for cluster-wide broadcasting)
 const pubSub = new RedisWSPubSub({ url: "redis://localhost:6379" });

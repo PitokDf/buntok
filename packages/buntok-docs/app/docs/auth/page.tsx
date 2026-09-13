@@ -26,7 +26,7 @@ export default function AuthPage() {
 
       <Heading level={3} className="text-xl font-semibold mt-6 mb-2 text-text-primary">Creating Instance</Heading>
       <CodeBlock
-        code={`import { JwtService } from "@buntok/core";
+        code={`import { JwtService } from "@buntok/core/auth";
 
 const jwt = new JwtService("your-secret-key");`}
       />
@@ -66,7 +66,7 @@ if (!payload) {
       </p>
 
       <CodeBlock
-        code={`import { requireAuth } from "@buntok/core";
+        code={`import { requireAuth } from "@buntok/core/auth";
 
 const secret = "your-secret-key";
 
@@ -93,7 +93,9 @@ AUTH_COOKIE=session`}
 
       <Heading level={3} className="text-xl font-semibold mt-6 mb-2 text-text-primary">Login Flow</Heading>
       <CodeBlock
-        code={`import { App, JwtService, setCookie, deleteCookie } from "@buntok/core";
+        code={`import { App } from "@buntok/core";
+import { JwtService } from "@buntok/core/auth";
+import { setCookie, deleteCookie } from "@buntok/core/helpers";
 
 const jwt = new JwtService(process.env.JWT_SECRET!);
 
@@ -186,7 +188,8 @@ const response = await fetch("/api/profile", {
         Example: Login Flow
       </Heading>
       <CodeBlock
-        code={`import { App, JwtService, requireAuth } from "@buntok/core";
+        code={`import { App } from "@buntok/core";
+import { JwtService, requireAuth } from "@buntok/core/auth";
 
 const jwt = new JwtService(process.env.JWT_SECRET!);
 

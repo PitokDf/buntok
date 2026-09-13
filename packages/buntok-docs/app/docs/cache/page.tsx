@@ -37,7 +37,7 @@ export default function CachePage() {
         Basic Usage
       </Heading>
       <CodeBlock
-        code={`import { Cache } from "@buntok/core";
+        code={`import { Cache } from "@buntok/core/cache";
 
 const cache = new Cache();
 
@@ -169,7 +169,8 @@ await cache.deletePattern("session:*");`}
         Cache for AI responses. Hashes messages to generate cache keys:
       </p>
       <CodeBlock
-        code={`import { AICache, Cache, type CacheDriver } from "@buntok/core";
+        code={`import { AICache } from "@buntok/core/ai";
+import { Cache, type CacheDriver } from "@buntok/core/cache";
 
 const cacheDriver = new Cache();
 const aiCache = new AICache(cacheDriver);
@@ -208,7 +209,7 @@ app.post("/chat", async (ctx) => {
         <code>CacheDriver</code>. Here&apos;s an example using a custom Redis driver:
       </p>
       <CodeBlock
-        code={`import { Cache, type CacheDriver } from "@buntok/core";
+        code={`import { Cache, type CacheDriver } from "@buntok/core/cache";
 import { createClient } from "redis";
 
 class RedisCacheDriver implements CacheDriver {

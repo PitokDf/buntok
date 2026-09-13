@@ -74,7 +74,7 @@ export default function UploadPage() {
         any other storage:
       </p>
       <CodeBlock
-        code={`import type { StorageDriver, UploadedFile } from "@buntok/core";
+        code={`import type { StorageDriver, UploadedFile } from "@buntok/core/upload";
 
 class S3Storage implements StorageDriver {
   constructor(private bucket: string, private region: string) {}
@@ -124,7 +124,7 @@ const result = await handleUploads(ctx, {
         Basic Usage
       </Heading>
       <CodeBlock
-        code={`import { handleUploads, LocalDiskStorage } from "@buntok/core";
+        code={`import { handleUploads, LocalDiskStorage } from "@buntok/core/upload";
 
 app.post("/upload", async (ctx) => {
   const result = await handleUploads(ctx, {
@@ -226,7 +226,7 @@ app.post("/upload", async (ctx) => {
       </Callout>
 
       <CodeBlock
-        code={`import { handleUploads, LocalDiskStorage } from "@buntok/core";
+        code={`import { handleUploads, LocalDiskStorage } from "@buntok/core/upload";
 
 // Magic bytes verification ON (default)
 const result = await handleUploads(ctx, {
@@ -393,7 +393,7 @@ if (avatar.kind === "image") {
         Validation
       </Heading>
       <CodeBlock
-        code={`import { handleUploads, LocalDiskStorage } from "@buntok/core";
+        code={`import { handleUploads, LocalDiskStorage } from "@buntok/core/upload";
 
 const result = await handleUploads(ctx, {
   storage: new LocalDiskStorage("./uploads"),
@@ -574,7 +574,7 @@ result.fields.thumbnail?.name;  // ✅ OK (UploadedFile | undefined)
         results in <code>ctx.store</code>:
       </p>
       <CodeBlock
-        code={`import { uploader, LocalDiskStorage } from "@buntok/core";
+        code={`import { uploader, LocalDiskStorage } from "@buntok/core/upload";
 
 const upload = uploader({
   storage: new LocalDiskStorage("./uploads"),
@@ -639,7 +639,7 @@ const result = await handleUploads(ctx, {
         Delete Uploaded File
       </Heading>
       <CodeBlock
-        code={`import { deleteUploadedFile, LocalDiskStorage } from "@buntok/core";
+        code={`import { deleteUploadedFile, LocalDiskStorage } from "@buntok/core/upload";
 
 const storage = new LocalDiskStorage("./uploads");
 const result = await handleUploads(ctx, { storage });
@@ -662,7 +662,8 @@ if (file) {
         Combine with the built-in rate limiter to prevent upload abuse:
       </p>
       <CodeBlock
-        code={`import { uploader, rateLimiter, LocalDiskStorage } from "@buntok/core";
+        code={`import { uploader, LocalDiskStorage } from "@buntok/core/upload";
+import { rateLimiter, slidingWindowRateLimiter } from "@buntok/core/middlewares";
 
 // Rate limit uploads to 10 per hour per user
 app.post("/upload",
@@ -695,7 +696,8 @@ app.post("/upload",
         Full Example
       </Heading>
       <CodeBlock
-        code={`import { App, handleUploads, LocalDiskStorage } from "@buntok/core";
+        code={`import { App } from "@buntok/core";
+import { handleUploads, LocalDiskStorage } from "@buntok/core/upload";
 
 const app = new App();
 

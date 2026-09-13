@@ -34,7 +34,7 @@ export default function AIPage() {
         Stream Protocol v1):
       </p>
       <CodeBlock
-        code={`import { streamAI } from "@buntok/core";
+        code={`import { streamAI } from "@buntok/core/ai";
 import OpenAI from "openai";
 
 const openai = new OpenAI();
@@ -121,7 +121,7 @@ app.post("/chat", async (ctx) => {
         messages from user input (prevents prompt injection):
       </p>
       <CodeBlock
-        code={`import { injectSystemPrompt } from "@buntok/core";
+        code={`import { injectSystemPrompt } from "@buntok/core/ai";
 
 const userMessages = [
   { role: "user", content: "Hello!" },
@@ -157,7 +157,8 @@ const messages = injectSystemPrompt(
         generate cache keys:
       </p>
       <CodeBlock
-        code={`import { AICache, Cache } from "@buntok/core";
+        code={`import { AICache } from "@buntok/core/ai";
+import { Cache } from "@buntok/core/cache";
 
 const aiCache = new AICache(new Cache());
 
@@ -225,7 +226,9 @@ app.post("/chat", async (ctx) => {
         Full Example
       </Heading>
       <CodeBlock
-        code={`import { App, streamAI, injectSystemPrompt, AICache, Cache } from "@buntok/core";
+        code={`import { App } from "@buntok/core";
+import { streamAI, injectSystemPrompt, AICache } from "@buntok/core/ai";
+import { Cache } from "@buntok/core/cache";
 import OpenAI from "openai";
 
 const app = new App();

@@ -9,7 +9,9 @@ import { Controller, Delete, Get, Post, Put } from "./decorators";
  *
  * @example
  * ```ts
- * import { Controller, BaseController, Context } from "@buntok/core";
+ * import { Controller } from "@buntok/core";
+ * import { BaseController } from "@buntok/core/base";
+ * import type { Context } from "@buntok/core";
  *
  * // Simple usage (no input types needed)
  * @Controller("/users")
