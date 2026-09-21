@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     "A fast, type-safe web framework for Bun with built-in auth, validation, caching, rate limiting, and zero dependencies. Decorator-first or functional API.",
   metadataBase: new URL(baseUrl),
   alternates: {
-    canonical: "/",
+    canonical: "./",
   },
   openGraph: {
     title: "Buntok Framework - Decorator-Powered Web Framework for Bun",
