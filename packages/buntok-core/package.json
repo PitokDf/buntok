@@ -1,6 +1,6 @@
 {
 	"name": "@buntok/core",
-	"version": "2.2.1",
+	"version": "2.2.1-alpha.3",
 	"description": "Blazing-fast, type-safe HTTP framework for Bun - AOT-compiled routing, decorators, Zod validation & IoC",
 	"module": "dist/core-exports.js",
 	"type": "module",
@@ -22,157 +22,173 @@
 			"require": {
 				"types": "./dist/core-exports.d.cts",
 				"default": "./dist/core-exports.cjs"
-			}
+			},
+			"default": "./dist/core-exports.js"
 		},
 		"./helpers": {
 			"import": {
-				"types": "./dist/helpers-exports.d.ts",
-				"default": "./dist/helpers-exports.js"
+				"types": "./dist/helpers.d.ts",
+				"default": "./dist/helpers.js"
 			},
 			"require": {
-				"types": "./dist/helpers-exports.d.cts",
-				"default": "./dist/helpers-exports.cjs"
-			}
+				"types": "./dist/helpers.d.cts",
+				"default": "./dist/helpers.cjs"
+			},
+			"default": "./dist/helpers.js"
 		},
 		"./auth": {
 			"import": {
-				"types": "./dist/auth-exports.d.ts",
-				"default": "./dist/auth-exports.js"
+				"types": "./dist/auth.d.ts",
+				"default": "./dist/auth.js"
 			},
 			"require": {
-				"types": "./dist/auth-exports.d.cts",
-				"default": "./dist/auth-exports.cjs"
-			}
+				"types": "./dist/auth.d.cts",
+				"default": "./dist/auth.cjs"
+			},
+			"default": "./dist/auth.js"
 		},
 		"./ai": {
 			"import": {
-				"types": "./dist/ai-exports.d.ts",
-				"default": "./dist/ai-exports.js"
+				"types": "./dist/ai.d.ts",
+				"default": "./dist/ai.js"
 			},
 			"require": {
-				"types": "./dist/ai-exports.d.cts",
-				"default": "./dist/ai-exports.cjs"
-			}
+				"types": "./dist/ai.d.cts",
+				"default": "./dist/ai.cjs"
+			},
+			"default": "./dist/ai.js"
 		},
 		"./factory": {
 			"import": {
-				"types": "./dist/factory-exports.d.ts",
-				"default": "./dist/factory-exports.js"
+				"types": "./dist/factory.d.ts",
+				"default": "./dist/factory.js"
 			},
 			"require": {
-				"types": "./dist/factory-exports.d.cts",
-				"default": "./dist/factory-exports.cjs"
-			}
+				"types": "./dist/factory.d.cts",
+				"default": "./dist/factory.cjs"
+			},
+			"default": "./dist/factory.js"
 		},
 		"./oauth": {
 			"import": {
-				"types": "./dist/oauth-exports.d.ts",
-				"default": "./dist/oauth-exports.js"
+				"types": "./dist/oauth.d.ts",
+				"default": "./dist/oauth.js"
 			},
 			"require": {
-				"types": "./dist/oauth-exports.d.cts",
-				"default": "./dist/oauth-exports.cjs"
-			}
+				"types": "./dist/oauth.d.cts",
+				"default": "./dist/oauth.cjs"
+			},
+			"default": "./dist/oauth.js"
 		},
 		"./cache": {
 			"import": {
-				"types": "./dist/cache-exports.d.ts",
-				"default": "./dist/cache-exports.js"
+				"types": "./dist/cache.d.ts",
+				"default": "./dist/cache.js"
 			},
 			"require": {
-				"types": "./dist/cache-exports.d.cts",
-				"default": "./dist/cache-exports.cjs"
-			}
+				"types": "./dist/cache.d.cts",
+				"default": "./dist/cache.cjs"
+			},
+			"default": "./dist/cache.js"
 		},
 		"./emitter": {
 			"import": {
-				"types": "./dist/emitter-exports.d.ts",
-				"default": "./dist/emitter-exports.js"
+				"types": "./dist/emitter.d.ts",
+				"default": "./dist/emitter.js"
 			},
 			"require": {
-				"types": "./dist/emitter-exports.d.cts",
-				"default": "./dist/emitter-exports.cjs"
-			}
+				"types": "./dist/emitter.d.cts",
+				"default": "./dist/emitter.cjs"
+			},
+			"default": "./dist/emitter.js"
 		},
 		"./mailer": {
 			"import": {
-				"types": "./dist/mailer-exports.d.ts",
-				"default": "./dist/mailer-exports.js"
+				"types": "./dist/mailer.d.ts",
+				"default": "./dist/mailer.js"
 			},
 			"require": {
-				"types": "./dist/mailer-exports.d.cts",
-				"default": "./dist/mailer-exports.cjs"
-			}
+				"types": "./dist/mailer.d.cts",
+				"default": "./dist/mailer.cjs"
+			},
+			"default": "./dist/mailer.js"
 		},
 		"./template": {
 			"import": {
-				"types": "./dist/template-exports.d.ts",
-				"default": "./dist/template-exports.js"
+				"types": "./dist/template.d.ts",
+				"default": "./dist/template.js"
 			},
 			"require": {
-				"types": "./dist/template-exports.d.cts",
-				"default": "./dist/template-exports.cjs"
-			}
+				"types": "./dist/template.d.cts",
+				"default": "./dist/template.cjs"
+			},
+			"default": "./dist/template.js"
 		},
 		"./schedule": {
 			"import": {
-				"types": "./dist/schedule-exports.d.ts",
-				"default": "./dist/schedule-exports.js"
+				"types": "./dist/schedule.d.ts",
+				"default": "./dist/schedule.js"
 			},
 			"require": {
-				"types": "./dist/schedule-exports.d.cts",
-				"default": "./dist/schedule-exports.cjs"
-			}
+				"types": "./dist/schedule.d.cts",
+				"default": "./dist/schedule.cjs"
+			},
+			"default": "./dist/schedule.js"
 		},
 		"./metrics": {
 			"import": {
-				"types": "./dist/metrics-exports.d.ts",
-				"default": "./dist/metrics-exports.js"
+				"types": "./dist/metrics.d.ts",
+				"default": "./dist/metrics.js"
 			},
 			"require": {
-				"types": "./dist/metrics-exports.d.cts",
-				"default": "./dist/metrics-exports.cjs"
-			}
+				"types": "./dist/metrics.d.cts",
+				"default": "./dist/metrics.cjs"
+			},
+			"default": "./dist/metrics.js"
 		},
 		"./upload": {
 			"import": {
-				"types": "./dist/upload-exports.d.ts",
-				"default": "./dist/upload-exports.js"
+				"types": "./dist/upload.d.ts",
+				"default": "./dist/upload.js"
 			},
 			"require": {
-				"types": "./dist/upload-exports.d.cts",
-				"default": "./dist/upload-exports.cjs"
-			}
+				"types": "./dist/upload.d.cts",
+				"default": "./dist/upload.cjs"
+			},
+			"default": "./dist/upload.js"
 		},
 		"./queue": {
 			"import": {
-				"types": "./dist/queue-exports.d.ts",
-				"default": "./dist/queue-exports.js"
+				"types": "./dist/queue.d.ts",
+				"default": "./dist/queue.js"
 			},
 			"require": {
-				"types": "./dist/queue-exports.d.cts",
-				"default": "./dist/queue-exports.cjs"
-			}
+				"types": "./dist/queue.d.cts",
+				"default": "./dist/queue.cjs"
+			},
+			"default": "./dist/queue.js"
 		},
 		"./base": {
 			"import": {
-				"types": "./dist/base-exports.d.ts",
-				"default": "./dist/base-exports.js"
+				"types": "./dist/base.d.ts",
+				"default": "./dist/base.js"
 			},
 			"require": {
-				"types": "./dist/base-exports.d.cts",
-				"default": "./dist/base-exports.cjs"
-			}
+				"types": "./dist/base.d.cts",
+				"default": "./dist/base.cjs"
+			},
+			"default": "./dist/base.js"
 		},
 		"./middlewares": {
 			"import": {
-				"types": "./dist/middlewares-exports.d.ts",
-				"default": "./dist/middlewares-exports.js"
+				"types": "./dist/middlewares.d.ts",
+				"default": "./dist/middlewares.js"
 			},
 			"require": {
-				"types": "./dist/middlewares-exports.d.cts",
-				"default": "./dist/middlewares-exports.cjs"
-			}
+				"types": "./dist/middlewares.d.cts",
+				"default": "./dist/middlewares.cjs"
+			},
+			"default": "./dist/middlewares.js"
 		},
 		"./client": {
 			"import": {
@@ -182,7 +198,8 @@
 			"require": {
 				"types": "./dist/client.d.cts",
 				"default": "./dist/client.cjs"
-			}
+			},
+			"default": "./dist/client.js"
 		},
 		"./dev": {
 			"import": {
@@ -192,7 +209,8 @@
 			"require": {
 				"types": "./dist/dev.d.cts",
 				"default": "./dist/dev.cjs"
-			}
+			},
+			"default": "./dist/dev.js"
 		},
 		"./plugins/graphql": {
 			"import": {
@@ -202,7 +220,8 @@
 			"require": {
 				"types": "./dist/plugins/graphql/index.d.cts",
 				"default": "./dist/plugins/graphql/index.cjs"
-			}
+			},
+			"default": "./dist/plugins/graphql/index.js"
 		},
 		"./plugins/graphql/apollo": {
 			"import": {
@@ -212,7 +231,8 @@
 			"require": {
 				"types": "./dist/plugins/graphql/apollo.d.cts",
 				"default": "./dist/plugins/graphql/apollo.cjs"
-			}
+			},
+			"default": "./dist/plugins/graphql/apollo.js"
 		},
 		"./plugins/graphql/yoga": {
 			"import": {
@@ -222,7 +242,8 @@
 			"require": {
 				"types": "./dist/plugins/graphql/yoga.d.cts",
 				"default": "./dist/plugins/graphql/yoga.cjs"
-			}
+			},
+			"default": "./dist/plugins/graphql/yoga.js"
 		},
 		"./plugins/opentelemetry": {
 			"import": {
@@ -232,7 +253,8 @@
 			"require": {
 				"types": "./dist/plugins/opentelemetry.d.cts",
 				"default": "./dist/plugins/opentelemetry.cjs"
-			}
+			},
+			"default": "./dist/plugins/opentelemetry.js"
 		},
 		"./middlewares/validator": {
 			"import": {
@@ -242,7 +264,8 @@
 			"require": {
 				"types": "./dist/middlewares/validator.d.cts",
 				"default": "./dist/middlewares/validator.cjs"
-			}
+			},
+			"default": "./dist/middlewares/validator.js"
 		},
 		"./payment": {
 			"import": {
@@ -252,7 +275,8 @@
 			"require": {
 				"types": "./dist/payment/index.d.cts",
 				"default": "./dist/payment/index.cjs"
-			}
+			},
+			"default": "./dist/payment/index.js"
 		},
 		"./ws-helpers": {
 			"import": {
@@ -262,7 +286,8 @@
 			"require": {
 				"types": "./dist/ws-helpers.d.cts",
 				"default": "./dist/ws-helpers.cjs"
-			}
+			},
+			"default": "./dist/ws-helpers.js"
 		}
 	},
 	"files": [
@@ -279,7 +304,7 @@
 		"test:server": "bun run test/src/index.ts",
 		"build": "tsup && bun run fix-node-prefix && bun run build:types && bun run build:dcts && mkdir -p dist/cli/templates && cp src/cli/templates/* dist/cli/templates/",
 		"build:types": "bunx tsc --project tsconfig.build.json",
-		"build:dcts": "cd dist && find . -name '*.d.ts' -not -name '*.d.ts.map' | while read f; do cp \"$f\" \"${f%.d.ts}.d.cts\"; done",
+		"build:dcts": "cd dist && find . -name '*.d.ts' -not -name '*.d.ts.map' | while read f; do cp \"$f\" \"${f%.d.ts}.d.cts\"; done && find . -name '*-exports.d.ts' -not -name '*.d.ts.map' | while read f; do clean=\"$(echo \"$f\" | sed 's/-exports\\.d\\.ts$/.d.ts/')\"; cp \"$f\" \"$clean\"; done && find . -name '*-exports.d.cts' -not -name '*.d.ts.map' | while read f; do clean=\"$(echo \"$f\" | sed 's/-exports\\.d\\.cts$/.d.cts/')\"; cp \"$f\" \"$clean\"; done",
 		"fix-node-prefix": "bun scripts/fix-node-prefix.ts",
 		"postbuild": "bun run sync-deps",
 		"sync-deps": "bun scripts/sync-local-deps.ts",
