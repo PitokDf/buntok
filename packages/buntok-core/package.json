@@ -1,6 +1,6 @@
 {
 	"name": "@buntok/core",
-	"version": "2.2.0",
+	"version": "2.2.1",
 	"description": "Blazing-fast, type-safe HTTP framework for Bun - AOT-compiled routing, decorators, Zod validation & IoC",
 	"module": "dist/core-exports.js",
 	"type": "module",
@@ -279,7 +279,7 @@
 		"test:server": "bun run test/src/index.ts",
 		"build": "tsup && bun run fix-node-prefix && bun run build:types && bun run build:dcts && mkdir -p dist/cli/templates && cp src/cli/templates/* dist/cli/templates/",
 		"build:types": "bunx tsc --project tsconfig.build.json",
-		"build:dcts": "cd dist && for f in *.d.ts; do cp \"$f\" \"${f%.d.ts}.d.cts\"; done",
+		"build:dcts": "cd dist && find . -name '*.d.ts' -not -name '*.d.ts.map' | while read f; do cp \"$f\" \"${f%.d.ts}.d.cts\"; done",
 		"fix-node-prefix": "bun scripts/fix-node-prefix.ts",
 		"postbuild": "bun run sync-deps",
 		"sync-deps": "bun scripts/sync-local-deps.ts",

@@ -40,6 +40,9 @@ export async function buildCommand() {
 	];
 
 	const external = [...new Set([...peerDeps, ...userDeps])];
+	if (external.includes("@buntok/core")) {
+		external.push("@buntok/core/*");
+	}
 
 	console.log("\x1b[36m🔨 Building project...\x1b[0m");
 
