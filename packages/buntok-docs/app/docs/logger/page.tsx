@@ -22,7 +22,7 @@ export default function LoggerPage() {
         Basic Usage
       </Heading>
       <CodeBlock
-        code={`import { logger, Logger, LogLevel } from "@buntok/core";
+        code={`import { logger, Logger, LogLevel } from "@buntok/core/helpers";
 
 logger.info("Server started", { port: 1212 });
 logger.warn("High memory usage", { mb: 512 });
@@ -64,7 +64,7 @@ logger.debug("Verbose", { meta: 1 });
         </table>
       </div>
       <CodeBlock
-        code={`import { Logger, LogLevel } from "@buntok/core";
+        code={`import { Logger, LogLevel } from "@buntok/core/helpers";
 
 const custom = new Logger({
   level: LogLevel.DEBUG,

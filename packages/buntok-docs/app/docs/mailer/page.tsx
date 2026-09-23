@@ -76,7 +76,7 @@ export default function MailerPage() {
         Resend
       </Heading>
       <CodeBlock
-        code={`import { Mailer } from "@buntok/core";
+        code={`import { Mailer } from "@buntok/core/mailer";
 
 const mailer = new Mailer({
   provider: "resend",
@@ -319,7 +319,7 @@ await mailer.send({
         loops, partials, and custom helpers.
       </p>
       <CodeBlock
-        code={`import { Mailer } from "@buntok/core";
+        code={`import { Mailer } from "@buntok/core/mailer";
 
 const mailer = new Mailer({
   provider: "resend",
@@ -450,7 +450,7 @@ await mailer.sendProviderTemplate({
         <code>build()</code>.
       </p>
       <CodeBlock
-        code={`import { Mailer, Mailable } from "@buntok/core";
+        code={`import { Mailer, Mailable } from "@buntok/core/mailer";
 
 class WelcomeEmail extends Mailable {
   template = "welcome";

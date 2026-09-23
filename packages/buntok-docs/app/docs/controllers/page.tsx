@@ -313,7 +313,7 @@ class UserController extends Base {
         pre-built routes:
       </p>
       <CodeBlock
-        code={`import { BaseController } from "@buntok/core";
+        code={`import { BaseController } from "@buntok/core/base";
 
 interface User {
   id: number;

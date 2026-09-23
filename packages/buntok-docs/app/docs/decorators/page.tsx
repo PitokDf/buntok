@@ -350,7 +350,7 @@ class UserController {
       </p>
       <CodeBlock
         code={`import { SetMetadata, Public } from "@buntok/core";
-import { getMetadata } from "@buntok/core";
+import { getMetadata } from "@buntok/core/helpers";
 
 @SetMetadata("roles", ["admin"])
 @Get("/admin")

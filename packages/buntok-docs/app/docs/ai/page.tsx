@@ -158,7 +158,7 @@ const messages = injectSystemPrompt(
       </p>
       <CodeBlock
         code={`import { AICache } from "@buntok/core";
-import { Cache } from "@buntok/core";
+import { Cache } from "@buntok/core/cache";
 
 const aiCache = new AICache(new Cache());
 
@@ -228,7 +228,7 @@ app.post("/chat", async (ctx) => {
       <CodeBlock
         code={`import { App } from "@buntok/core";
 import { streamAI, injectSystemPrompt, AICache } from "@buntok/core";
-import { Cache } from "@buntok/core";
+import { Cache } from "@buntok/core/cache";
 import OpenAI from "openai";
 
 const app = new App();

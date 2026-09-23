@@ -95,7 +95,7 @@ AUTH_COOKIE=session`}
       <CodeBlock
         code={`import { App } from "@buntok/core";
 import { JwtService } from "@buntok/core";
-import { setCookie, deleteCookie } from "@buntok/core";
+import { setCookie, deleteCookie } from "@buntok/core/helpers";
 
 const jwt = new JwtService(process.env.JWT_SECRET!);
 
