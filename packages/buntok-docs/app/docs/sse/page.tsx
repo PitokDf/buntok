@@ -282,7 +282,7 @@ console.log("Active connections:", SSE.activeConnections);`}
         broadcast to all clients:
       </p>
       <CodeBlock
-        code={`import { SSEBroadcaster } from "@buntok/core";
+        code={`import { SSEBroadcaster } from "@buntok/core/sse";
 
 const broadcaster = new SSEBroadcaster();
 
@@ -463,7 +463,7 @@ app.get("/live/metrics", (ctx) => {
   SSEBroadcaster,
   MemorySSEPubSub,     // default in-memory PubSub
   MemorySSEHistory,    // default in-memory ring buffer (1000 msg)
-} from "@buntok/core";
+} from "@buntok/core/sse";
 
 // Default (single instance)
 const broadcaster = new SSEBroadcaster();

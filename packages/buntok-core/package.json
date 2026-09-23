@@ -1,6 +1,6 @@
 {
   "name": "@buntok/core",
-  "version": "2.2.2-alpha.7",
+  "version": "2.2.1",
   "description": "Blazing-fast, type-safe HTTP framework for Bun - AOT-compiled routing, decorators, Zod validation & IoC",
   "module": "dist/core-exports.js",
   "type": "module",
@@ -25,6 +25,83 @@
       },
       "default": "./dist/core-exports.js"
     },
+    "./all": {
+      "import": {
+        "types": "./dist/all.d.ts",
+        "default": "./dist/all.js"
+      },
+      "require": {
+        "types": "./dist/all.d.cts",
+        "default": "./dist/all.cjs"
+      },
+      "default": "./dist/all.js"
+    },
+    "./app": {
+      "import": {
+        "types": "./dist/app.d.ts",
+        "default": "./dist/app.js"
+      },
+      "require": {
+        "types": "./dist/app.d.cts",
+        "default": "./dist/app.cjs"
+      },
+      "default": "./dist/app.js"
+    },
+    "./auth": {
+      "import": {
+        "types": "./dist/auth.d.ts",
+        "default": "./dist/auth.js"
+      },
+      "require": {
+        "types": "./dist/auth.d.cts",
+        "default": "./dist/auth.cjs"
+      },
+      "default": "./dist/auth.js"
+    },
+    "./base-controller": {
+      "import": {
+        "types": "./dist/base-controller.d.ts",
+        "default": "./dist/base-controller.js"
+      },
+      "require": {
+        "types": "./dist/base-controller.d.cts",
+        "default": "./dist/base-controller.cjs"
+      },
+      "default": "./dist/base-controller.js"
+    },
+    "./base-service": {
+      "import": {
+        "types": "./dist/base-service.d.ts",
+        "default": "./dist/base-service.js"
+      },
+      "require": {
+        "types": "./dist/base-service.d.cts",
+        "default": "./dist/base-service.cjs"
+      },
+      "default": "./dist/base-service.js"
+    },
+    "./cache": {
+      "import": {
+        "types": "./dist/cache.d.ts",
+        "default": "./dist/cache.js"
+      },
+      "require": {
+        "types": "./dist/cache.d.cts",
+        "default": "./dist/cache.cjs"
+      },
+      "default": "./dist/cache.js"
+    },
+    "./circuit-breaker": {
+      "import": {
+        "types": "./dist/circuit-breaker.d.ts",
+        "default": "./dist/circuit-breaker.js"
+      },
+      "require": {
+        "types": "./dist/circuit-breaker.d.cts",
+        "default": "./dist/circuit-breaker.cjs"
+      },
+      "default": "./dist/circuit-breaker.js"
+    },
     "./client": {
       "import": {
         "types": "./dist/client.d.ts",
@@ -36,6 +113,292 @@
       },
       "default": "./dist/client.js"
     },
+    "./container": {
+      "import": {
+        "types": "./dist/container.d.ts",
+        "default": "./dist/container.js"
+      },
+      "require": {
+        "types": "./dist/container.d.cts",
+        "default": "./dist/container.cjs"
+      },
+      "default": "./dist/container.js"
+    },
+    "./context": {
+      "import": {
+        "types": "./dist/context.d.ts",
+        "default": "./dist/context.js"
+      },
+      "require": {
+        "types": "./dist/context.d.cts",
+        "default": "./dist/context.cjs"
+      },
+      "default": "./dist/context.js"
+    },
+    "./decorators": {
+      "import": {
+        "types": "./dist/decorators.d.ts",
+        "default": "./dist/decorators.js"
+      },
+      "require": {
+        "types": "./dist/decorators.d.cts",
+        "default": "./dist/decorators.cjs"
+      },
+      "default": "./dist/decorators.js"
+    },
+    "./emitter": {
+      "import": {
+        "types": "./dist/emitter.d.ts",
+        "default": "./dist/emitter.js"
+      },
+      "require": {
+        "types": "./dist/emitter.d.cts",
+        "default": "./dist/emitter.cjs"
+      },
+      "default": "./dist/emitter.js"
+    },
+    "./factory": {
+      "import": {
+        "types": "./dist/factory.d.ts",
+        "default": "./dist/factory.js"
+      },
+      "require": {
+        "types": "./dist/factory.d.cts",
+        "default": "./dist/factory.cjs"
+      },
+      "default": "./dist/factory.js"
+    },
+    "./logger": {
+      "import": {
+        "types": "./dist/logger.d.ts",
+        "default": "./dist/logger.js"
+      },
+      "require": {
+        "types": "./dist/logger.d.cts",
+        "default": "./dist/logger.cjs"
+      },
+      "default": "./dist/logger.js"
+    },
+    "./metrics": {
+      "import": {
+        "types": "./dist/metrics.d.ts",
+        "default": "./dist/metrics.js"
+      },
+      "require": {
+        "types": "./dist/metrics.d.cts",
+        "default": "./dist/metrics.cjs"
+      },
+      "default": "./dist/metrics.js"
+    },
+    "./plugin": {
+      "import": {
+        "types": "./dist/plugin.d.ts",
+        "default": "./dist/plugin.js"
+      },
+      "require": {
+        "types": "./dist/plugin.d.cts",
+        "default": "./dist/plugin.cjs"
+      },
+      "default": "./dist/plugin.js"
+    },
+    "./router": {
+      "import": {
+        "types": "./dist/router.d.ts",
+        "default": "./dist/router.js"
+      },
+      "require": {
+        "types": "./dist/router.d.cts",
+        "default": "./dist/router.cjs"
+      },
+      "default": "./dist/router.js"
+    },
+    "./version": {
+      "import": {
+        "types": "./dist/version.d.ts",
+        "default": "./dist/version.js"
+      },
+      "require": {
+        "types": "./dist/version.d.cts",
+        "default": "./dist/version.cjs"
+      },
+      "default": "./dist/version.js"
+    },
+    "./ai": {
+      "import": {
+        "types": "./dist/ai.d.ts",
+        "default": "./dist/ai.js"
+      },
+      "require": {
+        "types": "./dist/ai.d.cts",
+        "default": "./dist/ai.cjs"
+      },
+      "default": "./dist/ai.js"
+    },
+    "./ffi": {
+      "import": {
+        "types": "./dist/ffi/index.d.ts",
+        "default": "./dist/ffi/index.js"
+      },
+      "require": {
+        "types": "./dist/ffi/index.d.cts",
+        "default": "./dist/ffi/index.cjs"
+      },
+      "default": "./dist/ffi/index.js"
+    },
+    "./aot": {
+      "import": {
+        "types": "./dist/aot/sucrose.d.ts",
+        "default": "./dist/aot/sucrose.js"
+      },
+      "require": {
+        "types": "./dist/aot/sucrose.d.cts",
+        "default": "./dist/aot/sucrose.cjs"
+      },
+      "default": "./dist/aot/sucrose.js"
+    },
+    "./helpers": {
+      "import": {
+        "types": "./dist/helpers/index.d.ts",
+        "default": "./dist/helpers/index.js"
+      },
+      "require": {
+        "types": "./dist/helpers/index.d.cts",
+        "default": "./dist/helpers/index.cjs"
+      },
+      "default": "./dist/helpers/index.js"
+    },
+    "./middlewares": {
+      "import": {
+        "types": "./dist/middlewares/index.d.ts",
+        "default": "./dist/middlewares/index.js"
+      },
+      "require": {
+        "types": "./dist/middlewares/index.d.cts",
+        "default": "./dist/middlewares/index.cjs"
+      },
+      "default": "./dist/middlewares/index.js"
+    },
+    "./middlewares/validator": {
+      "import": {
+        "types": "./dist/middlewares/validator.d.ts",
+        "default": "./dist/middlewares/validator.js"
+      },
+      "require": {
+        "types": "./dist/middlewares/validator.d.cts",
+        "default": "./dist/middlewares/validator.cjs"
+      },
+      "default": "./dist/middlewares/validator.js"
+    },
+    "./queue": {
+      "import": {
+        "types": "./dist/queue.d.ts",
+        "default": "./dist/queue.js"
+      },
+      "require": {
+        "types": "./dist/queue.d.cts",
+        "default": "./dist/queue.cjs"
+      },
+      "default": "./dist/queue.js"
+    },
+    "./queue-drivers": {
+      "import": {
+        "types": "./dist/queue-drivers/index.d.ts",
+        "default": "./dist/queue-drivers/index.js"
+      },
+      "require": {
+        "types": "./dist/queue-drivers/index.d.cts",
+        "default": "./dist/queue-drivers/index.cjs"
+      },
+      "default": "./dist/queue-drivers/index.js"
+    },
+    "./schedule": {
+      "import": {
+        "types": "./dist/schedule.d.ts",
+        "default": "./dist/schedule.js"
+      },
+      "require": {
+        "types": "./dist/schedule.d.cts",
+        "default": "./dist/schedule.cjs"
+      },
+      "default": "./dist/schedule.js"
+    },
+    "./sse": {
+      "import": {
+        "types": "./dist/sse.d.ts",
+        "default": "./dist/sse.js"
+      },
+      "require": {
+        "types": "./dist/sse.d.cts",
+        "default": "./dist/sse.cjs"
+      },
+      "default": "./dist/sse.js"
+    },
+    "./upload": {
+      "import": {
+        "types": "./dist/upload.d.ts",
+        "default": "./dist/upload.js"
+      },
+      "require": {
+        "types": "./dist/upload.d.cts",
+        "default": "./dist/upload.cjs"
+      },
+      "default": "./dist/upload.js"
+    },
+    "./mailer": {
+      "import": {
+        "types": "./dist/mailer.d.ts",
+        "default": "./dist/mailer.js"
+      },
+      "require": {
+        "types": "./dist/mailer.d.cts",
+        "default": "./dist/mailer.cjs"
+      },
+      "default": "./dist/mailer.js"
+    },
+    "./template": {
+      "import": {
+        "types": "./dist/template.d.ts",
+        "default": "./dist/template.js"
+      },
+      "require": {
+        "types": "./dist/template.d.cts",
+        "default": "./dist/template.cjs"
+      },
+      "default": "./dist/template.js"
+    },
+    "./oauth": {
+      "import": {
+        "types": "./dist/oauth/index.d.ts",
+        "default": "./dist/oauth/index.js"
+      },
+      "require": {
+        "types": "./dist/oauth/index.d.cts",
+        "default": "./dist/oauth/index.cjs"
+      },
+      "default": "./dist/oauth/index.js"
+    },
+    "./payment": {
+      "import": {
+        "types": "./dist/payment/index.d.ts",
+        "default": "./dist/payment/index.js"
+      },
+      "require": {
+        "types": "./dist/payment/index.d.cts",
+        "default": "./dist/payment/index.cjs"
+      },
+      "default": "./dist/payment/index.js"
+    },
+    "./ws-helpers": {
+      "import": {
+        "types": "./dist/ws-helpers.d.ts",
+        "default": "./dist/ws-helpers.js"
+      },
+      "require": {
+        "types": "./dist/ws-helpers.d.cts",
+        "default": "./dist/ws-helpers.cjs"
+      },
+      "default": "./dist/ws-helpers.js"
+    },
     "./dev": {
       "import": {
         "types": "./dist/dev.d.ts",
@@ -46,6 +409,17 @@
         "default": "./dist/dev.cjs"
       },
       "default": "./dist/dev.js"
+    },
+    "./plugins/opentelemetry": {
+      "import": {
+        "types": "./dist/plugins/opentelemetry.d.ts",
+        "default": "./dist/plugins/opentelemetry.js"
+      },
+      "require": {
+        "types": "./dist/plugins/opentelemetry.d.cts",
+        "default": "./dist/plugins/opentelemetry.cjs"
+      },
+      "default": "./dist/plugins/opentelemetry.js"
     },
     "./plugins/graphql": {
       "import": {
@@ -79,50 +453,6 @@
         "default": "./dist/plugins/graphql/yoga.cjs"
       },
       "default": "./dist/plugins/graphql/yoga.js"
-    },
-    "./plugins/opentelemetry": {
-      "import": {
-        "types": "./dist/plugins/opentelemetry.d.ts",
-        "default": "./dist/plugins/opentelemetry.js"
-      },
-      "require": {
-        "types": "./dist/plugins/opentelemetry.d.cts",
-        "default": "./dist/plugins/opentelemetry.cjs"
-      },
-      "default": "./dist/plugins/opentelemetry.js"
-    },
-    "./middlewares/validator": {
-      "import": {
-        "types": "./dist/middlewares/validator.d.ts",
-        "default": "./dist/middlewares/validator.js"
-      },
-      "require": {
-        "types": "./dist/middlewares/validator.d.cts",
-        "default": "./dist/middlewares/validator.cjs"
-      },
-      "default": "./dist/middlewares/validator.js"
-    },
-    "./payment": {
-      "import": {
-        "types": "./dist/payment/index.d.ts",
-        "default": "./dist/payment/index.js"
-      },
-      "require": {
-        "types": "./dist/payment/index.d.cts",
-        "default": "./dist/payment/index.cjs"
-      },
-      "default": "./dist/payment/index.js"
-    },
-    "./ws-helpers": {
-      "import": {
-        "types": "./dist/ws-helpers.d.ts",
-        "default": "./dist/ws-helpers.js"
-      },
-      "require": {
-        "types": "./dist/ws-helpers.d.cts",
-        "default": "./dist/ws-helpers.cjs"
-      },
-      "default": "./dist/ws-helpers.js"
     },
     "./package.json": "./package.json"
   },

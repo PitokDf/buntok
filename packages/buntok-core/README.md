@@ -53,6 +53,60 @@ Port default: `3000`, atau dari `process.env.PORT`.
 
 ---
 
+## Import & Cold Start (Serverless)
+
+Root `@buntok/core` hanya berisi core ringan (App, decorators, Context, errors, helpers, middleware dasar) — tanpa `zod`/`croner` yang berat. Fitur berat di-*external*-kan dan di-load hanya saat dipakai, jadi cold start cepat dan cocok dijalankan di **Vercel Serverless**.
+
+Masukin fitur sesuai kebutuhan lewat subpath:
+
+```ts
+import { App, Controller, Get } from "@buntok/core"; // core ringan saja
+import { z, zValidator } from "@buntok/core/middlewares/validator";
+import { CronJob }        from "@buntok/core/schedule";
+import { Queue }          from "@buntok/core/queue";
+import { RedisQueueDriver } from "@buntok/core/queue-drivers";
+import { SSE }            from "@buntok/core/sse";
+import { uploader }       from "@buntok/core/upload";
+import { Mailer }         from "@buntok/core/mailer";
+import { TemplateEngine } from "@buntok/core/template";
+import { Metrics }        from "@buntok/core/metrics";
+import { createOAuth }    from "@buntok/core/oauth";
+import { createPayment }  from "@buntok/core/payment";
+import { Room, wsAuth }   from "@buntok/core/ws-helpers";
+import { createPlugin }   from "@buntok/core/plugin";
+import { JwtService }     from "@buntok/core/auth";
+```
+
+Daftar subpath umum: `app`, `auth`, `base-controller`, `base-service`, `cache`, `circuit-breaker`, `client`, `container`, `context`, `decorators`, `emitter`, `factory`, `helpers`, `logger`, `mailer`, `metrics`, `middlewares`, `middlewares/validator`, `oauth`, `payment`, `plugin`, `queue`, `queue-drivers`, `router`, `schedule`, `sse`, `template`, `upload`, `ws-helpers`, `dev`, `plugins/graphql*`, `plugins/opentelemetry`.
+
+> Butuh semua sekaligus (backward compat)? Import dari `@buntok/core/all`.
+
+#### Deploy ke Vercel
+
+Buntok menyediakan handler standar `fetch` untuk serverless — ekspor instance app sebagai default export:
+
+```ts
+import { App } from "@buntok/core";
+
+const app = new App();
+
+app.get("/", (ctx) => ctx.json({ hello: "world" }));
+
+export default app; // → App.fetch(request) otomatis
+```
+
+Jalankan Vercel Functions dengan runtime **Bun** via `vercel.json`:
+
+```json
+{
+  "functions": {
+    "api/**/*.ts": { "runtime": "@vercel/functions-bun" }
+  }
+}
+```
+
+---
+
 ## Table of Contents
 
 - [App](#app)

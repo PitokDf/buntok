@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.1]
+
+### Added
+
+- **Granular subpath exports** — fitur berat kini tersedia lewat subpath import (`.e.g` `@buntok/core/schedule`, `@buntok/core/queue`, `@buntok/core/upload`, `@buntok/core/mailer`, `@buntok/core/template`, `@buntok/core/metrics`, `@buntok/core/oauth`, `@buntok/core/helpers`, `@buntok/core/middlewares`, `@buntok/core/auth`, `@buntok/core/app`, dll).
+- `@buntok/core/all` — namespace penuh untuk backward compatibility (perilaku barrel lama).
+- Root `@buntok/core` kini **slim** (hanya core ringan tanpa zod/croner) untuk mempercepat cold start dan ramah Vercel Serverless.
+- `zod`, `croner`, `@asteasolutions/zod-to-openapi` di-external-kan (tetap di `dependencies`, auto-install) agar bundler consumer men-tree-shake & mendedupe.
+- Dokumentasi import granular + contoh deploy Vercel (runtime Bun, `export default app`) di README.
+- Smoke test ekspor package (`tests/package-exports.test.ts`) meliputi subpath baru & memastikan root tidak mengekspor modul berat.
+
+### Changed
+
+- **BREAKING**: `Queue`, `Scheduler`/`CronJob`, `SSE`, `Upload` (`uploader`, `LocalDiskStorage`), `Mailer`, `TemplateEngine`, `Metrics`, `OAuth` tidak lagi diekspor dari root `@buntok/core` — pindah ke subpath (lihat README). Gunakan `@buntok/core/all` untuk set lama.
+- Ukuran bundle dist turun dari ±4.1MB → ±617KB; cold import root ±261ms → ±36ms (terukur).
+
+### Deprecated
+
+- `src/exports.ts` & `src/index.ts` (alias root) tetap dipertahankan untuk kompatibilitas lama.
+
 ### Added
 
 - **Phase 0:** Public API inventory (`CONTRACT-INVENTORY.md`) and contract mismatch tracking (`CONTRACT-MISMATCHES.md`).

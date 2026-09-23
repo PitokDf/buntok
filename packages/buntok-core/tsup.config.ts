@@ -2,22 +2,58 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
 	entry: [
-		"src/core-exports.ts",
-		"src/exports.ts",
-		"src/index.ts",
-		"src/cli/index.ts",
+		// Root barrels
+		"src/core-exports.ts", // Slim root: @buntok/core
+		"src/all.ts", // Full namespace: @buntok/core/all (backward compat)
+		"src/index.ts", // Legacy alias (slim)
+		"src/exports.ts", // Legacy alias (slim)
+
+		// Core modules
+		"src/app.ts",
+		"src/auth.ts",
+		"src/base-controller.ts",
+		"src/base-service.ts",
+		"src/cache.ts",
+		"src/circuit-breaker.ts",
 		"src/client.ts",
-		"src/dev.ts",
+		"src/container.ts",
+		"src/context.ts",
+		"src/decorators.ts",
+		"src/emitter.ts",
+		"src/factory.ts",
+		"src/logger.ts",
+		"src/metrics.ts",
 		"src/plugin.ts",
+		"src/router.ts",
+		"src/version.ts",
+		"src/ai.ts",
+		"src/ffi/index.ts",
+		"src/aot/sucrose.ts",
+		"src/helpers/index.ts",
+		"src/middlewares/index.ts",
+
+		// Heavy / feature modules (subpath-only)
+		"src/queue.ts",
+		"src/queue-drivers/index.ts",
+		"src/schedule.ts",
+		"src/sse.ts",
+		"src/upload.ts",
+		"src/mailer.ts",
+		"src/template.ts",
+		"src/oauth/index.ts",
+
+		// Existing subpath modules
+		"src/dev.ts",
+		"src/middlewares/validator.ts",
+		"src/payment/index.ts",
+		"src/ws-helpers.ts",
 		"src/plugins/opentelemetry.ts",
 		"src/plugins/graphql/index.ts",
 		"src/plugins/graphql/apollo.ts",
 		"src/plugins/graphql/yoga.ts",
-		"src/queue-drivers/index.ts",
-		// Subpath exports for heavy modules (zod-dependent, lazy-loaded)
-		"src/middlewares/validator.ts",
-		"src/payment/index.ts",
-		"src/ws-helpers.ts",
+
+		// CLI (dev-only tooling)
+		"src/cli/index.ts",
 	],
 	format: ["esm", "cjs"],
 	dts: false,
@@ -47,8 +83,11 @@ export default defineConfig({
 		"amqplib",
 		// Mailer peer deps
 		"nodemailer",
+		// Heavy deps — kept in `dependencies` (auto-installed) but EXTERNAL so
+		// the consumer bundler tree-shakes & dedupes them. This keeps cold start
+		// light: zod/croner/zod-to-openapi are only loaded when actually used.
+		"zod",
+		"croner",
+		"@asteasolutions/zod-to-openapi",
 	],
-	// Force bundle these deps into @buntok/core output
-	// (they're in dependencies but tsup externalizes deps by default with splitting)
-	noExternal: ["zod", "croner", "@asteasolutions/zod-to-openapi"],
 });

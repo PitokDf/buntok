@@ -37,7 +37,7 @@ export default function SchedulerPage() {
         Basic Usage
       </Heading>
       <CodeBlock
-        code={`import { Scheduler } from "@buntok/core";
+        code={`import { Scheduler } from "@buntok/core/schedule";
 
 const scheduler = new Scheduler();
 
@@ -148,7 +148,7 @@ scheduler.schedule("*/5 * * * *", async () => {
       </p>
       <CodeBlock
         code={`import { Controller, Get } from "@buntok/core";
-import { CronJob } from "@buntok/core";
+import { CronJob } from "@buntok/core/schedule";
 
 class CacheService {
   deletePattern(pattern: string) { /* ... */ }
@@ -232,7 +232,7 @@ class TaskController {
         &gt;= 1.3.11.
       </p>
       <CodeBlock
-        code={`import { Scheduler, BunCronSchedulerDriver } from "@buntok/core";
+        code={`import { Scheduler, BunCronSchedulerDriver } from "@buntok/core/schedule";
 
 const scheduler = new Scheduler(new BunCronSchedulerDriver());
 
@@ -253,7 +253,7 @@ scheduler.schedule("0 0 * * *", async () => {
         instead of the in-memory driver:
       </p>
       <CodeBlock
-        code={`import { setDefaultSchedulerDriver, BunCronSchedulerDriver } from "@buntok/core";
+        code={`import { setDefaultSchedulerDriver, BunCronSchedulerDriver } from "@buntok/core/schedule";
 
 // Call before any @CronJob classes are instantiated
 setDefaultSchedulerDriver(new BunCronSchedulerDriver());`}
@@ -268,7 +268,7 @@ setDefaultSchedulerDriver(new BunCronSchedulerDriver());`}
       </Heading>
       <CodeBlock
         code={`import { App } from "@buntok/core";
-import { Scheduler } from "@buntok/core";
+import { Scheduler } from "@buntok/core/schedule";
 
 const app = new App();
 const scheduler = new Scheduler();

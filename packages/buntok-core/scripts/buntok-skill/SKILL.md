@@ -857,7 +857,7 @@ Fail-fast resilience pattern for protecting against cascading failures. Supports
 
 ```ts
 import { CircuitBreaker, CircuitOpenError } from "@buntok/core";
-import { circuitBreaker, getCircuitBreakers } from "@buntok/core";
+import { circuitBreaker, getCircuitBreakers } from "@buntok/core/middlewares";
 ```
 
 #### As Middleware (recommended)
@@ -928,7 +928,7 @@ breaker.on("callNotPermitted", () => log("Rejected"));
 #### Health Checks
 
 ```ts
-import { getCircuitBreakers } from "@buntok/core";
+import { getCircuitBreakers } from "@buntok/core/middlewares";
 
 app.get("/health", (ctx) => {
   const breakers = getCircuitBreakers();
@@ -1559,10 +1559,7 @@ app.registerController([UserController, PostController]);  // array works too
 ## File Upload
 
 ```ts
-import {
-  uploader, handleUploads, deleteUploadedFile,
-  LocalDiskStorage, MemoryStorage,
-} from "@buntok/core";
+import { uploader, handleUploads, deleteUploadedFile, LocalDiskStorage, MemoryStorage } from "@buntok/core/upload";
 ```
 
 ### Upload Options
@@ -1667,7 +1664,7 @@ fields: {
 ### Custom Storage Driver (S3, GCS, R2)
 
 ```ts
-import type { StorageDriver, UploadedFile } from "@buntok/core";
+import type { StorageDriver, UploadedFile } from "@buntok/core/upload";
 
 class S3Storage implements StorageDriver {
   constructor(private bucket: string) {}
@@ -1704,7 +1701,7 @@ class S3Storage implements StorageDriver {
 ### File Deletion
 
 ```ts
-import { deleteUploadedFile } from "@buntok/core";
+import { deleteUploadedFile } from "@buntok/core/upload";
 
 const result = await handleUploads(ctx, options);
 const avatar = result.fields.avatar;
@@ -1718,7 +1715,7 @@ const deleted = await deleteUploadedFile(options.storage, avatar);
 Request metrics collector with Prometheus export. Tracks request count, duration, errors, and in-flight requests.
 
 ```ts
-import { Metrics, metricsEndpoint, metricsMiddleware } from "@buntok/core";
+import { Metrics, metricsEndpoint, metricsMiddleware } from "@buntok/core/metrics";
 
 const metrics = new Metrics();
 
@@ -1791,7 +1788,7 @@ readinessCheck(app, {
 Combine with the built-in rate limiter to prevent upload abuse:
 
 ```ts
-import { uploader, LocalDiskStorage } from "@buntok/core";
+import { uploader, LocalDiskStorage } from "@buntok/core/upload";
 import { rateLimiter } from "@buntok/core";
 
 // Rate limit uploads to 10 per hour per user
@@ -1953,7 +1950,7 @@ app.get("/export/bundle", async (ctx) => {
 ## SSE (Server-Sent Events)
 
 ```ts
-import { SSE, SSEBroadcaster, createSSE } from "@buntok/core";
+import { SSE, SSEBroadcaster, createSSE } from "@buntok/core/sse";
 ```
 
 ### Basic Usage
@@ -2034,7 +2031,7 @@ import {
   SSEBroadcaster,
   MemorySSEPubSub,     // default in-memory PubSub
   MemorySSEHistory,    // default in-memory ring buffer (1000 msg)
-} from "@buntok/core";
+} from "@buntok/core/sse";
 
 // Default (single instance)
 const broadcaster = new SSEBroadcaster();
@@ -2998,10 +2995,10 @@ app.post("/logout", (ctx) => {
 Built-in OAuth 2.0 support for Google, GitHub, and Apple with PKCE and automatic state management.
 
 ```ts
-import { createOAuth, storeOAuthState, verifyOAuthState, getCodeVerifier, clearOAuthCookies } from "@buntok/core";
+import { createOAuth, storeOAuthState, verifyOAuthState, getCodeVerifier, clearOAuthCookies } from "@buntok/core/oauth";
 // Advanced types/helpers (optional — import only if needed):
-// import type { OAuthProvider, OAuthProviderConfig, AppleProviderConfig, OAuth2Tokens, OAuthUser, CreateAuthorizationURLOptions, ValidateAuthorizationCodeOptions } from "@buntok/core";
-// import { BaseOAuthProvider, AppleProvider, GoogleProvider, GitHubProvider, OAuthError, generatePKCE, decodeIdToken, generateCodeVerifier, generateCodeChallenge, createOAuth2AuthorizationURL, validateOAuth2AuthorizationCode } from "@buntok/core";
+// import type { OAuthProvider, OAuthProviderConfig, AppleProviderConfig, OAuth2Tokens, OAuthUser, CreateAuthorizationURLOptions, ValidateAuthorizationCodeOptions } from "@buntok/core/oauth";
+// import { BaseOAuthProvider, AppleProvider, GoogleProvider, GitHubProvider, OAuthError, generatePKCE, decodeIdToken, generateCodeVerifier, generateCodeChallenge, createOAuth2AuthorizationURL, validateOAuth2AuthorizationCode } from "@buntok/core/oauth";
 // OAuthProviderConfig { clientId, clientSecret, redirectURI, scopes?: string[] }
 // AppleProviderConfig extends OAuthProviderConfig { teamId, keyId, privateKey }
 // OAuthProvider { id, createAuthorizationURL(state, codeVerifier), validateAuthorizationCode(code, redirectURI, codeVerifier?), getUserInfo(tokens) }
@@ -3069,7 +3066,7 @@ app.get("/auth/google/callback", async (ctx) => {
 ### Custom Providers
 
 ```ts
-import { createOAuth2AuthorizationURL, validateOAuth2AuthorizationCode } from "@buntok/core";
+import { createOAuth2AuthorizationURL, validateOAuth2AuthorizationCode } from "@buntok/core/oauth";
 
 // Use generic helpers for any OAuth2 provider
 const url = createOAuth2AuthorizationURL("https://provider.com/authorize", {
@@ -3467,7 +3464,7 @@ import {
 Email sending with built-in support for Resend, SendGrid, and Mailgun (zero-deps HTTP). SMTP via optional `nodemailer` import. Supports attachments, CC/BCC, reply-to, inline images, and template-based sending.
 
 ```ts
-import { Mailer, Mailable } from "@buntok/core";
+import { Mailer, Mailable } from "@buntok/core/mailer";
 // Types (optional — for type-checking only):
 // MailerConfig { provider: "resend"|"sendgrid"|"mailgun"|"smtp", apiKey?: string, domain?: string (mailgun), smtp?: { host, port, secure?, auth:{user,pass} } }
 // MailOptions { from: string, to: string|string[], cc?: string|string[], bcc?: string|string[], replyTo?: string|string[], subject: string, text?: string, html?: string, attachments?: MailAttachment[] }
@@ -3591,7 +3588,7 @@ await mailer.send({
 Use the built-in TemplateEngine with `sendTemplate()`:
 
 ```ts
-import { Mailer } from "@buntok/core";
+import { Mailer } from "@buntok/core/mailer";
 
 const mailer = new Mailer({ provider: "resend", apiKey: process.env.RESEND_API_KEY });
 
@@ -3655,7 +3652,7 @@ await mailer.sendProviderTemplate({
 Laravel-style class-based email definitions:
 
 ```ts
-import { Mailer, Mailable } from "@buntok/core";
+import { Mailer, Mailable } from "@buntok/core/mailer";
 
 class WelcomeEmail extends Mailable {
   template = "welcome";
@@ -3926,7 +3923,7 @@ Request arrives
 Handlebars-like template engine with zero dependencies. Perfect for email templates.
 
 ```ts
-import { render, TemplateEngine } from "@buntok/core";
+import { render, TemplateEngine } from "@buntok/core/template";
 ```
 
 > **⚠️ Strict mode is ON by default.** If you reference a variable that doesn't exist in the context (e.g., `{{ usre.name }}` instead of `{{ user.name }}`), the template will throw an error with a "did you mean?" suggestion. To disable strict mode, pass `{ strict: false }` as the third argument to `render()` or set it in `TemplateEngine` constructor options.
@@ -4012,7 +4009,7 @@ render("Hello {{ usre.name }}", { user: { name: "Budi" } });
 Background job processing with pluggable drivers. Supports Memory, Redis (ioredis), Bun native Redis, BullMQ, and RabbitMQ.
 
 ```ts
-import { Queue } from "@buntok/core";
+import { Queue } from "@buntok/core/queue";
 ```
 
 > **⚠️ `name` is the first argument and is REQUIRED.** Each queue must have a unique name (e.g., `"email"`, `"notifications"`). This name is used for logging, debugging, and driver isolation.
@@ -4030,13 +4027,13 @@ import { Queue } from "@buntok/core";
 **Direct driver imports** (for advanced use — e.g., passing to queue constructor):
 
 ```ts
+import { MemoryQueueDriver } from "@buntok/core/queue";
 import {
   RedisQueueDriver,
   BunRedisQueueDriver,
   BullmqQueueDriver,
   RabbitmqQueueDriver,
-  MemoryQueueDriver,
-} from "@buntok/core";
+} from "@buntok/core/queue-drivers";
 
 // Pass driver instance directly
 const redisDriver = new RedisQueueDriver({ url: "redis://localhost:6379" });
@@ -4115,7 +4112,7 @@ await queue.drain(10_000);     // wait up to 10 seconds
 ### Custom Driver
 
 ```ts
-import type { QueueDriver, Job, JobHandler } from "@buntok/core";
+import type { QueueDriver, Job, JobHandler } from "@buntok/core/queue";
 
 class MyCustomDriver implements QueueDriver<{ to: string }> {
   async add(data: { to: string }, opts?: { priority?: number; delay?: number }): Promise<void> { ... }
@@ -4134,7 +4131,7 @@ const queue = new Queue("email", new MyCustomDriver());
 Cron-based task scheduling with pluggable drivers. `CronJob` is a **method decorator** (uses `context.addInitializer` so `this` is bound to instance).
 
 ```ts
-import { Scheduler, CronJob, MemorySchedulerDriver, BunCronSchedulerDriver, setDefaultSchedulerDriver } from "@buntok/core";
+import { Scheduler, CronJob, MemorySchedulerDriver, BunCronSchedulerDriver, setDefaultSchedulerDriver } from "@buntok/core/schedule";
 ```
 
 ### Scheduler (programmatic)
@@ -4162,7 +4159,7 @@ setDefaultSchedulerDriver(new BunCronSchedulerDriver());
 
 ```ts
 import { Controller } from "@buntok/core";
-import { CronJob } from "@buntok/core";
+import { CronJob } from "@buntok/core/schedule";
 
 @Controller("/tasks")
 export class TaskController {

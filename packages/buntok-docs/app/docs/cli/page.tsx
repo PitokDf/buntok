@@ -329,7 +329,7 @@ Creating User entity (orm: prisma)...
       <CodeBlock
         code={`// src/modules/user/user.controller.ts
 import { Dependencies, Controller } from "@buntok/core";
-import { BaseController } from "@buntok/core/base";
+import { BaseController } from "@buntok/core";
 import { UserService } from "./user.service";
 import type { User } from "@prisma/client";
 
@@ -351,7 +351,7 @@ export class UserController extends BaseController<User> {
       <CodeBlock
         code={`// src/modules/user/user.service.ts
 import { Dependencies } from "@buntok/core";
-import { BaseService } from "@buntok/core/base";
+import { BaseService } from "@buntok/core";
 import { UserRepository } from "./user.repository";
 import type { User } from "@prisma/client";
 

@@ -1,9 +1,23 @@
 // VERSION
 export { VERSION } from "./version";
 
-// NOTE: Heavy zod-dependent modules (validation, payment, scheduler, ws-helpers)
-// are exported from "./full" entry point to keep cold start fast.
-// Import from "@buntok/core/full" if you need them.
+// NOTE: This is the SLIM root entry — it only re-exports lightweight core
+// modules to keep cold start fast and work well on serverless platforms
+// (Vercel, etc.). Heavy/feature modules live behind subpath exports:
+//
+//	import { CronJob }        from "@buntok/core/schedule"
+//	import { Queue }          from "@buntok/core/queue"
+//	import { SSE }            from "@buntok/core/sse"
+//	import { uploader }       from "@buntok/core/upload"
+//	import { Mailer }         from "@buntok/core/mailer"
+//	import { TemplateEngine } from "@buntok/core/template"
+//	import { Metrics }        from "@buntok/core/metrics"
+//	import { createOAuth }    from "@buntok/core/oauth"
+//	import { z, zValidator }  from "@buntok/core/middlewares/validator"
+//	import { createPayment }  from "@buntok/core/payment"
+//	import { Room, wsAuth }   from "@buntok/core/ws-helpers"
+//
+// Full backward-compatible namespace: import from "@buntok/core/all"
 
 // AOT / Sucrose
 export {
@@ -36,37 +50,6 @@ export { JwtService, requireAuth, type JwtOptions } from "./auth";
 export { redactLogMeta, type LoggerOptions } from "./logger";
 // Factory
 export { Factory } from "./factory";
-// OAuth
-export {
-	BaseOAuthProvider,
-	clearOAuthCookies,
-	createOAuth,
-	createOAuth2AuthorizationURL,
-	decodeIdToken,
-	generateCodeChallenge,
-	generateCodeVerifier,
-	generatePKCE,
-	getCodeVerifier,
-	OAuthError,
-	OAuthProviderError,
-	OAuthStateError,
-	OAuthTokenError,
-	storeOAuthState,
-	validateOAuth2AuthorizationCode,
-	verifyOAuthState,
-} from "./oauth";
-export type {
-	AppleProviderConfig,
-	CreateAuthorizationURLOptions,
-	OAuth2Tokens,
-	OAuthProvider,
-	OAuthProviderConfig,
-	OAuthUser,
-	ValidateAuthorizationCodeOptions,
-} from "./oauth";
-export { AppleProvider, type AppleUser } from "./oauth";
-export { GitHubProvider, type GitHubUser } from "./oauth";
-export { GoogleProvider, type GoogleUser } from "./oauth";
 // Base classes
 export { BaseController } from "./base-controller";
 export { BaseService } from "./base-service";
@@ -112,7 +95,7 @@ export {
 	applyDecorators,
 	getMetadata,
 } from "./decorators";
-// Native FFI
+// Native FFI (lazy-loaded, safe on serverless)
 export { getBackend, isNativeAvailable } from "./ffi";
 export type { RetryOptions } from "./helpers/async";
 // Async helpers
@@ -259,18 +242,7 @@ export {
 } from "./helpers/string";
 // Logger
 export { Logger, LogLevel, logger } from "./logger";
-// Mailer
-export { Mailer, type MailerConfig, type MailOptions, type MailAttachment } from "./mailer";
-// Template Engine
-export {
-	TemplateEngine,
-	render,
-	registerHelper,
-	registerPartial,
-	type TemplateOptions,
-	type HelperFn,
-} from "./template";
-// Middlewares
+// Middlewares (lightweight, no zod)
 export { auditLog, type AuditLogEntry, type AuditLogOptions } from "./middlewares/audit-log";
 export type { BodySizeLimitOptions } from "./middlewares/body-size-limit";
 export { bodySizeLimit } from "./middlewares/body-size-limit";
@@ -309,67 +281,8 @@ export { TimeoutError, timeout } from "./middlewares/timeout";
 // RBAC
 export { requirePermission, requireRole } from "./middlewares/rbac";
 export type { RequirePermissionOptions, RequireRoleOptions } from "./middlewares/rbac";
-// NOTE: validation (zod-dependent) moved to "./middlewares/validator" subpath
-// Import: import { validate, z } from "@buntok/core/middlewares/validator"
-// Queue
-export {
-	type Job,
-	type JobHandler,
-	MemoryQueueDriver,
-	Queue,
-	type QueueDriver,
-	type QueueCapabilities,
-	type QueueDriverOptions,
-	type QueueOptions,
-	type RedisDriverOptions,
-	type BunRedisDriverOptions,
-	type BullmqDriverOptions,
-	type RabbitmqDriverOptions,
-} from "./queue";
-export {
-	RedisQueueDriver,
-	type RedisQueueDriverOptions,
-	BunRedisQueueDriver,
-	type BunRedisQueueDriverOptions,
-	BullmqQueueDriver,
-	type BullmqQueueDriverOptions,
-	RabbitmqQueueDriver,
-	type RabbitmqQueueDriverOptions,
-} from "./queue-drivers";
+// Router
 export { Router } from "./router";
-export { Metrics, metricsEndpoint, metricsMiddleware, type MetricSnapshot } from "./metrics";
-// NOTE: payment (zod-dependent) moved to "./payment" subpath
-// Import: import { createPayment, StripeDriver } from "@buntok/core/payment"
-// Scheduler / CronJob
-export {
-	BunCronSchedulerDriver,
-	CronJob,
-	MemorySchedulerDriver,
-	Scheduler,
-	type SchedulerDriver,
-	setDefaultSchedulerDriver,
-} from "./schedule";
-// SSE
-export type { SSEBroadcasterOptions, SSEHistoryStore, SSEMessage, SSEOptions, SSEPubSub } from "./sse";
-export { MemorySSEHistory, MemorySSEPubSub, SSE, SSEBroadcaster, createSSE } from "./sse";
-// Upload
-export type {
-	ImageUploadedFile,
-	ParseUploadResult,
-	StorageDriver,
-	UploadedFile,
-	UploadFieldConfig,
-	UploadOptions,
-} from "./upload";
-export {
-	deleteUploadedFile,
-	LocalDiskStorage,
-	MemoryStorage,
-	handleUploads,
-	uploader,
-} from "./upload";
-// NOTE: ws-helpers (zod-dependent) moved to "./ws-helpers" subpath
-// Import: import { Room, wsAuth } from "@buntok/core/ws-helpers"
 // Plugin system
 export { createPlugin } from "./plugin";
 export type { Plugin } from "./plugin";
@@ -379,7 +292,6 @@ export type {
 	CreateClientOptions,
 	RouteContract,
 } from "./client";
-
 // Circuit Breaker
 export {
 	CircuitBreaker,
@@ -390,4 +302,3 @@ export {
 	type CircuitState,
 	type CircuitBreakerFireOptions,
 } from "./circuit-breaker";
-
