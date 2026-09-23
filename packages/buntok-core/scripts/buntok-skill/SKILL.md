@@ -772,7 +772,7 @@ app.cors({
 ### Compress
 
 ```ts
-import { compress } from "@buntok/core/middlewares";
+import { compress } from "@buntok/core";
 
 app.use(compress({
   threshold: 1024,   // only if Content-Length >= threshold
@@ -785,7 +785,7 @@ Requires `Content-Length` header — if missing or below threshold, skips compre
 ### Rate Limiter
 
 ```ts
-import { rateLimiter, slidingWindowRateLimiter } from "@buntok/core/middlewares";
+import { rateLimiter, slidingWindowRateLimiter } from "@buntok/core";
 
 // Fixed window
 app.use(rateLimiter({ max: 100, windowMs: 60_000 }));
@@ -810,7 +810,7 @@ app.use(rateLimiter({
 ### Request ID
 
 ```ts
-import { requestId, shortId, uuid } from "@buntok/core/middlewares";
+import { requestId, shortId, uuid } from "@buntok/core";
 app.use(requestId()); // RequestIdOptions {header="x-request-id", generator=uuid, store=true, storeKey="requestId"}
 app.use(requestId({ header: "x-correlation-id", generator: shortId })); // 8-char
 ```
@@ -818,14 +818,14 @@ app.use(requestId({ header: "x-correlation-id", generator: shortId })); // 8-cha
 ### Response Time
 
 ```ts
-import { responseTime } from "@buntok/core/middlewares";
+import { responseTime } from "@buntok/core";
 app.use(responseTime()); // ResponseTimeOptions {header="x-response-time", format="ms"|"s", store, storeKey="responseTime"}
 ```
 
 ### Helmet (Security Headers)
 
 ```ts
-import { helmet } from "@buntok/core/middlewares";
+import { helmet } from "@buntok/core";
 app.use(helmet());
 // HelmetOptions {contentTypeOptions, frameOptions, xssProtection, referrerPolicy, hsts, dnsPrefetch, permissionsPolicy, additionalHeaders}
 app.use(helmet({ hsts: { maxAge: 31536000, includeSubDomains: true } }));
@@ -834,7 +834,7 @@ app.use(helmet({ hsts: { maxAge: 31536000, includeSubDomains: true } }));
 ### Timeout
 
 ```ts
-import { timeout, TimeoutError } from "@buntok/core/middlewares";
+import { timeout, TimeoutError } from "@buntok/core";
 app.get("/slow", timeout(5000), async (ctx) => {
   await longOperation();
   return ctx.json({ ok: true });
@@ -846,7 +846,7 @@ app.get("/slow2", timeout(5000, "Custom timeout message"), handler);
 ### Body Size Limit
 
 ```ts
-import { bodySizeLimit } from "@buntok/core/middlewares";
+import { bodySizeLimit } from "@buntok/core";
 app.use(bodySizeLimit({ maxSize: 10 * 1024 * 1024, statusCode: 413, message: "Payload Too Large" }));
 // BodySizeLimitOptions {maxSize=10MB, statusCode=413, message} — checks Content-Length before parsing
 ```
@@ -857,7 +857,7 @@ Fail-fast resilience pattern for protecting against cascading failures. Supports
 
 ```ts
 import { CircuitBreaker, CircuitOpenError } from "@buntok/core";
-import { circuitBreaker, getCircuitBreakers } from "@buntok/core/middlewares";
+import { circuitBreaker, getCircuitBreakers } from "@buntok/core";
 ```
 
 #### As Middleware (recommended)
@@ -928,7 +928,7 @@ breaker.on("callNotPermitted", () => log("Rejected"));
 #### Health Checks
 
 ```ts
-import { getCircuitBreakers } from "@buntok/core/middlewares";
+import { getCircuitBreakers } from "@buntok/core";
 
 app.get("/health", (ctx) => {
   const breakers = getCircuitBreakers();
@@ -1301,7 +1301,7 @@ Throw directly from handler — framework auto-catches and returns proper respon
 | `ServiceUnavailableError` | 503 | Service unavailable |
 
 ```ts
-import { NotFoundError, BadRequestError } from "@buntok/core/helpers";
+import { NotFoundError, BadRequestError } from "@buntok/core";
 
 app.get("/users/:id", async (ctx) => {
   const user = await findUser(ctx.params.id);
@@ -1328,7 +1328,7 @@ app.onError((err, ctx) => {
 Auto-catch errors and return proper response:
 
 ```ts
-import { asyncHandler } from "@buntok/core/helpers";
+import { asyncHandler } from "@buntok/core";
 
 app.get("/users/:id", asyncHandler(async (ctx) => {
   const user = await findUser(ctx.params.id);
@@ -1397,7 +1397,7 @@ const authPlugin = createPlugin({
   name: "@buntok/auth",
   install: async (app) => {
     // Lazy import — zero startup cost if plugin not installed
-    const { JwtService } = await import("@buntok/core/auth");
+    const { JwtService } = await import("@buntok/core");
     const jwt = new JwtService(process.env.JWT_SECRET!);
     app.use(requireAuth(jwt));
   },
@@ -1562,7 +1562,7 @@ app.registerController([UserController, PostController]);  // array works too
 import {
   uploader, handleUploads, deleteUploadedFile,
   LocalDiskStorage, MemoryStorage,
-} from "@buntok/core/upload";
+} from "@buntok/core";
 ```
 
 ### Upload Options
@@ -1667,7 +1667,7 @@ fields: {
 ### Custom Storage Driver (S3, GCS, R2)
 
 ```ts
-import type { StorageDriver, UploadedFile } from "@buntok/core/upload";
+import type { StorageDriver, UploadedFile } from "@buntok/core";
 
 class S3Storage implements StorageDriver {
   constructor(private bucket: string) {}
@@ -1704,7 +1704,7 @@ class S3Storage implements StorageDriver {
 ### File Deletion
 
 ```ts
-import { deleteUploadedFile } from "@buntok/core/upload";
+import { deleteUploadedFile } from "@buntok/core";
 
 const result = await handleUploads(ctx, options);
 const avatar = result.fields.avatar;
@@ -1718,7 +1718,7 @@ const deleted = await deleteUploadedFile(options.storage, avatar);
 Request metrics collector with Prometheus export. Tracks request count, duration, errors, and in-flight requests.
 
 ```ts
-import { Metrics, metricsEndpoint, metricsMiddleware } from "@buntok/core/metrics";
+import { Metrics, metricsEndpoint, metricsMiddleware } from "@buntok/core";
 
 const metrics = new Metrics();
 
@@ -1754,7 +1754,7 @@ const prometheus = metrics.toPrometheus();
 Kubernetes-ready liveness and readiness probes.
 
 ```ts
-import { livenessCheck, readinessCheck } from "@buntok/core/middlewares";
+import { livenessCheck, readinessCheck } from "@buntok/core";
 
 // Liveness probe — is the process alive?
 livenessCheck(app, { path: "/health/live" });  // default: "/health/live"
@@ -1791,8 +1791,8 @@ readinessCheck(app, {
 Combine with the built-in rate limiter to prevent upload abuse:
 
 ```ts
-import { uploader, LocalDiskStorage } from "@buntok/core/upload";
-import { rateLimiter } from "@buntok/core/middlewares";
+import { uploader, LocalDiskStorage } from "@buntok/core";
+import { rateLimiter } from "@buntok/core";
 
 // Rate limit uploads to 10 per hour per user
 app.post("/upload",
@@ -1839,7 +1839,7 @@ import {
   downloadFile, downloadBuffer,
   exportCSV, exportJSON,
   createZIP,
-} from "@buntok/core/helpers";
+} from "@buntok/core";
 ```
 
 ### serveFileOrFallback
@@ -2214,7 +2214,7 @@ const room = new Room("general", {
 ## Logger
 
 ```ts
-import { logger, LogLevel } from "@buntok/core/helpers";
+import { logger, LogLevel } from "@buntok/core";
 import { Logger } from "@buntok/core";
 
 logger.info("Server started", { port: 1212 });
@@ -2258,7 +2258,7 @@ import {
   hash, sha256, sha512, md5, hmac, hashVerify,
   randomBytes, randomHex, randomAlphaNumeric, randomToken,
   encrypt, decrypt,
-} from "@buntok/core/helpers";
+} from "@buntok/core";
 
 // Hashing — hash/sha256/sha512 are SYNC (Bun.CryptoHasher), hmac/hashVerify are async (WebCrypto)
 const digest = hash("password", "SHA-256"); // "SHA-1"|"SHA-256"|"SHA-384"|"SHA-512"
@@ -2286,7 +2286,7 @@ const plain = await decrypt(ciphertext, "my-key", iv);
 Password hashing using **Bun.password** with argon2id — 2-10x faster than `node:crypto` scrypt.
 
 ```ts
-import { hashPassword, verifyPassword } from "@buntok/core/helpers";
+import { hashPassword, verifyPassword } from "@buntok/core";
 
 // Hash a password (returns argon2id format via Bun.password)
 const hashed = await hashPassword("mypassword");
@@ -2308,7 +2308,7 @@ await verifyPassword("password", legacyHash); // still works
 ## String Helpers
 
 ```ts
-import { slugify, truncate, capitalize, camelCase, snakeCase, kebabCase } from "@buntok/core/helpers";
+import { slugify, truncate, capitalize, camelCase, snakeCase, kebabCase } from "@buntok/core";
 
 slugify("Hello World!");            // "hello-world"
 truncate("Lorem ipsum dolor", 10); // "Lorem ipsu..."
@@ -2323,7 +2323,7 @@ kebabCase("helloWorld");           // "hello-world"
 ## Object Helpers
 
 ```ts
-import { pick, omit, groupBy, uniq, flatten, chunk, deepMerge, flattenObject } from "@buntok/core/helpers";
+import { pick, omit, groupBy, uniq, flatten, chunk, deepMerge, flattenObject } from "@buntok/core";
 
 pick({ a: 1, b: 2, c: 3 }, ["a", "c"]);   // { a: 1, c: 3 }
 omit({ a: 1, b: 2, c: 3 }, ["b"]);        // { a: 1, c: 3 }
@@ -2339,7 +2339,7 @@ flattenObject({ a: { b: { c: 1 } } });    // { "a.b.c": 1 }
 ## Number Helpers
 
 ```ts
-import { clamp, random, randomFloat, formatNumber, formatBytes, formatCurrency } from "@buntok/core/helpers";
+import { clamp, random, randomFloat, formatNumber, formatBytes, formatCurrency } from "@buntok/core";
 
 clamp(15, 0, 10);              // 10
 random(1, 100);                // 42  (int inclusive)
@@ -2358,7 +2358,7 @@ import {
   formatDate, timeAgo, formatDuration,
   addDays, daysBetween, startOfDay, endOfDay,
   isBefore, isAfter,
-} from "@buntok/core/helpers";
+} from "@buntok/core";
 
 formatDate(new Date());                    // "2024-01-15T10:30:00.000Z" (uses Temporal if available)
 timeAgo(new Date(Date.now() - 180000));   // "3 minutes ago"
@@ -2377,7 +2377,7 @@ isAfter(new Date("2024-01-02"), new Date("2024-01-01"));  // true
 ## ID & Code Generators
 
 ```ts
-import { generateCode, nanoid, ulid, resetCounter } from "@buntok/core/helpers";
+import { generateCode, nanoid, ulid, resetCounter } from "@buntok/core";
 
 generateCode("T");       // "T0001"
 generateCode("T");       // "T0002"
@@ -2390,7 +2390,7 @@ ulid();                  // "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 ## Network Helpers
 
 ```ts
-import { getClientIP, isPrivateIP, parseUserAgent } from "@buntok/core/helpers";
+import { getClientIP, isPrivateIP, parseUserAgent } from "@buntok/core";
 
 const ip = getClientIP(request);
 isPrivateIP("192.168.1.1");  // true
@@ -2402,7 +2402,7 @@ const ua = parseUserAgent(request);
 ## Async Helpers
 
 ```ts
-import { delay, retry } from "@buntok/core/helpers";
+import { delay, retry } from "@buntok/core";
 
 await delay(1000);
 
@@ -2418,7 +2418,7 @@ const data = await retry(
 ## Cookie Helpers
 
 ```ts
-import { getCookie, setCookie, deleteCookie, parseCookies, serializeCookie, getCookies } from "@buntok/core/helpers";
+import { getCookie, setCookie, deleteCookie, parseCookies, serializeCookie, getCookies } from "@buntok/core";
 
 const token = ctx.getCookie("token");
 const all = ctx.getCookies(); // or getCookies(request)
@@ -2604,7 +2604,7 @@ The CLI generator currently produces a Prisma-oriented scaffold with a TODO fact
 ### Factory API
 
 ```ts
-import { Factory } from "@buntok/core/factory";
+import { Factory } from "@buntok/core";
 import { faker } from "@faker-js/faker";
 import type { User } from "@prisma/client";
 
@@ -2727,7 +2727,7 @@ export class UserRepository extends BaseRepository<User, CreateUserInput, Update
 }
 
 // Service
-import { BaseService } from "@buntok/core/base";
+import { BaseService } from "@buntok/core";
 export class UserService extends BaseService<User, CreateUserInput, UpdateUserInput> {
   constructor(private userRepo: UserRepository) {
     super(userRepo);
@@ -2735,7 +2735,7 @@ export class UserService extends BaseService<User, CreateUserInput, UpdateUserIn
 }
 
 // Controller
-import { BaseController } from "@buntok/core/base";
+import { BaseController } from "@buntok/core";
 import { Controller } from "@buntok/core";
 @Controller("/users")
 export class UserController extends BaseController<User, CreateUserInput, UpdateUserInput> {
@@ -2913,7 +2913,7 @@ my-app/
 Zero-dependency JWT implementation using WebCrypto (built-in). Supports HMAC-SHA256 with expiration.
 
 ```ts
-import { JwtService, requireAuth } from "@buntok/core/auth";
+import { JwtService, requireAuth } from "@buntok/core";
 ```
 
 ### JwtService
@@ -2998,7 +2998,7 @@ app.post("/logout", (ctx) => {
 Built-in OAuth 2.0 support for Google, GitHub, and Apple with PKCE and automatic state management.
 
 ```ts
-import { createOAuth, storeOAuthState, verifyOAuthState, getCodeVerifier, clearOAuthCookies } from "@buntok/core/oauth";
+import { createOAuth, storeOAuthState, verifyOAuthState, getCodeVerifier, clearOAuthCookies } from "@buntok/core";
 // Advanced types/helpers (optional — import only if needed):
 // import type { OAuthProvider, OAuthProviderConfig, AppleProviderConfig, OAuth2Tokens, OAuthUser, CreateAuthorizationURLOptions, ValidateAuthorizationCodeOptions } from "@buntok/core";
 // import { BaseOAuthProvider, AppleProvider, GoogleProvider, GitHubProvider, OAuthError, generatePKCE, decodeIdToken, generateCodeVerifier, generateCodeChallenge, createOAuth2AuthorizationURL, validateOAuth2AuthorizationCode } from "@buntok/core";
@@ -3069,7 +3069,7 @@ app.get("/auth/google/callback", async (ctx) => {
 ### Custom Providers
 
 ```ts
-import { createOAuth2AuthorizationURL, validateOAuth2AuthorizationCode } from "@buntok/core/oauth";
+import { createOAuth2AuthorizationURL, validateOAuth2AuthorizationCode } from "@buntok/core";
 
 // Use generic helpers for any OAuth2 provider
 const url = createOAuth2AuthorizationURL("https://provider.com/authorize", {
@@ -3107,7 +3107,7 @@ interface OAuthUser {
 ## RBAC (Role-Based Access Control)
 
 ```ts
-import { requireRole, requirePermission } from "@buntok/core/middlewares";
+import { requireRole, requirePermission } from "@buntok/core";
 ```
 
 > **⚠️ KEY DIFFERENCE:** `requireRole` uses **OR** logic (user needs ANY of the specified roles). `requirePermission` uses **AND** logic (user needs ALL of the specified permissions). Mixing them up is a common security mistake.
@@ -3220,8 +3220,8 @@ async createPost(ctx: Context) {
 ## Event Emitter
 
 ```ts
-import { emitter, EventEmitter } from "@buntok/core/emitter";
-import type { AppEvents } from "@buntok/core/emitter";  // type-only export
+import { emitter, EventEmitter } from "@buntok/core";
+import type { AppEvents } from "@buntok/core";  // type-only export
 ```
 
 ### Basic Usage
@@ -3295,8 +3295,8 @@ const emitter = new EventEmitter<AppEvents>();
 In-memory cache with LRU eviction. Zero dependencies.
 
 ```ts
-import { Cache, MemoryCacheDriver } from "@buntok/core/cache";
-import type { CacheDriver } from "@buntok/core/cache";
+import { Cache, MemoryCacheDriver } from "@buntok/core";
+import type { CacheDriver } from "@buntok/core";
 ```
 
 `CacheDriver {get(key), set(key,value,ttl?), delete(key), clear(), keys?()}` — `Cache` uses `MemoryCacheDriver` (LRU) by default.
@@ -3338,7 +3338,7 @@ const keys = await cache.keys();
 ### Custom Driver
 
 ```ts
-import type { CacheDriver } from "@buntok/core/cache";
+import type { CacheDriver } from "@buntok/core";
 
 class RedisCacheDriver implements CacheDriver {
   async get(key: string) { ... }
@@ -3467,7 +3467,7 @@ import {
 Email sending with built-in support for Resend, SendGrid, and Mailgun (zero-deps HTTP). SMTP via optional `nodemailer` import. Supports attachments, CC/BCC, reply-to, inline images, and template-based sending.
 
 ```ts
-import { Mailer, Mailable } from "@buntok/core/mailer";
+import { Mailer, Mailable } from "@buntok/core";
 // Types (optional — for type-checking only):
 // MailerConfig { provider: "resend"|"sendgrid"|"mailgun"|"smtp", apiKey?: string, domain?: string (mailgun), smtp?: { host, port, secure?, auth:{user,pass} } }
 // MailOptions { from: string, to: string|string[], cc?: string|string[], bcc?: string|string[], replyTo?: string|string[], subject: string, text?: string, html?: string, attachments?: MailAttachment[] }
@@ -3591,7 +3591,7 @@ await mailer.send({
 Use the built-in TemplateEngine with `sendTemplate()`:
 
 ```ts
-import { Mailer } from "@buntok/core/mailer";
+import { Mailer } from "@buntok/core";
 
 const mailer = new Mailer({ provider: "resend", apiKey: process.env.RESEND_API_KEY });
 
@@ -3655,7 +3655,7 @@ await mailer.sendProviderTemplate({
 Laravel-style class-based email definitions:
 
 ```ts
-import { Mailer, Mailable } from "@buntok/core/mailer";
+import { Mailer, Mailable } from "@buntok/core";
 
 class WelcomeEmail extends Mailable {
   template = "welcome";
@@ -3926,7 +3926,7 @@ Request arrives
 Handlebars-like template engine with zero dependencies. Perfect for email templates.
 
 ```ts
-import { render, TemplateEngine } from "@buntok/core/template";
+import { render, TemplateEngine } from "@buntok/core";
 ```
 
 > **⚠️ Strict mode is ON by default.** If you reference a variable that doesn't exist in the context (e.g., `{{ usre.name }}` instead of `{{ user.name }}`), the template will throw an error with a "did you mean?" suggestion. To disable strict mode, pass `{ strict: false }` as the third argument to `render()` or set it in `TemplateEngine` constructor options.
@@ -4012,7 +4012,7 @@ render("Hello {{ usre.name }}", { user: { name: "Budi" } });
 Background job processing with pluggable drivers. Supports Memory, Redis (ioredis), Bun native Redis, BullMQ, and RabbitMQ.
 
 ```ts
-import { Queue } from "@buntok/core/queue";
+import { Queue } from "@buntok/core";
 ```
 
 > **⚠️ `name` is the first argument and is REQUIRED.** Each queue must have a unique name (e.g., `"email"`, `"notifications"`). This name is used for logging, debugging, and driver isolation.
@@ -4036,7 +4036,7 @@ import {
   BullmqQueueDriver,
   RabbitmqQueueDriver,
   MemoryQueueDriver,
-} from "@buntok/core/queue";
+} from "@buntok/core";
 
 // Pass driver instance directly
 const redisDriver = new RedisQueueDriver({ url: "redis://localhost:6379" });
@@ -4115,7 +4115,7 @@ await queue.drain(10_000);     // wait up to 10 seconds
 ### Custom Driver
 
 ```ts
-import type { QueueDriver, Job, JobHandler } from "@buntok/core/queue";
+import type { QueueDriver, Job, JobHandler } from "@buntok/core";
 
 class MyCustomDriver implements QueueDriver<{ to: string }> {
   async add(data: { to: string }, opts?: { priority?: number; delay?: number }): Promise<void> { ... }
@@ -4134,7 +4134,7 @@ const queue = new Queue("email", new MyCustomDriver());
 Cron-based task scheduling with pluggable drivers. `CronJob` is a **method decorator** (uses `context.addInitializer` so `this` is bound to instance).
 
 ```ts
-import { Scheduler, CronJob, MemorySchedulerDriver, BunCronSchedulerDriver, setDefaultSchedulerDriver } from "@buntok/core/schedule";
+import { Scheduler, CronJob, MemorySchedulerDriver, BunCronSchedulerDriver, setDefaultSchedulerDriver } from "@buntok/core";
 ```
 
 ### Scheduler (programmatic)
@@ -4162,7 +4162,7 @@ setDefaultSchedulerDriver(new BunCronSchedulerDriver());
 
 ```ts
 import { Controller } from "@buntok/core";
-import { CronJob } from "@buntok/core/schedule";
+import { CronJob } from "@buntok/core";
 
 @Controller("/tasks")
 export class TaskController {
@@ -4191,7 +4191,7 @@ export class TaskController {
 Request logging middleware with customizable storage.
 
 ```ts
-import { auditLog } from "@buntok/core/middlewares";
+import { auditLog } from "@buntok/core";
 ```
 
 > **⚠️ Default storage is `logger.info`.** If you call `app.use(auditLog())` without a `storage` function, audit entries are logged via `logger.info()` (which writes to console/file based on your logger config). To persist to a database, provide a custom `storage` function.
@@ -4242,7 +4242,7 @@ interface AuditLogEntry {
 > **🚫 DO NOT wrap `healthCheck` with `app.get`.** The `healthCheck()` function registers the route itself. Wrapping it will create duplicate routes or cause unexpected behavior.
 
 ```ts
-import { healthCheck, createHealthCheck, createDatabaseCheck } from "@buntok/core/middlewares";
+import { healthCheck, createHealthCheck, createDatabaseCheck } from "@buntok/core";
 
 // ✅ CORRECT — registers GET /health automatically
 healthCheck(app, {
@@ -4287,7 +4287,7 @@ import {
   toISOWithTimezone, nowInTimezone, getTimezoneOffset,
   getTimezoneOffsetString, isValidTimezone,
   groupByTimezone, getGroupLabels, formatGroupLabel,
-} from "@buntok/core/helpers";
+} from "@buntok/core";
 ```
 
 ### parseTime
@@ -4387,7 +4387,7 @@ if (isNativeAvailable()) {
 Built-in AI integration with caching and Vercel AI SDK Data Stream compatibility.
 
 ```ts
-import { streamAI, AICache, injectSystemPrompt } from "@buntok/core/ai";
+import { streamAI, AICache, injectSystemPrompt } from "@buntok/core";
 ```
 
 ### streamAI
@@ -4395,7 +4395,7 @@ import { streamAI, AICache, injectSystemPrompt } from "@buntok/core/ai";
 Transforms an `AsyncIterable` (OpenAI/Anthropic stream) into a `Response` with `text/x-unknown` + `x-vercel-ai-data-stream: v1` (protocol `0:"text"`, `d:{"finishReason":"stop"}`, `e:{"message"}`).
 
 ```ts
-import { streamAI } from "@buntok/core/ai";
+import { streamAI } from "@buntok/core";
 
 // ctx is required (first arg) — streamAI returns a Response directly, no ctx.sse needed
 app.post("/chat", async (ctx) => {
@@ -4423,8 +4423,8 @@ Supports chunk shapes: `chunk.choices[0].delta.content`, `chunk.message.content`
 Semantic cache for exact conversation matches (hashes last 3 user/assistant messages via 32-bit hash — not cryptographic). Requires a `CacheDriver`.
 
 ```ts
-import { AICache } from "@buntok/core/ai";
-import { MemoryCacheDriver } from "@buntok/core/cache";
+import { AICache } from "@buntok/core";
+import { MemoryCacheDriver } from "@buntok/core";
 
 const cache = new AICache(new MemoryCacheDriver());
 
@@ -4468,7 +4468,7 @@ Buntok uses several built-in optimizations. No configuration needed — they're 
 ### fastHash — for cache keys
 
 ```ts
-import { fastHash } from "@buntok/core/helpers";
+import { fastHash } from "@buntok/core";
 
 const key = fastHash({ userId: 123, action: "view" });
 // Uses Bun.hash() — fast but NOT cryptographic
@@ -4479,7 +4479,7 @@ For cryptographic hashes (e.g. API keys, tokens), use `sha256Hex()` or `sha512He
 ### Password hashing
 
 ```ts
-import { hashPassword, verifyPassword } from "@buntok/core/helpers";
+import { hashPassword, verifyPassword } from "@buntok/core";
 
 const hash = await hashPassword("mySecret");          // Bun.password.hash → argon2id
 const valid = await verifyPassword("mySecret", hash); // auto-detects format

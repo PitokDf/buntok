@@ -465,7 +465,7 @@ export class UserRepository extends BaseRepository<
 
       <CodeBlock
         code={`// src/services/user.service.ts
-import { BaseService } from "@buntok/core/base";
+import { BaseService } from "@buntok/core";
 import { UserRepository } from "@/repositories/user.repository";
 import type { User } from "@prisma/client";
 
@@ -594,7 +594,7 @@ export class UserRepository extends BaseRepository<User, PrismaClient> {
 }
 
 // 2. Service - extends BaseService
-import { BaseService } from "@buntok/core/base";
+import { BaseService } from "@buntok/core";
 
 export class UserService extends BaseService<User, CreateUser, UpdateUser> {
   constructor(private repo: UserRepository) {
@@ -604,7 +604,7 @@ export class UserService extends BaseService<User, CreateUser, UpdateUser> {
 
 // 3. Controller - extends BaseController (auto-registers 5 CRUD routes!)
 import { Controller } from "@buntok/core";
-import { BaseController } from "@buntok/core/base";
+import { BaseController } from "@buntok/core";
 
 @Controller("/users")
 export class UserController extends BaseController<User, CreateUser, UpdateUser> {

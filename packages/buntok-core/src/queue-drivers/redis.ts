@@ -7,8 +7,8 @@ import type { QueueDriver, Job, JobHandler, QueueCapabilities } from "../queue";
  * @example
  * ```ts
  * import Redis from "ioredis";
- * import { Queue } from "@buntok/core/queue";
- * import { RedisQueueDriver } from "@buntok/core/queue-drivers";
+ * import { Queue } from "@buntok/core";
+ * import { RedisQueueDriver } from "@buntok/core";
  *
  * const redis = new Redis();
  * const queue = new Queue<{ to: string }>("email", new RedisQueueDriver({

@@ -29,7 +29,7 @@ export default function EmitterPage() {
         Basic Usage
       </Heading>
       <CodeBlock
-        code={`import { emitter } from "@buntok/core/emitter";
+        code={`import { emitter } from "@buntok/core";
 
 // Listen to events
 emitter.on("user:created", async (data) => {
@@ -193,7 +193,7 @@ emitter.increaseMaxListeners(20);`}
         Define your event map for full type safety:
       </p>
       <CodeBlock
-        code={`import { EventEmitter } from "@buntok/core/emitter";
+        code={`import { EventEmitter } from "@buntok/core";
 
 interface AppEvents {
   "user:created": { id: number; name: string; email: string };
@@ -227,7 +227,7 @@ emitter.emit("user:created", { name: 123 });`}
         A pre-configured emitter with common app events is available:
       </p>
       <CodeBlock
-        code={`import { emitter } from "@buntok/core/emitter";
+        code={`import { emitter } from "@buntok/core";
 
 // Built-in events:
 emitter.on("user:created", async ({ user }) => { /* ... */ });
@@ -263,7 +263,7 @@ emitter.emit("custom:event", { anything: true });`}
       </Heading>
       <CodeBlock
         code={`// auth.service.ts - emits events, knows nothing about notifications
-import { emitter } from "@buntok/core/emitter";
+import { emitter } from "@buntok/core";
 
 async function createUser(data) {
   const user = await db.user.create({ data });
@@ -272,7 +272,7 @@ async function createUser(data) {
 }
 
 // notification.service.ts - listens, knows nothing about auth
-import { emitter } from "@buntok/core/emitter";
+import { emitter } from "@buntok/core";
 
 emitter.on("user:created", async ({ user }) => {
   await sendWelcomeEmail(user.email);

@@ -6,8 +6,8 @@ import type { QueueDriver, Job, JobHandler, QueueCapabilities, QueueOptions } fr
  *
  * @example
  * ```ts
- * import { Queue } from "@buntok/core/queue";
- * import { RabbitmqQueueDriver } from "@buntok/core/queue-drivers";
+ * import { Queue } from "@buntok/core";
+ * import { RabbitmqQueueDriver } from "@buntok/core";
  *
  * const queue = new Queue<{ to: string }>("email", new RabbitmqQueueDriver({
  *   url: "amqp://guest:guest@localhost:5672",

@@ -33,7 +33,7 @@ const DEFAULT_HEADERS: Record<string, string> = {
  * Security headers middleware - adds common security headers to all responses.
  *
  * @example
- * import { helmet } from "@buntok/core/middlewares";
+ * import { helmet } from "@buntok/core";
  *
  * // Default - all standard headers
  * app.use(helmet());

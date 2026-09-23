@@ -6,7 +6,7 @@ function generateFactoryTemplate(entityName: string): string {
 	const className = toPascalCase(entityName) + "Factory";
 	const interfaceName = toPascalCase(entityName);
 
-	return `import { Factory } from "@buntok/core/factory";
+	return `import { Factory } from "@buntok/core";
 import { faker } from "@faker-js/faker";
 import type { ${interfaceName} } from "@prisma/client";
 

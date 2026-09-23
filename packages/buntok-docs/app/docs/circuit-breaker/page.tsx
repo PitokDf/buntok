@@ -71,7 +71,7 @@ export default function CircuitBreakerPage() {
       </Heading>
       <CodeBlock
         code={`import { CircuitBreaker, CircuitOpenError } from "@buntok/core";
-import { circuitBreaker, getCircuitBreakers } from "@buntok/core/middlewares";`}
+import { circuitBreaker, getCircuitBreakers } from "@buntok/core";`}
       />
 
       {/* ──────────────── AS MIDDLEWARE ──────────────── */}
@@ -87,7 +87,7 @@ import { circuitBreaker, getCircuitBreakers } from "@buntok/core/middlewares";`}
       </p>
       <CodeBlock
         code={`import { App } from "@buntok/core";
-import { circuitBreaker } from "@buntok/core/middlewares";
+import { circuitBreaker } from "@buntok/core";
 
 const app = new App();
 
@@ -347,7 +347,7 @@ new CircuitBreaker("api", {
         <code>getCircuitBreakers()</code> to get all registered instances.
       </p>
       <CodeBlock
-        code={`import { getCircuitBreakers } from "@buntok/core/middlewares";
+        code={`import { getCircuitBreakers } from "@buntok/core";
 
 app.get("/health", (ctx) => {
   const breakers = getCircuitBreakers();
@@ -400,7 +400,7 @@ app.get("/health", (ctx) => {
       </Heading>
       <CodeBlock
         code={`import { App } from "@buntok/core";
-import { circuitBreaker } from "@buntok/core/middlewares";
+import { circuitBreaker } from "@buntok/core";
 
 const app = new App();
 
@@ -435,7 +435,7 @@ app.post("/checkout", paymentBreaker, async (ctx) => {
 
 app.get("/payment-status", async (ctx) => {
   // Access the breaker directly for status
-  const { getCircuitBreakers } = await import("@buntok/core/middlewares");
+  const { getCircuitBreakers } = await import("@buntok/core");
   const breakers = getCircuitBreakers();
   const payment = breakers.get("payment");
 

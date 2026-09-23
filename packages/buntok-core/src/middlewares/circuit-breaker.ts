@@ -41,7 +41,7 @@ export interface CircuitBreakerMiddlewareOptions extends CircuitBreakerOptions {
  *
  * @example
  * ```ts
- * import { circuitBreaker } from "@buntok/core/middlewares";
+ * import { circuitBreaker } from "@buntok/core";
  *
  * app.post("/pay", circuitBreaker("payment", {
  *   failureThreshold: 5,

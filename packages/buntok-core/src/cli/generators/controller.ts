@@ -43,8 +43,7 @@ export function generateController(
 				break;
 		}
 
-		return `import { Dependencies, Controller } from "@buntok/core";
-import { BaseController } from "@buntok/core/base";
+		return `import { Dependencies, Controller, BaseController } from "@buntok/core";
 import { ${pascalName}Service } from "./${entityName}.service";
 ${typeImport}
 

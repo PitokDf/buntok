@@ -356,12 +356,12 @@ app.post("/users",
       </div>
 
       <CodeBlock
-        code={`import { requireAuth } from "@buntok/core/auth";
+        code={`import { requireAuth } from "@buntok/core";
 import {
   requireRole, requirePermission,
   rateLimiter, slidingWindowRateLimiter,
   compress, bodySizeLimit, requestId, responseTime, helmet, timeout, auditLog,
-} from "@buntok/core/middlewares";
+} from "@buntok/core";
 import { cors } from "@buntok/core";
 import { zValidator } from "@buntok/core/middlewares/validator";`}
       />
@@ -406,7 +406,7 @@ app.cors({
         Adds <code>X-Request-Id</code> (uuid) to every request. Also available <code>shortId</code> (8-char) and <code>uuid</code> helpers.
       </p>
       <CodeBlock
-        code={`import { requestId, shortId, uuid } from "@buntok/core/middlewares";
+        code={`import { requestId, shortId, uuid } from "@buntok/core";
 
 app.use(requestId());
 // RequestIdOptions { header="x-request-id", generator=uuid, store=true, storeKey="requestId" }
@@ -426,7 +426,7 @@ app.use(requestId({ header: "x-request-id", generator: () => crypto.randomUUID()
         Adds <code>X-Response-Time</code> header with request duration.
       </p>
       <CodeBlock
-        code={`import { responseTime } from "@buntok/core/middlewares";
+        code={`import { responseTime } from "@buntok/core";
 
 app.use(responseTime());
 // ResponseTimeOptions { header="x-response-time", format="ms"|"s", store, storeKey="responseTime" }
@@ -445,7 +445,7 @@ app.use(responseTime({ header: "x-response-time", format: "s" }));`}
         Security headers (X-Content-Type-Options, X-Frame-Options, XSS-Protection, Referrer-Policy, HSTS, DNS-Prefetch, Permissions-Policy).
       </p>
       <CodeBlock
-        code={`import { helmet } from "@buntok/core/middlewares";
+        code={`import { helmet } from "@buntok/core";
 
 app.use(helmet());
 // HelmetOptions { contentTypeOptions, frameOptions, xssProtection, referrerPolicy, hsts, dnsPrefetch, permissionsPolicy, additionalHeaders }
@@ -467,7 +467,7 @@ app.use(helmet({
         Aborts handler if it exceeds <code>ms</code>. Throws <code>TimeoutError &#123; timeoutMs &#125;</code> caught by <code>app.onError</code>.
       </p>
       <CodeBlock
-        code={`import { timeout, TimeoutError } from "@buntok/core/middlewares";
+        code={`import { timeout, TimeoutError } from "@buntok/core";
 
 app.get("/slow", timeout(5000), async (ctx) => {
   await longOperation();

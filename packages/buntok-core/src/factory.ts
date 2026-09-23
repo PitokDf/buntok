@@ -3,7 +3,7 @@
  *
  * @example
  * ```ts
- * import { Factory } from "@buntok/core/factory";
+ * import { Factory } from "@buntok/core";
  * import { faker } from "@faker-js/faker";
  *
  * interface User {

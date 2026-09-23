@@ -5,7 +5,7 @@ import type { Middleware } from "../app";
  * longer than `ms` milliseconds, returning 408 Request Timeout.
  *
  * @example
- * import { timeout } from "@buntok/core/middlewares";
+ * import { timeout } from "@buntok/core";
  *
  * app.get("/slow", timeout(5000), async (ctx) => {
  *   await longOperation();

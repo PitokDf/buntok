@@ -101,7 +101,7 @@ console.log(res2.status); // 201`}
       <CodeBlock
         code={`import { describe, it, expect } from "bun:test";
 import { App } from "@buntok/core";
-import { NotFoundError } from "@buntok/core/helpers";
+import { NotFoundError } from "@buntok/core";
 
 function createTestApp() {
   const app = new App();

@@ -29,8 +29,8 @@ export default function RBACPage() {
 
       <Heading level={3} className="text-xl font-semibold mt-6 mb-2 text-text-primary">Basic Usage</Heading>
       <CodeBlock
-        code={`import { requireAuth } from "@buntok/core/auth";
-import { requireRole } from "@buntok/core/middlewares";
+        code={`import { requireAuth } from "@buntok/core";
+import { requireRole } from "@buntok/core";
 
 const secret = "your-secret-key";
 

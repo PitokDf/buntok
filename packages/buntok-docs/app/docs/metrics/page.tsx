@@ -22,7 +22,7 @@ export default function MetricsPage() {
       </p>
 
       <CodeBlock
-        code={`import { Metrics, metricsEndpoint, metricsMiddleware } from "@buntok/core/metrics";`}
+        code={`import { Metrics, metricsEndpoint, metricsMiddleware } from "@buntok/core";`}
       />
 
       {/* ──────────────── SETUP ──────────────── */}
@@ -34,7 +34,7 @@ export default function MetricsPage() {
       </Heading>
       <CodeBlock
         code={`import { App } from "@buntok/core";
-import { Metrics, metricsEndpoint, metricsMiddleware } from "@buntok/core/metrics";
+import { Metrics, metricsEndpoint, metricsMiddleware } from "@buntok/core";
 
 const app = new App();
 const metrics = new Metrics();

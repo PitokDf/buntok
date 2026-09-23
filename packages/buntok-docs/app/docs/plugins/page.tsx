@@ -92,7 +92,7 @@ import type { Plugin } from "@buntok/core";`}
   name: "@buntok/auth",
   install: async (app) => {
     // Lazy import — zero startup cost if plugin not installed
-    const { JwtService } = await import("@buntok/core/auth");
+    const { JwtService } = await import("@buntok/core");
     const jwt = new JwtService(process.env.JWT_SECRET!);
     app.use(requireAuth(jwt));
   },

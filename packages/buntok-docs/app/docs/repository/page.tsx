@@ -465,7 +465,7 @@ class UserRepository extends BaseRepository<User, CreateUserInput, UpdateUserInp
         expected interface:
       </p>
       <CodeBlock
-        code={`import { BaseService } from "@buntok/core/base";
+        code={`import { BaseService } from "@buntok/core";
 import { UserRepository } from "@/repositories/user.repository";
 import type { User } from "@prisma/client";
 
@@ -494,8 +494,8 @@ export class UserService extends BaseService<User> {
         Override any method to add custom business logic:
       </p>
       <CodeBlock
-        code={`import { BaseService } from "@buntok/core/base";
-import { NotFoundError } from "@buntok/core/helpers";
+        code={`import { BaseService } from "@buntok/core";
+import { NotFoundError } from "@buntok/core";
 import { UserRepository } from "@/repositories/user.repository";
 import type { User } from "@prisma/client";
 
@@ -539,7 +539,7 @@ export class UserService extends BaseService<User> {
       </Heading>
       <CodeBlock
         code={`import { Controller } from "@buntok/core";
-import { BaseController } from "@buntok/core/base";
+import { BaseController } from "@buntok/core";
 
 @Controller("/users")
 class UserController extends BaseController<User> {
@@ -564,7 +564,7 @@ class UserController extends BaseController<User> {
       </Heading>
       <CodeBlock
         code={`import { App } from "@buntok/core";
-import { BaseController, BaseService } from "@buntok/core/base";
+import { BaseController, BaseService } from "@buntok/core";
 import { BaseRepository } from "@buntok/prisma";
 import { prisma } from "@/lib/prisma";
 import type { User, PrismaClient, Prisma } from "@prisma/client";

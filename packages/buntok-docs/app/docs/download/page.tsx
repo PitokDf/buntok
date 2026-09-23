@@ -28,7 +28,7 @@ export default function DownloadPage() {
   downloadFile, downloadBuffer,
   exportCSV, exportJSON,
   createZIP,
-} from "@buntok/core/helpers";`}
+} from "@buntok/core";`}
       />
 
       {/* ──────────────── serveFileOrFallback ──────────────── */}
@@ -96,7 +96,7 @@ export default function DownloadPage() {
         </table>
       </div>
       <CodeBlock
-        code={`import { serveFileOrFallback, generateInitialAvatar } from "@buntok/core/helpers";
+        code={`import { serveFileOrFallback, generateInitialAvatar } from "@buntok/core";
 
 // Serve file or return 404
 app.get("/documents/:id", async (ctx) => {
@@ -193,7 +193,7 @@ app.get("/images/:name", async (ctx) => {
         </table>
       </div>
       <CodeBlock
-        code={`import { downloadFile } from "@buntok/core/helpers";
+        code={`import { downloadFile } from "@buntok/core";
 
 // Serve file as download
 app.get("/reports/:id", async (ctx) => {
@@ -279,7 +279,7 @@ app.get("/download/:filename", async (ctx) => {
         </table>
       </div>
       <CodeBlock
-        code={`import { downloadBuffer } from "@buntok/core/helpers";
+        code={`import { downloadBuffer } from "@buntok/core";
 
 // Generate PDF on the fly
 app.get("/generate-pdf", async (ctx) => {
@@ -357,7 +357,7 @@ app.get("/download-binary", async (ctx) => {
         </table>
       </div>
       <CodeBlock
-        code={`import { exportCSV } from "@buntok/core/helpers";
+        code={`import { exportCSV } from "@buntok/core";
 
 // Export users as CSV
 app.get("/users/export", async (ctx) => {
@@ -393,7 +393,7 @@ app.get("/data/export", async (ctx) => {
         Export data as JSON file download.
       </p>
       <CodeBlock
-        code={`import { exportJSON } from "@buntok/core/helpers";
+        code={`import { exportJSON } from "@buntok/core";
 
 app.get("/data/export", async (ctx) => {
   const data = await db.orders.find();
@@ -465,7 +465,7 @@ app.get("/data/export", async (ctx) => {
         </table>
       </div>
       <CodeBlock
-        code={`import { createZIP, exportCSV, exportJSON } from "@buntok/core/helpers";
+        code={`import { createZIP, exportCSV, exportJSON } from "@buntok/core";
 
 // Export multiple files as archive
 app.get("/export/bundle", async (ctx) => {

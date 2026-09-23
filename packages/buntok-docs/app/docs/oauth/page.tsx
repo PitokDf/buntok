@@ -29,7 +29,7 @@ export default function OAuthPage() {
       </Heading>
 
       <CodeBlock
-        code={`import { createOAuth } from "@buntok/core/oauth";
+        code={`import { createOAuth } from "@buntok/core";
 
 const google = createOAuth.google({
   clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -48,7 +48,7 @@ const google = createOAuth.google({
 
       <CodeBlock
         code={`import { createOAuth, generateCodeVerifier, generateCodeChallenge,
-  storeOAuthState } from "@buntok/core/oauth";
+  storeOAuthState } from "@buntok/core";
 
 const google = createOAuth.google({ ... });
 
@@ -74,7 +74,7 @@ app.get("/auth/google", async (ctx) => {
 
       <CodeBlock
         code={`import { createOAuth, verifyOAuthState, getCodeVerifier,
-  clearOAuthCookies } from "@buntok/core/oauth";
+  clearOAuthCookies } from "@buntok/core";
 
 app.get("/auth/google/callback", async (ctx) => {
   const code = ctx.query.code;
@@ -302,7 +302,7 @@ APPLE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----`
       </div>
 
       <CodeBlock
-        code={`import { OAuthStateError, OAuthTokenError, OAuthProviderError } from "@buntok/core/oauth";
+        code={`import { OAuthStateError, OAuthTokenError, OAuthProviderError } from "@buntok/core";
 
 try {
   const tokens = await google.validateAuthorizationCode(code, redirectURI, codeVerifier);
@@ -331,7 +331,7 @@ try {
       <CodeBlock
         code={`import { createOAuth2AuthorizationURL, validateOAuth2AuthorizationCode,
   generateCodeVerifier, generateCodeChallenge, storeOAuthState,
-  verifyOAuthState, getCodeVerifier, clearOAuthCookies } from "@buntok/core/oauth";
+  verifyOAuthState, getCodeVerifier, clearOAuthCookies } from "@buntok/core";
 
 // Discord (not OIDC - uses OAuth2)
 const DISCORD_AUTH = "https://discord.com/api/oauth2/authorize";
@@ -419,8 +419,8 @@ app.get("/auth/discord/callback", async (ctx) => {
 
       <CodeBlock
         code={`import { BaseOAuthProvider, createOAuth2AuthorizationURL,
-  generateCodeChallenge } from "@buntok/core/oauth";
-import type { OAuth2Tokens, OAuthUser } from "@buntok/core/oauth";
+  generateCodeChallenge } from "@buntok/core";
+import type { OAuth2Tokens, OAuthUser } from "@buntok/core";
 
 class SpotifyProvider extends BaseOAuthProvider {
   override readonly id = "spotify";

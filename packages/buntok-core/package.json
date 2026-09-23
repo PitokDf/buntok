@@ -1,376 +1,215 @@
 {
-	"name": "@buntok/core",
-	"version": "2.2.1-alpha.3",
-	"description": "Blazing-fast, type-safe HTTP framework for Bun - AOT-compiled routing, decorators, Zod validation & IoC",
-	"module": "dist/core-exports.js",
-	"type": "module",
-	"main": "dist/core-exports.cjs",
-	"types": "dist/core-exports.d.ts",
-	"publishConfig": {
-		"access": "public",
-		"registry": "https://registry.npmjs.org/"
-	},
-	"bin": {
-		"buntok": "./dist/cli/index.js"
-	},
-	"exports": {
-		".": {
-			"import": {
-				"types": "./dist/core-exports.d.ts",
-				"default": "./dist/core-exports.js"
-			},
-			"require": {
-				"types": "./dist/core-exports.d.cts",
-				"default": "./dist/core-exports.cjs"
-			},
-			"default": "./dist/core-exports.js"
-		},
-		"./helpers": {
-			"import": {
-				"types": "./dist/helpers.d.ts",
-				"default": "./dist/helpers.js"
-			},
-			"require": {
-				"types": "./dist/helpers.d.cts",
-				"default": "./dist/helpers.cjs"
-			},
-			"default": "./dist/helpers.js"
-		},
-		"./auth": {
-			"import": {
-				"types": "./dist/auth.d.ts",
-				"default": "./dist/auth.js"
-			},
-			"require": {
-				"types": "./dist/auth.d.cts",
-				"default": "./dist/auth.cjs"
-			},
-			"default": "./dist/auth.js"
-		},
-		"./ai": {
-			"import": {
-				"types": "./dist/ai.d.ts",
-				"default": "./dist/ai.js"
-			},
-			"require": {
-				"types": "./dist/ai.d.cts",
-				"default": "./dist/ai.cjs"
-			},
-			"default": "./dist/ai.js"
-		},
-		"./factory": {
-			"import": {
-				"types": "./dist/factory.d.ts",
-				"default": "./dist/factory.js"
-			},
-			"require": {
-				"types": "./dist/factory.d.cts",
-				"default": "./dist/factory.cjs"
-			},
-			"default": "./dist/factory.js"
-		},
-		"./oauth": {
-			"import": {
-				"types": "./dist/oauth.d.ts",
-				"default": "./dist/oauth.js"
-			},
-			"require": {
-				"types": "./dist/oauth.d.cts",
-				"default": "./dist/oauth.cjs"
-			},
-			"default": "./dist/oauth.js"
-		},
-		"./cache": {
-			"import": {
-				"types": "./dist/cache.d.ts",
-				"default": "./dist/cache.js"
-			},
-			"require": {
-				"types": "./dist/cache.d.cts",
-				"default": "./dist/cache.cjs"
-			},
-			"default": "./dist/cache.js"
-		},
-		"./emitter": {
-			"import": {
-				"types": "./dist/emitter.d.ts",
-				"default": "./dist/emitter.js"
-			},
-			"require": {
-				"types": "./dist/emitter.d.cts",
-				"default": "./dist/emitter.cjs"
-			},
-			"default": "./dist/emitter.js"
-		},
-		"./mailer": {
-			"import": {
-				"types": "./dist/mailer.d.ts",
-				"default": "./dist/mailer.js"
-			},
-			"require": {
-				"types": "./dist/mailer.d.cts",
-				"default": "./dist/mailer.cjs"
-			},
-			"default": "./dist/mailer.js"
-		},
-		"./template": {
-			"import": {
-				"types": "./dist/template.d.ts",
-				"default": "./dist/template.js"
-			},
-			"require": {
-				"types": "./dist/template.d.cts",
-				"default": "./dist/template.cjs"
-			},
-			"default": "./dist/template.js"
-		},
-		"./schedule": {
-			"import": {
-				"types": "./dist/schedule.d.ts",
-				"default": "./dist/schedule.js"
-			},
-			"require": {
-				"types": "./dist/schedule.d.cts",
-				"default": "./dist/schedule.cjs"
-			},
-			"default": "./dist/schedule.js"
-		},
-		"./metrics": {
-			"import": {
-				"types": "./dist/metrics.d.ts",
-				"default": "./dist/metrics.js"
-			},
-			"require": {
-				"types": "./dist/metrics.d.cts",
-				"default": "./dist/metrics.cjs"
-			},
-			"default": "./dist/metrics.js"
-		},
-		"./upload": {
-			"import": {
-				"types": "./dist/upload.d.ts",
-				"default": "./dist/upload.js"
-			},
-			"require": {
-				"types": "./dist/upload.d.cts",
-				"default": "./dist/upload.cjs"
-			},
-			"default": "./dist/upload.js"
-		},
-		"./queue": {
-			"import": {
-				"types": "./dist/queue.d.ts",
-				"default": "./dist/queue.js"
-			},
-			"require": {
-				"types": "./dist/queue.d.cts",
-				"default": "./dist/queue.cjs"
-			},
-			"default": "./dist/queue.js"
-		},
-		"./base": {
-			"import": {
-				"types": "./dist/base.d.ts",
-				"default": "./dist/base.js"
-			},
-			"require": {
-				"types": "./dist/base.d.cts",
-				"default": "./dist/base.cjs"
-			},
-			"default": "./dist/base.js"
-		},
-		"./middlewares": {
-			"import": {
-				"types": "./dist/middlewares.d.ts",
-				"default": "./dist/middlewares.js"
-			},
-			"require": {
-				"types": "./dist/middlewares.d.cts",
-				"default": "./dist/middlewares.cjs"
-			},
-			"default": "./dist/middlewares.js"
-		},
-		"./client": {
-			"import": {
-				"types": "./dist/client.d.ts",
-				"default": "./dist/client.js"
-			},
-			"require": {
-				"types": "./dist/client.d.cts",
-				"default": "./dist/client.cjs"
-			},
-			"default": "./dist/client.js"
-		},
-		"./dev": {
-			"import": {
-				"types": "./dist/dev.d.ts",
-				"default": "./dist/dev.js"
-			},
-			"require": {
-				"types": "./dist/dev.d.cts",
-				"default": "./dist/dev.cjs"
-			},
-			"default": "./dist/dev.js"
-		},
-		"./plugins/graphql": {
-			"import": {
-				"types": "./dist/plugins/graphql/index.d.ts",
-				"default": "./dist/plugins/graphql/index.js"
-			},
-			"require": {
-				"types": "./dist/plugins/graphql/index.d.cts",
-				"default": "./dist/plugins/graphql/index.cjs"
-			},
-			"default": "./dist/plugins/graphql/index.js"
-		},
-		"./plugins/graphql/apollo": {
-			"import": {
-				"types": "./dist/plugins/graphql/apollo.d.ts",
-				"default": "./dist/plugins/graphql/apollo.js"
-			},
-			"require": {
-				"types": "./dist/plugins/graphql/apollo.d.cts",
-				"default": "./dist/plugins/graphql/apollo.cjs"
-			},
-			"default": "./dist/plugins/graphql/apollo.js"
-		},
-		"./plugins/graphql/yoga": {
-			"import": {
-				"types": "./dist/plugins/graphql/yoga.d.ts",
-				"default": "./dist/plugins/graphql/yoga.js"
-			},
-			"require": {
-				"types": "./dist/plugins/graphql/yoga.d.cts",
-				"default": "./dist/plugins/graphql/yoga.cjs"
-			},
-			"default": "./dist/plugins/graphql/yoga.js"
-		},
-		"./plugins/opentelemetry": {
-			"import": {
-				"types": "./dist/plugins/opentelemetry.d.ts",
-				"default": "./dist/plugins/opentelemetry.js"
-			},
-			"require": {
-				"types": "./dist/plugins/opentelemetry.d.cts",
-				"default": "./dist/plugins/opentelemetry.cjs"
-			},
-			"default": "./dist/plugins/opentelemetry.js"
-		},
-		"./middlewares/validator": {
-			"import": {
-				"types": "./dist/middlewares/validator.d.ts",
-				"default": "./dist/middlewares/validator.js"
-			},
-			"require": {
-				"types": "./dist/middlewares/validator.d.cts",
-				"default": "./dist/middlewares/validator.cjs"
-			},
-			"default": "./dist/middlewares/validator.js"
-		},
-		"./payment": {
-			"import": {
-				"types": "./dist/payment/index.d.ts",
-				"default": "./dist/payment/index.js"
-			},
-			"require": {
-				"types": "./dist/payment/index.d.cts",
-				"default": "./dist/payment/index.cjs"
-			},
-			"default": "./dist/payment/index.js"
-		},
-		"./ws-helpers": {
-			"import": {
-				"types": "./dist/ws-helpers.d.ts",
-				"default": "./dist/ws-helpers.js"
-			},
-			"require": {
-				"types": "./dist/ws-helpers.d.cts",
-				"default": "./dist/ws-helpers.cjs"
-			},
-			"default": "./dist/ws-helpers.js"
-		}
-	},
-	"files": [
-		"dist",
-		"public",
-		"scripts",
-		"README.md"
-	],
-	"scripts": {
-		"test": "bun test tests",
-		"test:watch": "bun test --watch tests",
-		"test:unit": "bun test tests/helpers tests/middlewares",
-		"test:integration": "bun test tests/combinations.test.ts tests/context.test.ts",
-		"test:server": "bun run test/src/index.ts",
-		"build": "tsup && bun run fix-node-prefix && bun run build:types && bun run build:dcts && mkdir -p dist/cli/templates && cp src/cli/templates/* dist/cli/templates/",
-		"build:types": "bunx tsc --project tsconfig.build.json",
-		"build:dcts": "cd dist && find . -name '*.d.ts' -not -name '*.d.ts.map' | while read f; do cp \"$f\" \"${f%.d.ts}.d.cts\"; done && find . -name '*-exports.d.ts' -not -name '*.d.ts.map' | while read f; do clean=\"$(echo \"$f\" | sed 's/-exports\\.d\\.ts$/.d.ts/')\"; cp \"$f\" \"$clean\"; done && find . -name '*-exports.d.cts' -not -name '*.d.ts.map' | while read f; do clean=\"$(echo \"$f\" | sed 's/-exports\\.d\\.cts$/.d.cts/')\"; cp \"$f\" \"$clean\"; done",
-		"fix-node-prefix": "bun scripts/fix-node-prefix.ts",
-		"postbuild": "bun run sync-deps",
-		"sync-deps": "bun scripts/sync-local-deps.ts",
-		"dev": "tsup --watch",
-		"typecheck": "tsc --noEmit",
-		"ci": "bun run typecheck && bun test tests && bun run build",
-		"clean": "rm -rf dist"
-	},
-	"devDependencies": {
-		"@types/amqplib": "^0.10.8",
-		"@types/bun": "latest",
-		"reflect-metadata": "^0.2.2",
-		"tsup": "^8.5.1",
-		"typescript": "^5.0.0"
-	},
-	"keywords": [
-		"bun",
-		"framework",
-		"web",
-		"api",
-		"typescript",
-		"http",
-		"express"
-	],
-	"author": "Pitok",
-	"license": "MIT",
-	"dependencies": {
-		"@asteasolutions/zod-to-openapi": "^8.5.0",
-		"croner": "^10.0.1",
-		"zod": "^4.4.3"
-	},
-	"peerDependencies": {
-		"bun": ">=1.2.0",
-		"@apollo/server": ">=4.0.0",
-		"graphql": ">=16.0.0",
-		"graphql-yoga": ">=5.0.0",
-		"@opentelemetry/api": ">=1.0.0",
-		"ioredis": "",
-		"bullmq": "",
-		"amqplib": "",
-		"reflect-metadata": ">=0.1.0"
-	},
-	"peerDependenciesMeta": {
-		"@apollo/server": {
-			"optional": true
-		},
-		"graphql": {
-			"optional": true
-		},
-		"graphql-yoga": {
-			"optional": true
-		},
-		"@opentelemetry/api": {
-			"optional": true
-		},
-		"ioredis": {
-			"optional": true
-		},
-		"bullmq": {
-			"optional": true
-		},
-		"amqplib": {
-			"optional": true
-		},
-		"reflect-metadata": {
-			"optional": true
-		}
-	}
+  "name": "@buntok/core",
+  "version": "2.2.2-alpha.7",
+  "description": "Blazing-fast, type-safe HTTP framework for Bun - AOT-compiled routing, decorators, Zod validation & IoC",
+  "module": "dist/core-exports.js",
+  "type": "module",
+  "main": "dist/core-exports.cjs",
+  "types": "dist/core-exports.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "bin": {
+    "buntok": "./dist/cli/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/core-exports.d.ts",
+        "default": "./dist/core-exports.js"
+      },
+      "require": {
+        "types": "./dist/core-exports.d.cts",
+        "default": "./dist/core-exports.cjs"
+      },
+      "default": "./dist/core-exports.js"
+    },
+    "./client": {
+      "import": {
+        "types": "./dist/client.d.ts",
+        "default": "./dist/client.js"
+      },
+      "require": {
+        "types": "./dist/client.d.cts",
+        "default": "./dist/client.cjs"
+      },
+      "default": "./dist/client.js"
+    },
+    "./dev": {
+      "import": {
+        "types": "./dist/dev.d.ts",
+        "default": "./dist/dev.js"
+      },
+      "require": {
+        "types": "./dist/dev.d.cts",
+        "default": "./dist/dev.cjs"
+      },
+      "default": "./dist/dev.js"
+    },
+    "./plugins/graphql": {
+      "import": {
+        "types": "./dist/plugins/graphql/index.d.ts",
+        "default": "./dist/plugins/graphql/index.js"
+      },
+      "require": {
+        "types": "./dist/plugins/graphql/index.d.cts",
+        "default": "./dist/plugins/graphql/index.cjs"
+      },
+      "default": "./dist/plugins/graphql/index.js"
+    },
+    "./plugins/graphql/apollo": {
+      "import": {
+        "types": "./dist/plugins/graphql/apollo.d.ts",
+        "default": "./dist/plugins/graphql/apollo.js"
+      },
+      "require": {
+        "types": "./dist/plugins/graphql/apollo.d.cts",
+        "default": "./dist/plugins/graphql/apollo.cjs"
+      },
+      "default": "./dist/plugins/graphql/apollo.js"
+    },
+    "./plugins/graphql/yoga": {
+      "import": {
+        "types": "./dist/plugins/graphql/yoga.d.ts",
+        "default": "./dist/plugins/graphql/yoga.js"
+      },
+      "require": {
+        "types": "./dist/plugins/graphql/yoga.d.cts",
+        "default": "./dist/plugins/graphql/yoga.cjs"
+      },
+      "default": "./dist/plugins/graphql/yoga.js"
+    },
+    "./plugins/opentelemetry": {
+      "import": {
+        "types": "./dist/plugins/opentelemetry.d.ts",
+        "default": "./dist/plugins/opentelemetry.js"
+      },
+      "require": {
+        "types": "./dist/plugins/opentelemetry.d.cts",
+        "default": "./dist/plugins/opentelemetry.cjs"
+      },
+      "default": "./dist/plugins/opentelemetry.js"
+    },
+    "./middlewares/validator": {
+      "import": {
+        "types": "./dist/middlewares/validator.d.ts",
+        "default": "./dist/middlewares/validator.js"
+      },
+      "require": {
+        "types": "./dist/middlewares/validator.d.cts",
+        "default": "./dist/middlewares/validator.cjs"
+      },
+      "default": "./dist/middlewares/validator.js"
+    },
+    "./payment": {
+      "import": {
+        "types": "./dist/payment/index.d.ts",
+        "default": "./dist/payment/index.js"
+      },
+      "require": {
+        "types": "./dist/payment/index.d.cts",
+        "default": "./dist/payment/index.cjs"
+      },
+      "default": "./dist/payment/index.js"
+    },
+    "./ws-helpers": {
+      "import": {
+        "types": "./dist/ws-helpers.d.ts",
+        "default": "./dist/ws-helpers.js"
+      },
+      "require": {
+        "types": "./dist/ws-helpers.d.cts",
+        "default": "./dist/ws-helpers.cjs"
+      },
+      "default": "./dist/ws-helpers.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "public",
+    "scripts",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "bun test tests",
+    "test:watch": "bun test --watch tests",
+    "test:unit": "bun test tests/helpers tests/middlewares",
+    "test:integration": "bun test tests/combinations.test.ts tests/context.test.ts",
+    "test:server": "bun run test/src/index.ts",
+    "build": "tsup && bun run fix-node-prefix && bun run build:types && bun run build:dcts && mkdir -p dist/cli/templates && cp src/cli/templates/* dist/cli/templates/",
+    "build:types": "bunx tsc --project tsconfig.build.json",
+    "build:dcts": "cd dist && find . -name '*.d.ts' -not -name '*.d.ts.map' | while read f; do cp \"$f\" \"${f%.d.ts}.d.cts\"; done && find . -name '*-exports.d.ts' -not -name '*.d.ts.map' | while read f; do clean=\"$(echo \"$f\" | sed 's/-exports\\.d\\.ts$/.d.ts/')\"; cp \"$f\" \"$clean\"; done && find . -name '*-exports.d.cts' -not -name '*.d.ts.map' | while read f; do clean=\"$(echo \"$f\" | sed 's/-exports\\.d\\.cts$/.d.cts/')\"; cp \"$f\" \"$clean\"; done",
+    "fix-node-prefix": "bun scripts/fix-node-prefix.ts",
+    "postbuild": "bun run sync-deps",
+    "sync-deps": "bun scripts/sync-local-deps.ts",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "ci": "bun run typecheck && bun test tests && bun run build",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.8",
+    "@types/bun": "latest",
+    "reflect-metadata": "^0.2.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "bun",
+    "framework",
+    "web",
+    "api",
+    "typescript",
+    "http",
+    "express"
+  ],
+  "author": "Pitok",
+  "license": "MIT",
+  "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^8.5.0",
+    "croner": "^10.0.1",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "bun": ">=1.2.0",
+    "@apollo/server": ">=4.0.0",
+    "graphql": ">=16.0.0",
+    "graphql-yoga": ">=5.0.0",
+    "@opentelemetry/api": ">=1.0.0",
+    "ioredis": "",
+    "bullmq": "",
+    "amqplib": "",
+    "reflect-metadata": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "bun": {
+      "optional": true
+    },
+    "@apollo/server": {
+      "optional": true
+    },
+    "graphql": {
+      "optional": true
+    },
+    "graphql-yoga": {
+      "optional": true
+    },
+    "@opentelemetry/api": {
+      "optional": true
+    },
+    "ioredis": {
+      "optional": true
+    },
+    "bullmq": {
+      "optional": true
+    },
+    "amqplib": {
+      "optional": true
+    },
+    "reflect-metadata": {
+      "optional": true
+    }
+  }
 }

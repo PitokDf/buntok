@@ -9,9 +9,11 @@ const PKG = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf-8"));
 describe("Package exports", () => {
 	it("has correct package.json exports map", () => {
 		expect(PKG.exports).toBeDefined();
+		expect(PKG.exports["./package.json"]).toBe("./package.json");
 		expect(PKG.exports["."]).toBeDefined();
 		expect(PKG.exports["."].import).toBeDefined();
 		expect(PKG.exports["."].require).toBeDefined();
+		expect(PKG.exports["."].default).toBeDefined();
 	});
 
 	it("has ESM entry file", () => {
@@ -69,22 +71,22 @@ describe("Package exports", () => {
 		expect(typeof mod.cors).toBe("function");
 	});
 
-	it("exports middleware functions from subpath", async () => {
-		const mod = await import(join(DIST, "middlewares.js"));
+	it("exports middleware functions from core", async () => {
+		const mod = await import(join(DIST, "core-exports.js"));
 		expect(typeof mod.helmet).toBe("function");
 		expect(typeof mod.compress).toBe("function");
 		expect(typeof mod.requestId).toBe("function");
 		expect(typeof mod.timeout).toBe("function");
 	});
 
-	it("exports Queue and drivers from subpath", async () => {
-		const mod = await import(join(DIST, "queue.js"));
+	it("exports Queue and drivers from core", async () => {
+		const mod = await import(join(DIST, "core-exports.js"));
 		expect(mod.Queue).toBeDefined();
 		expect(mod.MemoryQueueDriver).toBeDefined();
 	});
 
-	it("exports helpers from subpath", async () => {
-		const mod = await import(join(DIST, "helpers.js"));
+	it("exports helpers from core", async () => {
+		const mod = await import(join(DIST, "core-exports.js"));
 		expect(typeof mod.delay).toBe("function");
 		expect(typeof mod.retry).toBe("function");
 		expect(typeof mod.nanoid).toBe("function");
