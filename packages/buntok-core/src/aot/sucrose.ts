@@ -123,6 +123,11 @@ export function analyzeHandler(
 			source.includes("ctx.request.arrayBuffer()") ||
 			source.includes(".arrayBuffer(");
 
+		// Detect any bare `ctx` identifier usage. This catches delegation
+		// patterns where ctx is passed to another function (e.g. `this.ok(ctx, data)`)
+		// — the literal ctx.* property checks above would miss them.
+		const usesBareCtx = /(^|[^\w$.])ctx(?![\w])/.test(source);
+
 		// Detect Context methods that require full Context instance
 		analysis.needsFullContext =
 			analysis.needsBody ||
@@ -132,6 +137,7 @@ export function analyzeHandler(
 			analysis.needsFormData ||
 			analysis.needsText ||
 			analysis.needsBinary ||
+			usesBareCtx ||
 			source.includes("ctx.getCookie") ||
 			source.includes("ctx.getCookies") ||
 			source.includes("ctx.cookies") ||

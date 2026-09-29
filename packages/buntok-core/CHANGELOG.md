@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.2]
+
+### Fixed
+
+- **Decorator route tanpa middleware kini selalu mendapat full `Context`** — sebelumnya `ctx.success()`/`ctx.json()`/dll. melempar `ctx.success is not a function` karena handler dipanggil dengan object polos `{ request }`. Terutama pada jalur `RouterGroup.registerController()` yang lupa melampirkan target analisis sucrose (`_sucroseTarget`).
+- **`RouterGroup.registerController()` kini menerapkan `@HttpCode`, `@SetHeader`, dan `@Redirect`** — sebelumnya decorator ini diabaikan secara diam-diam saat controller didaftarkan lewat group (logika wrapper hanya ada di `App.registerController`); kini dipakai bersama lewat helper `applyRouteResponseDecorators()`.
+- **Sucrose kini mendeteksi pemakaian `ctx` secara konservatif** — pola delegasi (`this.ok(ctx, data)`, `respond(ctx, ...)`) serta `ctx.paginate()`/`ctx.cursorPaginate()` yang tidak ada di literal list sebelumnya lolos analisis → `needsFullContext: false` → error serupa. Handler yang sama sekali tidak menyentuh `ctx` tetap mendapat fast-path `{ request }`.
+- **AOT codegen**: hapus cabang mati `needsParamsOnly` yang mereferensikan `routeParams` tak terdeklarasi pada kode hasil generate (latent `ReferenceError` bila invariannya berubah).
+
+### Added
+
+- 23 test regresi/unit: `tests/decorators-no-middleware.test.ts` (14 — `ctx.success`/`ctx.params`/delegasi/`BaseController`/`@HttpCode`/`@SetHeader`/`@Redirect` via group, `ctx.cursorPaginate`, `ctx.paginate`, semuanya tanpa middleware) dan `tests/sucrose.test.ts` (9 unit test `analyzeHandler` — sebelumnya nol coverage untuk sucrose).
+
 ## [2.2.1]
 
 ### Added

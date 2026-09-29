@@ -1,6 +1,6 @@
 {
   "name": "@buntok/core",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Blazing-fast, type-safe HTTP framework for Bun - AOT-compiled routing, decorators, Zod validation & IoC",
   "module": "dist/core-exports.js",
   "type": "module",

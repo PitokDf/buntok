@@ -4,7 +4,7 @@ import type { Server, ServerWebSocket } from "bun";
 import type { z } from "zod";
 import { Container } from "./container";
 import { Context } from "./context";
-import { getControllerMeta } from "./decorators";
+import { getControllerMeta, type RouteMeta } from "./decorators";
 import { HttpError } from "./helpers/async-handler";
 import { toResponse } from "./helpers/response";
 import { analyzeHandler } from "./aot/sucrose";
@@ -246,6 +246,109 @@ export interface DisposableResource {
 	name?: string;
 	close?: () => void | Promise<void>;
 	dispose?: () => void | Promise<void>;
+}
+
+/**
+ * Wrap a controller handler with the zero-cost response decorators
+ * (@HttpCode / @SetHeader / @Redirect). Applied at boot time — no
+ * per-request alloc beyond the wrapper closure. Returns the handler
+ * unchanged when none of those decorators are present.
+ *
+ * Shared by `App.registerController()` and `RouterGroup.registerController()`
+ * so decorator behavior is identical on both registration paths.
+ */
+function applyRouteResponseDecorators<DI extends Record<string, unknown>>(
+	handler: Handler<DI>,
+	route: RouteMeta,
+): Handler<DI> {
+	const hasStatus = route.statusCode !== undefined;
+	const hasHeaders = route.headers && route.headers.length > 0;
+	const hasRedirect = !!route.redirect;
+	if (!hasStatus && !hasHeaders && !hasRedirect) return handler;
+
+	const original = handler;
+	const routeMeta = route;
+	const apply = (res: Response): Response => {
+		let r: Response = res;
+		if (hasStatus && r.status === 200) {
+			// Override status only if default 200 (preserve explicit ctx.status etc.)
+			r = new Response(r.body, { status: routeMeta.statusCode!, headers: r.headers });
+		} else if (hasStatus && r.status === 204 && routeMeta.statusCode !== 204) {
+			// For void returns that became 204, respect HttpCode
+			r = new Response(r.body, { status: routeMeta.statusCode!, headers: r.headers });
+		}
+		if (hasHeaders) {
+			for (const [k, v] of routeMeta.headers!) {
+				r.headers.set(k, v);
+			}
+		}
+		return r;
+	};
+	// biome-ignore lint/suspicious/noExplicitAny: wrapper must accept any Context shape
+	const wrapped = ((ctx: any) => {
+		// Redirect - static or dynamic override (Nest behavior)
+		if (hasRedirect) {
+			const result: any = original(ctx);
+			// If handler returns promise, handle async
+			if (result instanceof Promise) {
+				return result.then((val: any) => {
+					if (val instanceof Response) {
+						return new Response(val.body, {
+							status: routeMeta.redirect!.statusCode,
+							headers: { Location: routeMeta.redirect!.url, ...Object.fromEntries(val.headers) },
+						});
+					}
+					if (val && typeof val === "object" && "url" in val) {
+						const url = (val as any).url as string;
+						const sc = (val as any).statusCode ?? routeMeta.redirect!.statusCode;
+						return new Response(null, { status: sc, headers: { Location: url } });
+					}
+					// Also allow string return as url override
+					if (typeof val === "string" && val.startsWith("/")) {
+						return new Response(null, { status: routeMeta.redirect!.statusCode, headers: { Location: val } });
+					}
+					// Static redirect
+					return new Response(null, {
+						status: routeMeta.redirect!.statusCode,
+						headers: { Location: routeMeta.redirect!.url },
+					});
+				});
+			}
+			if (result instanceof Response) {
+				// Handler returned a Response — apply redirect status + Location header
+				return new Response(result.body, {
+					status: routeMeta.redirect!.statusCode,
+					headers: { Location: routeMeta.redirect!.url, ...Object.fromEntries(result.headers) },
+				});
+			}
+			if (result && typeof result === "object" && "url" in result) {
+				const url = (result as any).url as string;
+				const sc = (result as any).statusCode ?? routeMeta.redirect!.statusCode;
+				return new Response(null, { status: sc, headers: { Location: url } });
+			}
+			if (typeof result === "string" && result.startsWith("/")) {
+				return new Response(null, { status: routeMeta.redirect!.statusCode, headers: { Location: result } });
+			}
+			return new Response(null, {
+				status: routeMeta.redirect!.statusCode,
+				headers: { Location: routeMeta.redirect!.url },
+			});
+		}
+		const raw: any = original(ctx);
+		if (raw instanceof Promise) {
+			return raw.then((v: any) =>
+				typeof v === "string"
+					? apply(new Response(v))
+					: apply(v instanceof Response ? v : toResponse(v)),
+			);
+		}
+		return typeof raw === "string"
+			? apply(new Response(raw))
+			: apply(raw instanceof Response ? raw : toResponse(raw));
+	}) as Handler<DI>;
+	// Preserve sucrose target from original handler for AST analysis
+	(wrapped as any)._sucroseTarget = (original as any)._sucroseTarget ?? original;
+	return wrapped;
 }
 
 export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
@@ -618,93 +721,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			(handler as any)._sucroseTarget = originalMethod;
 
 			// Apply zero-cost wrappers for @HttpCode/@Header/@Redirect (boot-time, no per-request alloc beyond wrapper closure)
-			const hasStatus = route.statusCode !== undefined;
-			const hasHeaders = route.headers && route.headers.length > 0;
-			const hasRedirect = !!route.redirect;
-			if (hasStatus || hasHeaders || hasRedirect) {
-				const original = handler;
-				const routeMeta = route;
-				const apply = (res: Response): Response => {
-					let r: Response = res;
-					if (hasStatus && r.status === 200) {
-						// Override status only if default 200 (preserve explicit ctx.status etc.)
-						r = new Response(r.body, { status: routeMeta.statusCode!, headers: r.headers });
-					} else if (hasStatus && r.status === 204 && routeMeta.statusCode !== 204) {
-						// For void returns that became 204, respect HttpCode
-						r = new Response(r.body, { status: routeMeta.statusCode!, headers: r.headers });
-					}
-					if (hasHeaders) {
-						for (const [k, v] of routeMeta.headers!) {
-							r.headers.set(k, v);
-						}
-					}
-					return r;
-				};
-				// biome-ignore lint/suspicious/noExplicitAny: wrapper must accept any Context shape
-				handler = ((ctx: any) => {
-					// Redirect - static or dynamic override (Nest behavior)
-					if (hasRedirect) {
-						const result: any = original(ctx);
-						// If handler returns promise, handle async
-						if (result instanceof Promise) {
-							return result.then((val: any) => {
-								if (val instanceof Response) {
-									return new Response(val.body, {
-										status: routeMeta.redirect!.statusCode,
-										headers: { Location: routeMeta.redirect!.url, ...Object.fromEntries(val.headers) },
-									});
-								}
-								if (val && typeof val === "object" && "url" in val) {
-									const url = (val as any).url as string;
-									const sc = (val as any).statusCode ?? routeMeta.redirect!.statusCode;
-									return new Response(null, { status: sc, headers: { Location: url } });
-								}
-								// Also allow string return as url override
-								if (typeof val === "string" && val.startsWith("/")) {
-									return new Response(null, { status: routeMeta.redirect!.statusCode, headers: { Location: val } });
-								}
-								// Static redirect
-								return new Response(null, {
-									status: routeMeta.redirect!.statusCode,
-									headers: { Location: routeMeta.redirect!.url },
-								});
-							});
-						}
-						if (result instanceof Response) {
-						// Handler returned a Response — apply redirect status + Location header
-						return new Response(result.body, {
-							status: routeMeta.redirect!.statusCode,
-							headers: { Location: routeMeta.redirect!.url, ...Object.fromEntries(result.headers) },
-						});
-					}
-					if (result && typeof result === "object" && "url" in result) {
-							const url = (result as any).url as string;
-							const sc = (result as any).statusCode ?? routeMeta.redirect!.statusCode;
-							return new Response(null, { status: sc, headers: { Location: url } });
-						}
-						if (typeof result === "string" && result.startsWith("/")) {
-							return new Response(null, { status: routeMeta.redirect!.statusCode, headers: { Location: result } });
-						}
-						return new Response(null, {
-							status: routeMeta.redirect!.statusCode,
-							headers: { Location: routeMeta.redirect!.url },
-						});
-					}
-					const raw: any = original(ctx);
-					if (raw instanceof Promise) {
-						return raw.then((v: any) =>
-							typeof v === "string"
-								? apply(new Response(v))
-								: apply(v instanceof Response ? v : toResponse(v)),
-						);
-					}
-					return typeof raw === "string"
-						? apply(new Response(raw))
-						: apply(raw instanceof Response ? raw : toResponse(raw));
-				}) as Handler<DI>;
-				// Preserve sucrose target from original handler for AST analysis
-				(handler as any)._sucroseTarget = (original as any)._sucroseTarget ?? original;
-			}
+			handler = applyRouteResponseDecorators(handler, route);
 
 			this.registerRoute(route.method, fullPath, [
 				...(route.middlewares as Middleware<DI>[]),
@@ -1620,8 +1637,11 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 				// may use ctx.error, ctx.json, etc. — must provide full Context
 				const routeKey = `${method}:${route.path}`;
 				const needsFullContext = hasGlobalMiddleware || this._routesWithMiddleware.has(routeKey) || cached.needsFullContext;
-				const needsParamsOnly = !needsFullContext && cached.needsParams;
-				const ctxArg = needsFullContext ? "ctx" : needsParamsOnly ? "{ request, params: routeParams }" : "{ request }";
+				// Static-route codegen has no routeParams binding — and the
+				// needsParams-only case is unreachable anyway (sucrose sets
+				// needsFullContext whenever needsParams is true). Passing a
+				// plain { request } here previously risked a ReferenceError.
+				const ctxArg = needsFullContext ? "ctx" : "{ request }";
 				// Error handler always needs full Context, so we declare ctx for catch blocks
 				const ctxDecl = needsFullContext
 					? "      ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver);\n"
@@ -2778,7 +2798,13 @@ export class RouterGroup<
 			const cleanPath = route.path === "/" ? "" : route.path;
 			const fullPath =
 				`${this.normalizePath(normalizedPrefix)}${cleanPath}` || "/";
-			const handler = ((...args: any[]) => (instance as any)[route.propertyKey](...args)) as Handler<DI>;
+			// biome-ignore lint/suspicious/noExplicitAny: dynamic method dispatch by decorated property key
+			const originalMethod = (instance as any)[route.propertyKey];
+			let handler = ((...args: any[]) => originalMethod.apply(instance, args)) as Handler<DI>;
+			// Attach original for sucrose analysis (bound/closure wrappers hide toString)
+			(handler as any)._sucroseTarget = originalMethod;
+			// Apply @HttpCode/@SetHeader/@Redirect wrappers (same as App.registerController)
+			handler = applyRouteResponseDecorators(handler, route);
 
 			this.app.registerRoute(route.method, fullPath, [
 				...this.groupMiddlewares,
