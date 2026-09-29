@@ -105,17 +105,29 @@ buntok create user --schema             # only schema
 buntok create user --drizzle            # use Drizzle ORM (default: auto-detect)
 buntok create user --prisma             # use Prisma ORM
 buntok create user --typeorm            # use TypeORM
+buntok create user --force              # overwrite files that already exist
+buntok create user --base               # extend BaseRepository/BaseService/BaseController (default: plain classes)
+buntok create note --fields "title:string,body:string?"  # schema fields when there is no Prisma model
 
 # Auto: creates src/modules/user/ with:
 #   user.repository.ts, user.service.ts, user.controller.ts, user.schema.ts, index.ts
 # Uses @Dependencies decorator for auto DI resolution via container.scan()
-# then runs `bunx biome format --write`
+# then runs Biome format when it is installed locally
+# The schema is filled from the Prisma model (fields with @default/@id are skipped)
+# Repeat runs are idempotent: existing files are kept, barrel exports are merged,
+# and style/stack detection wires components to what is already on disk
+
+# Add a single component (smart: senses what exists on disk)
+buntok create user --controller         # controller only; wires an existing service
+buntok create user --service            # service only; wires an existing repository
+buntok create user --schema             # schema only; reads the Prisma model
 
 # Generate tests and middleware
 buntok make:test user                   # unit test at tests/user.spec.ts
 buntok make:test:e2e user               # E2E test at tests/e2e/user.e2e.spec.ts
 buntok make:seeder user                 # seeder at src/db/seeders/user.seeder.ts
-buntok make:seeder user --factory       # seeder using factory pattern
+buntok make:seeder user --factory       # seeder using factory pattern (creates the factory when missing)
+buntok make:factory user                # data factory at src/factories/user.factory.ts
 buntok make:middleware auth             # middleware at src/middlewares/auth.middleware.ts
 
 # Preview without writing (--dry-run)
@@ -126,7 +138,7 @@ buntok create user --dry-run            # preview all files
 # Debug and development
 buntok debug:routes                     # show all registered routes
 buntok debug:routes --json              # output as JSON
-buntok dev                              # optional convenience wrapper around bun --watch server.ts
+buntok dev                              # convenience wrapper around bun --watch server.ts; also watches .env/.env.local/.env.development and restarts the server when they change
 buntok dev --expose                     # start with public tunnel URL
 ```
 
@@ -148,23 +160,23 @@ buntok db migrate add user_table --dry-run   # preview migration command
 buntok db reset --dry-run                    # preview destructive command
 ```
 
-**CLI reference (`src/cli/index.ts:15`):**
+**CLI reference (`src/cli/index.ts`):**
 
 | Command | Args / Flags | Description |
 |---------|--------------|-------------|
 | `buntok init` | — | Project setup |
-| `buntok dev` | `--expose --port=PORT` | Start dev server (HMR). `--expose` creates public tunnel via localtunnel |
+| `buntok dev` | `--expose --port=PORT` | Start dev server (HMR). Watches `.env`/`.env.local`/`.env.development` and auto-restarts on change. `--expose` creates public tunnel via localtunnel |
 | `buntok build` | — | Build to `.buntok/` |
 | `buntok check` | `--json --plain` | TypeScript type check with error details and summary |
-| `buntok create <entity>` | `--repo --service --controller --schema --prisma --drizzle --typeorm --dry-run` | Generate module files |
-| `buntok db <cmd>` | `migrate, seed, reset, generate, studio, status` | ORM delegation (confirmation required for `reset`) |
+| `buntok create <entity>` | `--repo --service --controller --schema --prisma --drizzle --typeorm --dry-run --force --base --fields` | Generate module files |
+| `buntok db <cmd>` | `migrate, seed, reset, generate, studio, status` | ORM delegation (confirmation required for `reset`; local seeders run when the ORM has no seed config) |
 | `buntok debug:routes` | `--json` | Show all registered routes with middleware chains |
-| `buntok make:factory <entity>` | `--dry-run` | Generate data factory (`src/factories/<entity>.factory.ts`) |
+| `buntok make:factory <entity>` | `--dry-run --force --fields` | Generate data factory (`src/factories/<entity>.factory.ts`) |
 | `buntok make:docs` | — | Manual swagger.json regeneration (auto-generated on `app.listen()` by default) |
-| `buntok make:test <entity>` | `--dry-run` | Generate unit test |
-| `buntok make:test:e2e <entity>` | `--dry-run` | Generate E2E test |
-| `buntok make:seeder <entity>` | `--factory --dry-run` | Generate database seeder. `--factory` uses factory pattern |
-| `buntok make:middleware <name>` | `--dry-run` | Generate middleware |
+| `buntok make:test <entity>` | `--dry-run --force` | Generate unit test (matches the service stack on disk) |
+| `buntok make:test:e2e <entity>` | `--dry-run --force` | Generate E2E test |
+| `buntok make:seeder <entity>` | `--factory --dry-run --force` | Generate database seeder. `--factory` uses factory pattern |
+| `buntok make:middleware <name>` | `--dry-run --force` | Generate middleware |
 
 ---
 
@@ -1311,6 +1323,8 @@ app.get("/users/:id", async (ctx) => {
 ```
 
 > **⚠️ Errors thrown in handlers AND middlewares are caught automatically.** If a middleware throws (e.g., `throw new UnauthorizedError()`), the framework catches it and sends the appropriate error response. You do NOT need `try/catch` in every handler — only use it if you want to transform the error before it reaches the error handler.
+
+**Production message masking:** the default error handler always shows the `message` of a 4xx `HttpError` (it is thrown on purpose, e.g. `NotFoundError("Categories not found")`). Everything else — 5xx `HttpError` and unexpected errors — is replaced with `"An unexpected error occurred"` when `NODE_ENV === "production"`, so internal details never leak. Outside production the original message is always shown.
 
 ### Override Error Handler
 
@@ -2593,10 +2607,12 @@ Type-safe data factories for generating test and seed data. Requires `@faker-js/
 
 ```bash
 buntok make:factory user    # generates a scaffold at src/factories/user.factory.ts
+buntok make:factory user --fields "name:string,email:string"  # build from explicit fields
 buntok make:factory user --dry-run  # preview without writing
+buntok make:factory user --force    # overwrite an existing factory
 ```
 
-The CLI generator currently produces a Prisma-oriented scaffold with a TODO factory definition. Replace the placeholder with fields required by your model before compiling or using the generated factory. The `Factory` API itself is ORM-independent.
+The generator fills the body from the Prisma model (or from `--fields` when there is no schema) and picks the model type import from the detected ORM — non-Prisma projects get an inline type derived from the fields. Replace or extend the generated fields as needed before compiling or using the factory. The `Factory` API itself is ORM-independent.
 
 ### Factory API
 

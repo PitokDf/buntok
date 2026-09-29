@@ -1,8 +1,10 @@
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { detectORMOrNull, type ORM } from "../project.js";
 
-export async function dbSeedCommand() {
+export async function dbSeedCommand(orm?: ORM) {
+	const detectedOrm = orm ?? detectORMOrNull() ?? "prisma";
 	console.log("\x1b[36mRunning Database Seeders...\x1b[0m\n");
 
 	const seederDir = resolve(process.cwd(), "src/db/seeders");
@@ -16,7 +18,7 @@ export async function dbSeedCommand() {
 
 	const files = await fs.readdir(seederDir);
 	const seederFiles = files.filter(
-		(f) => f.endsWith(".ts") && !f.endsWith(".d.ts"),
+		(f) => f.endsWith(".ts") && !f.endsWith(".d.ts") && !f.startsWith("."),
 	);
 
 	if (seederFiles.length === 0) {
@@ -24,11 +26,17 @@ export async function dbSeedCommand() {
 		return;
 	}
 
-	// Create a temporary runner script to execute all seeders in the user's app context
-	const runnerContent = `
-import { db } from "@/db"; // Ensure DB connection is loaded
-${seederFiles.map((file, i) => `import * as seeder${i} from "./${file.replace(".ts", "")}";`).join("\n")}
+	// TypeORM needs an initialized DataSource; Prisma/Drizzle connect lazily
+	const preamble =
+		detectedOrm === "typeorm"
+			? `import { AppDataSource } from "@/lib/data-source";\nawait AppDataSource.initialize();\n`
+			: "";
+	const epilogue =
+		detectedOrm === "typeorm" ? `\n  await AppDataSource.destroy();` : "";
 
+	// Create a temporary runner script to execute all seeders in the user's app context
+	const runnerContent = `${seederFiles.map((file, i) => `import * as seeder${i} from "./${file.replace(".ts", "")}";`).join("\n")}
+${preamble}
 async function runSeeders() {
   console.log("🌱 Starting database seeding...");
   
@@ -44,7 +52,7 @@ async function runSeeders() {
 			)
 			.join("\n    ")}
     
-    console.log("✅ All seeders executed successfully!");
+    console.log("✅ All seeders executed successfully!");${epilogue}
     process.exit(0);
   } catch (error) {
     console.error("❌ Seeding failed:", error);

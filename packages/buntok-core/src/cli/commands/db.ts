@@ -1,37 +1,11 @@
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createInterface } from "node:readline";
+import { detectORMOrNull, type ORM } from "../project.js";
+import { dbSeedCommand } from "./db-seed.js";
 
 type DbCommand = "migrate" | "seed" | "reset" | "generate" | "studio" | "status";
-
-function detectOrm(): "prisma" | "drizzle" | "typeorm" | null {
-	// Check for Prisma
-	if (existsSync("prisma/schema.prisma") || existsSync("prisma/schema.ts")) {
-		return "prisma";
-	}
-
-	// Check for Drizzle
-	if (existsSync("drizzle.config.ts") || existsSync("drizzle.config.js")) {
-		return "drizzle";
-	}
-
-	// Check for TypeORM
-	if (existsSync("ormconfig.json") || existsSync("ormconfig.ts") || existsSync("ormconfig.js")) {
-		return "typeorm";
-	}
-
-	// Check package.json dependencies
-	if (existsSync("package.json")) {
-		const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
-		const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
-
-		if (allDeps["@prisma/client"] || allDeps["prisma"]) return "prisma";
-		if (allDeps["drizzle-orm"] || allDeps["drizzle-kit"]) return "drizzle";
-		if (allDeps["typeorm"]) return "typeorm";
-	}
-
-	return null;
-}
 
 function runCommand(cmd: string, dryRun = false): void {
 	if (dryRun) {
@@ -118,6 +92,23 @@ function printUsage(): void {
 
 const DESTRUCTIVE_COMMANDS: DbCommand[] = ["reset"];
 
+/**
+ * A project-level seed configuration takes precedence (e.g. Prisma's
+ * `prisma.seed` key in package.json). Otherwise, if the local seeders
+ * directory exists, `buntok db seed` runs them via the built-in runner.
+ */
+function hasOrmSeedConfig(orm: ORM): boolean {
+	if (orm !== "prisma" || !existsSync("package.json")) return false;
+	try {
+		const pkg = JSON.parse(readFileSync("package.json", "utf-8")) as {
+			prisma?: { seed?: unknown };
+		};
+		return Boolean(pkg.prisma?.seed);
+	} catch {
+		return false;
+	}
+}
+
 export async function dbCommand(args: string[]): Promise<void> {
 	const subcommand = args[0] as DbCommand | undefined;
 
@@ -134,7 +125,7 @@ export async function dbCommand(args: string[]): Promise<void> {
 		return;
 	}
 
-	const orm = detectOrm();
+	const orm = detectORMOrNull();
 	if (!orm) {
 		console.error("\x1b[31mCould not detect ORM.\x1b[0m");
 		console.error("Supported: Prisma, Drizzle, TypeORM");
@@ -147,6 +138,22 @@ export async function dbCommand(args: string[]): Promise<void> {
 	const subArgs = args.slice(1).filter((a) => a !== "--dry-run");
 
 	console.log(`\x1b[36mDetected ORM: ${orm}\x1b[0m`);
+
+	// Local seeders fallback: `buntok db seed` runs src/db/seeders directly
+	// when the ORM has no seed configuration of its own.
+	if (subcommand === "seed" && !hasOrmSeedConfig(orm)) {
+		const localSeeders = join("src", "db", "seeders");
+		if (existsSync(localSeeders)) {
+			if (dryRun) {
+				console.log(
+					`\x1b[90m[dry-run] Would run local seeders from ${localSeeders} (orm: ${orm})\x1b[0m`,
+				);
+				return;
+			}
+			await dbSeedCommand(orm);
+			return;
+		}
+	}
 
 	// Confirmation for destructive commands
 	if (DESTRUCTIVE_COMMANDS.includes(subcommand) && !dryRun) {

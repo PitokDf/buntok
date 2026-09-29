@@ -41,7 +41,7 @@ function printUsage() {
   make:seeder <entity>   Generate database seeder for entity
   make:middleware <name>  Generate middleware file
 
-\x1b[36mOptions (for create command):\x1b[0m
+\x1b[36mOptions (for create):\x1b[0m
   --repo                 Generate only repository
   --service              Generate only service
   --controller           Generate only controller
@@ -50,13 +50,18 @@ function printUsage() {
   --drizzle              Use Drizzle ORM
   --typeorm              Use TypeORM
   --dry-run              Preview files without writing
+  --force                Overwrite files that already exist
+  --base                 Generate code extending BaseRepository/BaseService/BaseController (default: plain code)
+  --fields "a:string,b:int?"  Field list for the schema when there is no Prisma model
 
 \x1b[36mOptions (for check command):\x1b[0m
   --json                 Output results as JSON
   --plain                Plain text output without colors
 
-\x1b[36mOptions (for make:seeder command):\x1b[0m
-  --factory              Generate seeder using factory pattern
+\x1b[36mOptions (for make:* commands):\x1b[0m
+  --dry-run              Preview generated content without writing
+  --force                Overwrite file that already exists
+  --factory              (make:seeder) Use factory pattern data
 
 \x1b[36mAliases:\x1b[0m
   g, gen, generate       Shortcut for create
@@ -160,7 +165,7 @@ export async function main() {
 				process.exitCode = 1;
 				return;
 			}
-			await makeTestE2ECommand(arg1);
+			await makeTestE2ECommand(arg1, args.slice(2));
 			break;
 		case "make:seeder":
 			if (!arg1) {

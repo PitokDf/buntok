@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
-import { existsSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { findEntryFile } from "../project.js";
 
 function getMethodColor(method: string): string {
 	switch (method) {
@@ -90,28 +90,15 @@ export async function debugRoutesCommand(flags: string[]): Promise<void> {
 	const isJson = flags.includes("--json");
 	const targetDir = process.cwd();
 
-	// Find the user's app entry point
-	const possibleFiles = [
-		"src/index.ts",
-		"src/main.ts",
-		"src/app.ts",
-		"src/server.ts",
-	];
+	// Find the user's app entry point (shared candidate list + content probe)
+	const entry = findEntryFile(targetDir);
 
-	let entryFile: string | null = null;
-	for (const file of possibleFiles) {
-		const filePath = resolve(targetDir, file);
-		if (existsSync(filePath)) {
-			entryFile = filePath;
-			break;
-		}
-	}
-
-	if (!entryFile) {
-		console.error("\x1b[31mError: Could not find app entry point (src/index.ts, src/main.ts, src/app.ts, or src/server.ts)\x1b[0m");
+	if (!entry) {
+		console.error("\x1b[31mError: Could not find app entry point (server.ts, src/index.ts, src/main.ts, src/app.ts, or src/server.ts)\x1b[0m");
 		process.exitCode = 1;
 		return;
 	}
+	const entryFile = resolve(targetDir, entry);
 
 	try {
 		// Import the user's app to trigger route registration

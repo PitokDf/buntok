@@ -1,42 +1,51 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { detectORM, type ORM } from "../project.js";
+import { toCamelCase } from "../utils.js";
 
-export type ORM = "prisma" | "drizzle" | "typeorm";
+export { detectORM };
+export type { ORM };
 
-/**
- * Auto-detect ORM from project dependencies
- */
-export function detectORM(): ORM {
-	const pkgPath = join(process.cwd(), "package.json");
-	if (existsSync(pkgPath)) {
-		try {
-			const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-			const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-
-			if (deps["@prisma/client"] || deps["prisma"]) {
-				return "prisma";
-			}
-			if (deps["drizzle-orm"] || deps["drizzle-kit"]) {
-				return "drizzle";
-			}
-			if (deps["typeorm"]) {
-				return "typeorm";
-			}
-		} catch {
-			// ignore parse errors
-		}
-	}
-
-	// Fallback: check for config files
-	if (existsSync(join(process.cwd(), "prisma/schema.prisma"))) return "prisma";
-	if (existsSync(join(process.cwd(), "drizzle.config.ts"))) return "drizzle";
-	if (existsSync(join(process.cwd(), "ormconfig.json"))) return "typeorm";
-
-	// Default to Prisma
-	return "prisma";
+export interface RepositoryOptions {
+	/** Generate the BaseRepository-based variant (Prisma only). */
+	base?: boolean;
 }
 
 function generatePrismaRepository(entityName: string, pascalName: string): string {
+	const delegate = toCamelCase(entityName);
+	return `import { prisma } from "@/lib/prisma";
+import type { ${pascalName}, Prisma } from "@prisma/client";
+
+export class ${pascalName}Repository {
+  async findAll(): Promise<${pascalName}[]> {
+    return prisma.${delegate}.findMany();
+  }
+
+  async findById(id: string | number): Promise<${pascalName} | null> {
+    return prisma.${delegate}.findUnique({ where: { id: id as any } });
+  }
+
+  async create(data: Prisma.${pascalName}CreateInput): Promise<${pascalName}> {
+    return prisma.${delegate}.create({ data });
+  }
+
+  async update(id: string | number, data: Prisma.${pascalName}UpdateInput): Promise<${pascalName}> {
+    return prisma.${delegate}.update({ where: { id: id as any }, data });
+  }
+
+  async delete(id: string | number): Promise<${pascalName}> {
+    return prisma.${delegate}.delete({ where: { id: id as any } });
+  }
+
+  async count(): Promise<number> {
+    return prisma.${delegate}.count();
+  }
+}
+`;
+}
+
+function generatePrismaBaseRepository(
+	entityName: string,
+	pascalName: string,
+): string {
 	return `import { BaseRepository } from "@buntok/prisma";
 import { prisma } from "@/lib/prisma";
 import type { ${pascalName}, Prisma } from "@prisma/client";
@@ -54,7 +63,7 @@ export class ${pascalName}Repository extends BaseRepository<
 }
 
 function generateDrizzleRepository(entityName: string, pascalName: string): string {
-	return `import { eq } from "drizzle-orm";
+	return `import { count, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ${entityName} } from "@/lib/db/schema";
 
@@ -81,6 +90,11 @@ export class ${pascalName}Repository {
   async delete(id: number) {
     await db.delete(${entityName}).where(eq(${entityName}.id, id));
     return true;
+  }
+
+  async count(): Promise<number> {
+    const results = await db.select({ value: count() }).from(${entityName});
+    return results[0]?.value ?? 0;
   }
 }
 `;
@@ -114,17 +128,24 @@ export class ${pascalName}Repository {
     await this.repo.delete(id);
     return true;
   }
+
+  async count(): Promise<number> {
+    return this.repo.count();
+  }
 }
 `;
 }
 
 /**
- * Generate repository file content based on ORM
+ * Generate repository file content based on ORM.
+ * Default is plain (explicit CRUD methods); `options.base` opts into the
+ * BaseRepository variant (Prisma only — Drizzle/TypeORM stay plain).
  */
 export function generateRepository(
 	entityName: string,
 	pascalName: string,
 	orm?: ORM,
+	options?: RepositoryOptions,
 ): string {
 	const detectedOrm = orm ?? detectORM();
 
@@ -135,6 +156,8 @@ export function generateRepository(
 			return generateTypeORMRepository(entityName, pascalName);
 		case "prisma":
 		default:
-			return generatePrismaRepository(entityName, pascalName);
+			return options?.base
+				? generatePrismaBaseRepository(entityName, pascalName)
+				: generatePrismaRepository(entityName, pascalName);
 	}
 }

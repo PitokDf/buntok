@@ -1,25 +1,23 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import { join } from "node:path";
 import { detectORM, type ORM } from "../generators/repository.js";
-
-function toPascalCase(str: string): string {
-	return str
-		.split(/[-_]/)
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-		.join("");
-}
+import { formatWithBiome } from "../project.js";
+import { toCamelCase, toPascalCase, toSnakeCase } from "../utils.js";
+import { makeFactoryCommand } from "./make-factory.js";
 
 function generatePrismaSeeder(name: string, pascalName: string, useFactory: boolean): string {
+	const delegate = toCamelCase(name);
+	const factoryFile = toSnakeCase(name);
 	if (useFactory) {
 		return `import { prisma } from "@/lib/prisma";
-import { ${pascalName}Factory } from "@/factories/${name}.factory";
+import { ${pascalName}Factory } from "@/factories/${factoryFile}.factory";
 
 export async function seed${pascalName}() {
   console.log("Seeding ${pascalName}...");
 
   const items = ${pascalName}Factory.buildMany(100);
-  await prisma.${name}.createMany({ data: items });
+  await prisma.${delegate}.createMany({ data: items });
 
   console.log("✓ ${pascalName} seeded successfully (100 records)");
 }
@@ -31,7 +29,7 @@ export async function seed${pascalName}() {
   console.log("Seeding ${pascalName}...");
 
   // TODO: Insert your dummy data here
-  // await prisma.${name}.createMany({
+  // await prisma.${delegate}.createMany({
   //   data: [
   //     { name: "Dummy 1" },
   //     { name: "Dummy 2" },
@@ -47,7 +45,7 @@ function generateDrizzleSeeder(name: string, pascalName: string, useFactory: boo
 	if (useFactory) {
 		return `import { db } from "@/lib/db";
 import { ${name} } from "@/lib/db/schema";
-import { ${pascalName}Factory } from "@/factories/${name}.factory";
+import { ${pascalName}Factory } from "@/factories/${toSnakeCase(name)}.factory";
 
 export async function seed${pascalName}() {
   console.log("Seeding ${pascalName}...");
@@ -80,7 +78,7 @@ function generateTypeORMSeeder(name: string, pascalName: string, useFactory: boo
 	if (useFactory) {
 		return `import { AppDataSource } from "@/lib/data-source";
 import { ${pascalName} } from "@/lib/entities/${pascalName}";
-import { ${pascalName}Factory } from "@/factories/${name}.factory";
+import { ${pascalName}Factory } from "@/factories/${toSnakeCase(name)}.factory";
 
 export async function seed${pascalName}() {
   console.log("Seeding ${pascalName}...");
@@ -127,6 +125,7 @@ export async function makeSeederCommand(name: string, flags: string[] = []) {
 	const orm = detectORM();
 	const useFactory = flags.includes("--factory");
 	const dryRun = flags.includes("--dry-run");
+	const force = flags.includes("--force");
 	console.log(`\n\x1b[36mScaffolding Seeder for ${pascalName} (orm: ${orm}${useFactory ? ", using factory" : ""}${dryRun ? ", dry-run" : ""})...\x1b[0m\n`);
 
 	const seederDir = "src/db/seeders";
@@ -141,9 +140,9 @@ export async function makeSeederCommand(name: string, flags: string[] = []) {
 
 	const filePath = join(seederDir, `${name}.seeder.ts`);
 
-	if (existsSync(filePath)) {
+	if (existsSync(filePath) && !force) {
 		console.error(
-			`\x1b[31mError: Seeder file already exists at ${filePath}\x1b[0m`,
+			`\x1b[31mError: Seeder file already exists at ${filePath} (use --force to overwrite)\x1b[0m`,
 		);
 		process.exitCode = 1;
 		return;
@@ -160,14 +159,7 @@ export async function makeSeederCommand(name: string, flags: string[] = []) {
 
 	await fs.writeFile(filePath, content);
 
-	const biomeProc = Bun.spawnSync(
-		["bunx", "biome", "format", "--write", filePath],
-		{
-			stdio: ["ignore", "ignore", "ignore"],
-		},
-	);
-
-	if (biomeProc.exitCode === 0) {
+	if (formatWithBiome([filePath])) {
 		console.log(
 			"\x1b[90m✨ Auto-formatted generated seeder file with Biome\x1b[0m",
 		);
@@ -176,11 +168,13 @@ export async function makeSeederCommand(name: string, flags: string[] = []) {
 	console.log(`\x1b[32m✓ Generated seeder:\x1b[0m ${filePath}`);
 
 	if (useFactory) {
-		// Check if factory file exists
-		const factoryPath = `src/factories/${name}.factory.ts`;
+		// Generate the factory on demand instead of just warning about it
+		const factoryPath = `src/factories/${toSnakeCase(name)}.factory.ts`;
 		if (!existsSync(factoryPath)) {
-			console.log(`\n\x1b[33m⚠ Warning: Factory file not found at ${factoryPath}\x1b[0m`);
-			console.log(`  Run \x1b[36mbuntok make:factory ${name}\x1b[0m to create it first.`);
+			console.log(
+				`\n\x1b[90mFactory not found at ${factoryPath} — generating it...\x1b[0m`,
+			);
+			await makeFactoryCommand(name, []);
 		}
 	}
 }

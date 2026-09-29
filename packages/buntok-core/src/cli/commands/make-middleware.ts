@@ -1,13 +1,8 @@
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import { join } from "node:path";
-
-function toPascalCase(str: string): string {
-	return str
-		.split(/[-_]/)
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-		.join("");
-}
+import { formatWithBiome } from "../project.js";
+import { toPascalCase } from "../utils.js";
 
 function generateMiddleware(_name: string, pascalName: string): string {
 	return `import type { Context, Middleware } from "@buntok/core";
@@ -29,6 +24,7 @@ export const ${pascalName}Middleware: Middleware = async (ctx: Context, next: ()
 export async function makeMiddlewareCommand(name: string, flags: string[] = []) {
 	const pascalName = toPascalCase(name);
 	const dryRun = flags.includes("--dry-run");
+	const force = flags.includes("--force");
 	console.log(`\n\x1b[36mCreating ${pascalName} Middleware${dryRun ? " (dry-run)" : ""}...\x1b[0m\n`);
 
 	const middlewaresDir = "src/middlewares";
@@ -43,9 +39,9 @@ export async function makeMiddlewareCommand(name: string, flags: string[] = []) 
 
 	const filePath = join(middlewaresDir, `${name}.middleware.ts`);
 
-	if (existsSync(filePath)) {
+	if (existsSync(filePath) && !force) {
 		console.error(
-			`\x1b[31mError: Middleware file already exists at ${filePath}\x1b[0m`,
+			`\x1b[31mError: Middleware file already exists at ${filePath} (use --force to overwrite)\x1b[0m`,
 		);
 		process.exitCode = 1;
 		return;
@@ -62,15 +58,7 @@ export async function makeMiddlewareCommand(name: string, flags: string[] = []) 
 
 	await fs.writeFile(filePath, content);
 
-	// Auto-format generated file with Biome if available
-	const biomeProc = Bun.spawnSync(
-		["bunx", "biome", "format", "--write", filePath],
-		{
-			stdio: ["ignore", "ignore", "ignore"],
-		},
-	);
-
-	if (biomeProc.exitCode === 0) {
+	if (formatWithBiome([filePath])) {
 		console.log("\x1b[90m✨ Auto-formatted generated file with Biome\x1b[0m");
 	}
 
