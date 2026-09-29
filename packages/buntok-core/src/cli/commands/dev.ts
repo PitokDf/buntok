@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
-import { existsSync } from "node:fs";
+import { buildChildEnv, loadEnvFiles, watchEnvFiles, type LoadedEnv } from "../env.js";
+import { findEntryFile } from "../project.js";
 
 export async function devCommand(flags: string[]): Promise<void> {
 	const isExpose = flags.includes("--expose");
@@ -7,74 +8,32 @@ export async function devCommand(flags: string[]): Promise<void> {
 
 	const targetDir = process.cwd();
 
-	// Find the user's entry point
-	const possibleFiles = [
-		"server.ts",
-		"src/index.ts",
-		"src/main.ts",
-		"src/app.ts",
-		"src/server.ts",
-	];
+	// Find the user's entry point (shared candidate list + content probe)
+	const entry = findEntryFile(targetDir);
 
-	let entryFile: string | null = null;
-	for (const file of possibleFiles) {
-		const filePath = resolve(targetDir, file);
-		if (existsSync(filePath)) {
-			entryFile = filePath;
-			break;
-		}
-	}
-
-	if (!entryFile) {
+	if (!entry) {
 		console.error("\x1b[31mError: Could not find app entry point (server.ts, src/index.ts, src/main.ts, src/app.ts, or src/server.ts)\x1b[0m");
 		process.exitCode = 1;
 		return;
 	}
+	const entryFile = resolve(targetDir, entry);
 
 	// Build dev command
 	const args = ["--watch", entryFile];
-	const env: Record<string, string> = {
-		...process.env as Record<string, string>,
-		NODE_ENV: "development",
-		PORT: port,
-	};
 
+	// Resolve the tunnel before spawning so a missing localtunnel never leaves
+	// an orphan server process behind.
+	let tunnel: { url: string; close: () => Promise<unknown> } | undefined;
 	if (isExpose) {
-		// Install localtunnel if not present
 		console.log("\x1b[36mStarting development server with tunnel...\x1b[0m\n");
-
 		try {
-			// Try to import localtunnel
 			// biome-ignore lint/suspicious/noExplicitAny: optional dynamic import
 			const lt = await import("localtunnel" as string);
 			// biome-ignore lint/suspicious/noExplicitAny: optional dynamic import
-			const tunnel = await (lt as any).default({
+			tunnel = await (lt as any).default({
 				port: Number.parseInt(port),
 				subdomain: `buntok-${Date.now()}`,
 			});
-
-			console.log(`\x1b[32m  Server running at http://localhost:${port}\x1b[0m`);
-			console.log(`\x1b[36m  Tunnel: ${tunnel.url} → http://localhost:${port}\x1b[0m`);
-			console.log(`\n  Press Ctrl+C to stop\n`);
-
-			// Spawn the dev server
-			const proc = Bun.spawn(["bun", "run", ...args], {
-				stdio: ["inherit", "inherit", "inherit"],
-				env,
-				cwd: targetDir,
-			});
-
-			// Handle cleanup
-			const cleanup = async () => {
-				proc.kill();
-				await tunnel.close();
-				process.exit(0);
-			};
-
-			process.on("SIGINT", cleanup);
-			process.on("SIGTERM", cleanup);
-
-			await proc.exited;
 		} catch (err: any) {
 			if (err.message?.includes("Cannot find module") || err.code === "ERR_MODULE_NOT_FOUND") {
 				console.error("\x1b[31mError: localtunnel is required for --expose flag\x1b[0m");
@@ -84,18 +43,82 @@ export async function devCommand(flags: string[]): Promise<void> {
 			}
 			throw err;
 		}
-	} else {
-		// Regular dev mode
-		console.log(`\x1b[36mStarting development server...\x1b[0m\n`);
-		console.log(`\x1b[32m  Server running at http://localhost:${port}\x1b[0m`);
-		console.log(`\n  Press Ctrl+C to stop\n`);
+	}
 
-		const proc = Bun.spawn(["bun", "run", ...args], {
+	// Environment for the child: parent values minus stale .env keys, overlaid
+	// with the freshly parsed .env files. Bun lets the environment win over
+	// .env files, so the merge has to be explicit whenever .env changes.
+	let envKeys = new Set<string>();
+	const nextEnv = (fresh: LoadedEnv): Record<string, string> => {
+		const env = buildChildEnv(process.env, envKeys, fresh, {
+			NODE_ENV: "development",
+			PORT: port,
+		});
+		envKeys = new Set(fresh.keys);
+		return env;
+	};
+
+	const spawnServer = (env: Record<string, string>) =>
+		Bun.spawn(["bun", "run", ...args], {
 			stdio: ["inherit", "inherit", "inherit"],
 			env,
 			cwd: targetDir,
 		});
 
-		await proc.exited;
+	let proc = spawnServer(nextEnv(loadEnvFiles(targetDir)));
+
+	// Restart when any .env file changes — Bun's own --watch ignores .env.
+	let restartRequested = false;
+	const stopEnvWatch = watchEnvFiles(targetDir, (file) => {
+		if (restartRequested) return;
+		restartRequested = true;
+		console.log(`\x1b[33m  🔁 ${file} changed — restarting dev server...\x1b[0m`);
+		proc.kill();
+	});
+
+	const runServer = async (): Promise<void> => {
+		for (;;) {
+			await proc.exited;
+			if (!restartRequested) return;
+			restartRequested = false;
+			const fresh = loadEnvFiles(targetDir);
+			console.log(`\x1b[32m  ✅ Dev server restarted\x1b[0m`);
+			proc = spawnServer(nextEnv(fresh));
+		}
+	};
+
+	// Kill the child whenever this process goes away — SIGTERM to the parent
+	// alone would otherwise leave an orphaned `bun --watch` behind.
+	const shutdown = async () => {
+		stopEnvWatch();
+		proc.kill();
+		if (tunnel) await tunnel.close();
+		process.exit(0);
+	};
+	process.on("SIGINT", () => {
+		void shutdown();
+	});
+	process.on("SIGTERM", () => {
+		void shutdown();
+	});
+	process.on("exit", () => {
+		stopEnvWatch();
+		proc.kill();
+	});
+
+	if (tunnel) {
+		console.log(`\x1b[32m  Server running at http://localhost:${port}\x1b[0m`);
+		console.log(`\x1b[36m  Tunnel: ${tunnel.url} → http://localhost:${port}\x1b[0m`);
+		console.log(`\n  Press Ctrl+C to stop\n`);
+
+		await runServer();
+		await tunnel.close();
+	} else {
+		console.log(`\x1b[36mStarting development server...\x1b[0m\n`);
+		console.log(`\x1b[32m  Server running at http://localhost:${port}\x1b[0m`);
+		console.log(`\n  Press Ctrl+C to stop\n`);
+
+		await runServer();
+		stopEnvWatch();
 	}
 }
