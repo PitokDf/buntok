@@ -428,10 +428,14 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			{
 				success: false,
 				error: errorName,
+				// App-thrown 4xx HttpErrors keep their message (also in
+				// production); 5xx and unexpected errors are masked in production.
 				message:
-					process.env.NODE_ENV === "production"
-						? "An unexpected error occurred"
-						: err.message,
+					err instanceof HttpError && err.status < 500
+						? err.message
+						: process.env.NODE_ENV === "production"
+							? "An unexpected error occurred"
+							: err.message,
 			},
 			status,
 		);
