@@ -234,6 +234,14 @@ Starting development server with tunnel...
           </tbody>
         </table>
       </div>
+
+      <Callout type="info" title="Auto-restart on .env changes">
+        <code>buntok dev</code> also watches <code>.env</code>,{" "}
+        <code>.env.development</code>, and <code>.env.local</code>. When any of
+        them changes, the server restarts automatically with the fresh values —
+        Bun&apos;s own <code>--watch</code> ignores <code>.env</code> files, so
+        no manual restart is needed after editing environment variables.
+      </Callout>
     </>
   );
 }

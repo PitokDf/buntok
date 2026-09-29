@@ -287,7 +287,11 @@ src/index.ts(2,7): error TS2322: Type 'number' is not assignable to type 'string
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         Generate repository, service, controller, and schema files for an entity
-        using a modular structure.
+        using a modular structure. The generator is aware of your project: if a
+        module already exists, new files are merged into its barrel and
+        registration instead of being duplicated. The zod schema, faker sample
+        data, and TypeScript types are derived from your Prisma schema when one
+        exists (see <code>--fields</code> below otherwise).
       </p>
       <CodeBlock code={`bunx buntok create <entity>`} />
 
@@ -453,6 +457,28 @@ bunx buntok create user --repo --service`}
         level={3}
         className="text-xl font-semibold mt-6 mb-2 text-text-primary"
       >
+        Custom Fields &amp; Base Classes
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        No Prisma schema? Pass fields explicitly with <code>--fields</code> —
+        the CLI generates the zod validation schema, faker sample data, and
+        TypeScript types from them. Use <code>--base</code> to generate classes
+        that extend the reusable <code>BaseRepository</code> /{" "}
+        <code>BaseService</code> / <code>BaseController</code> instead of
+        plain classes:
+      </p>
+      <CodeBlock
+        code={`# Generate from custom fields (no Prisma schema needed)
+bunx buntok create product --fields "name:string,price:number,isActive:boolean"
+
+# Generate against existing Base* classes
+bunx buntok create user --repo --service --base`}
+      />
+
+      <Heading
+        level={3}
+        className="text-xl font-semibold mt-6 mb-2 text-text-primary"
+      >
         ORM Selection
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
@@ -492,7 +518,10 @@ bunx buntok create user --typeorm`}
         db
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        Database management commands.
+        Database management commands. They delegate to your detected ORM
+        (Prisma / Drizzle / TypeORM); <code>db seed</code> falls back to a
+        local seeder runner in <code>src/db/seeders</code> when the ORM has no
+        seed configuration. Destructive commands ask for confirmation.
       </p>
       <CodeBlock
         code={`# Run pending migrations (optional name)
