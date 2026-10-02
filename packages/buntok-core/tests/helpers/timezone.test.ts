@@ -76,8 +76,8 @@ describe("parseTime", () => {
 
 	it("should parse string without timezone info", () => {
 		const date = parseTime("2026-08-24 05:00", "Asia/Jakarta");
-		// Should adjust to UTC
-		expect(date).toBeInstanceOf(Date);
+		// Wall-clock 05:00 in Jakarta = 2026-08-23T22:00:00Z, on any machine TZ
+		expect(date.toISOString()).toBe("2026-08-23T22:00:00.000Z");
 	});
 
 	it("should throw on invalid date", () => {
