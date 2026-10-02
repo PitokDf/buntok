@@ -1,0 +1,25 @@
+export const constructFromSymbol = Symbol.for("constructDateFrom");
+
+export const daysInWeek = 7;
+export const daysInYear = 365.2425;
+export const maxTime = Math.pow(10, 8) * 24 * 60 * 60 * 1000;
+export const minTime = -maxTime;
+export const millisecondsInWeek = 604800000;
+export const millisecondsInDay = 86400000;
+export const millisecondsInMinute = 60000;
+export const millisecondsInHour = 3600000;
+export const millisecondsInSecond = 1000;
+export const minutesInYear = 525600;
+export const minutesInMonth = 43200;
+export const minutesInDay = 1440;
+export const minutesInHour = 60;
+export const monthsInQuarter = 3;
+export const monthsInYear = 12;
+export const quartersInYear = 4;
+export const secondsInHour = 3600;
+export const secondsInMinute = 60;
+export const secondsInDay = secondsInHour * 24;
+export const secondsInWeek = secondsInDay * 7;
+export const secondsInYear = secondsInDay * daysInYear;
+export const secondsInMonth = secondsInYear / 12;
+export const secondsInQuarter = secondsInMonth * 3;

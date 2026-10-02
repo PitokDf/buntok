@@ -20,6 +20,67 @@ describe("Package exports", () => {
 		expect(PKG.exports["./middlewares"]).toBeDefined();
 		expect(PKG.exports["./queue"]).toBeDefined();
 		expect(PKG.exports["./schedule"]).toBeDefined();
+		expect(PKG.exports["./date"]).toBeDefined();
+		expect(PKG.exports["./date"].import).toBeDefined();
+		expect(PKG.exports["./date"].require).toBeDefined();
+		expect(PKG.exports["./date"].default).toBeDefined();
+		expect(PKG.exports["./date/fp"]).toBeDefined();
+		expect(PKG.exports["./date/fp"].import).toBeDefined();
+		expect(PKG.exports["./date/fp"].require).toBeDefined();
+		expect(PKG.exports["./date/fp"].default).toBeDefined();
+		expect(PKG.exports["./date/locale"]).toBeDefined();
+		expect(PKG.exports["./date/locale"].import).toBeDefined();
+		expect(PKG.exports["./date/locale"].require).toBeDefined();
+		expect(PKG.exports["./date/locale"].default).toBeDefined();
+	});
+
+	it("date subpath ESM/CJS/dts files exist", () => {
+		for (const file of [
+			"date.js",
+			"date.cjs",
+			"date.d.ts",
+			"date.d.cts",
+			"date-fp.js",
+			"date-fp.cjs",
+			"date-fp.d.ts",
+			"date-fp.d.cts",
+			"date-locale.js",
+			"date-locale.cjs",
+			"date-locale.d.ts",
+			"date-locale.d.cts",
+		]) {
+			expect(existsSync(join(DIST, file))).toBe(true);
+		}
+	});
+
+	it("date subpath resolves date-fns-compatible exports", async () => {
+		const mod = await import(join(DIST, "date.js"));
+		expect(typeof mod.toDate).toBe("function");
+		expect(typeof mod.compareAsc).toBe("function");
+		expect(Object.keys(mod).length).toBeGreaterThan(0);
+	});
+
+	it("date/fp subpath resolves", async () => {
+		const mod = await import(join(DIST, "date-fp.js"));
+		expect(typeof mod.toDate).toBe("function");
+		expect(Object.keys(mod).length).toBe(396);
+	});
+
+	it("date/locale subpath resolves all 95 locales", async () => {
+		const mod = await import(join(DIST, "date-locale.js"));
+		expect(mod.enUS).toBeDefined();
+		expect(mod.id).toBeDefined();
+		expect(mod.beTarask).toBeDefined();
+		expect(Object.keys(mod).length).toBe(95);
+	});
+
+	it("slim root does NOT leak date-fns API", async () => {
+		const mod = await import(join(DIST, "core-exports.js"));
+		expect(mod.format).toBeUndefined();
+		expect(mod.formatDistance).toBeUndefined();
+		expect(mod.formatRelative).toBeUndefined();
+		expect(mod.toDate).toBeUndefined();
+		expect(mod.locale).toBeUndefined();
 	});
 
 	it("has ESM entry file", () => {
