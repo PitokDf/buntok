@@ -77,6 +77,146 @@ export function findEntryFile(cwd: string = process.cwd()): string | null {
 	return existing[0] ?? null;
 }
 
+/** Escape a string for use inside a regular expression. */
+export function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export interface AppInstance {
+	/** Declared variable name, e.g. `app` or `apiv1`. */
+	name: string;
+	/** Index just past the declaration (including the optional `;`). */
+	declEnd: number;
+	/** Whether the declaration is exported. */
+	exported: boolean;
+	/** `app` for `new App(...)`, `group` for `X = Y.group(...)`. */
+	kind: "app" | "group";
+	/** For groups: the receiver, e.g. `app` in `const apiv1 = app.group("/api/v1")`. */
+	owner?: string;
+	/** For groups: the mount prefix string, e.g. `/api/v1`. */
+	prefix?: string;
+}
+
+const DECL_HEAD =
+	/(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=]*?)?=\s*/g;
+
+const GROUP_CALL = /\.\s*group\s*\(/g;
+
+/**
+ * End of a statement starting at `from`: past a depth-0 `;`, or at a
+ * depth-0 newline once a call has closed (ASI). Skips string literals so
+ * parentheses/semicolons inside them do not confuse the scan.
+ */
+function statementEnd(src: string, from: number): number {
+	let depth = 0;
+	let seenClose = false;
+	let quote: string | null = null;
+	for (let i = from; i < src.length; i++) {
+		const ch = src[i] ?? "";
+		if (quote !== null) {
+			if (ch === "\\") i++;
+			else if (ch === quote) quote = null;
+			continue;
+		}
+		if (ch === '"' || ch === "'" || ch === "`") {
+			quote = ch;
+			continue;
+		}
+		if (ch === "(") depth++;
+		else if (ch === ")") {
+			depth = Math.max(0, depth - 1);
+			if (depth === 0) seenClose = true;
+		} else if (ch === ";" && depth === 0) return i + 1;
+		else if (ch === "\n" && depth === 0 && seenClose) return i;
+	}
+	return src.length;
+}
+
+/**
+ * Detect every app-hosting declaration in a source file:
+ * - `const app = new App(...)` (generic `new App<DI>()` too)
+ * - `const apiv1 = app.group("/api/v1")` (RouterGroup targets)
+ */
+export function detectAppInstances(src: string): AppInstance[] {
+	const instances: AppInstance[] = [];
+	DECL_HEAD.lastIndex = 0;
+	let m: RegExpExecArray | null;
+	while ((m = DECL_HEAD.exec(src)) !== null) {
+		const name = m[1] ?? "";
+		const exported = m[0].startsWith("export ");
+		const rhsStart = m.index + m[0].length;
+
+		if (/^new\s+App(?:\s*<[^>]*>)?\s*\(/.test(src.slice(rhsStart, rhsStart + 200))) {
+			const declEnd = statementEnd(src, m.index);
+			instances.push({ name, declEnd, exported, kind: "app" });
+			continue;
+		}
+
+		// RouterGroup: `X = <receiver>.group(...)` — the receiver is the
+		// owner (an App, or another group whose owner we resolve later).
+		const stmtEnd = statementEnd(src, m.index);
+		const region = src.slice(rhsStart, stmtEnd);
+		GROUP_CALL.lastIndex = 0;
+		let first: RegExpExecArray | null = null;
+		let last: RegExpExecArray | null = null;
+		let g: RegExpExecArray | null;
+		while ((g = GROUP_CALL.exec(region)) !== null) {
+			first ??= g;
+			last = g;
+		}
+		if (!first || !last) continue;
+		// Owner = receiver before the FIRST .group( — for chains like
+		// `app.group("/a").group("/b")` that root is still the App.
+		const owner = region.slice(0, first.index).replace(/\s+/g, "");
+		if (!/^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/.test(owner)) continue;
+		const open = rhsStart + last.index + last[0].length - 1;
+		const close = findBalancedClose(src, open);
+		let declEnd = stmtEnd;
+		if (close !== -1) {
+			declEnd = close + 1;
+			if (src[declEnd] === ";") declEnd++;
+		}
+		const prefix = /^\s*["'`]([^"'`]*)["'`]/.exec(src.slice(open + 1))?.[1];
+		instances.push({
+			name,
+			declEnd,
+			exported,
+			kind: "group",
+			owner,
+			...(prefix !== undefined ? { prefix } : {}),
+		});
+	}
+	return instances;
+}
+
+/**
+ * Find the file that actually declares the App instance (registration
+ * target), e.g. `src/app.ts` / `src/index.ts`. A file that merely calls
+ * `app.listen()` (the scaffolded `server.ts`) never wins over the
+ * declaration file. Falls back to the entry file when no candidate
+ * declares an App.
+ */
+export function findAppDeclarationFile(cwd: string = process.cwd()): string | null {
+	let plainApp: string | null = null;
+	let groupOnly: string | null = null;
+	for (const candidate of ENTRY_CANDIDATES) {
+		const path = join(cwd, candidate);
+		if (!existsSync(path)) continue;
+		try {
+			const src = readFileSync(path, "utf-8");
+			const instances = detectAppInstances(src);
+			if (instances.length === 0) continue;
+			const apps = instances.filter((i) => i.kind === "app");
+			if (apps.some((i) => i.exported)) return candidate;
+			if (apps.length > 0) plainApp ??= candidate;
+			else groupOnly ??= candidate;
+		} catch {
+			// unreadable candidate — keep looking
+		}
+	}
+	return plainApp ?? groupOnly ?? findEntryFile(cwd);
+}
+
 /** Index just past a balanced `)` starting at openIndex (points at `(`). */
 function findBalancedClose(src: string, openIndex: number): number {
 	let depth = 0;
@@ -92,55 +232,46 @@ function findBalancedClose(src: string, openIndex: number): number {
 }
 
 /**
- * End of a `const app = new App(...)` declaration (options object supported),
- * or null when there is no app declaration.
+ * End of a `const <name> = new App(...)` declaration (options object
+ * supported), or null when there is no declaration for that instance.
  */
-export function findAppDeclEnd(src: string): number | null {
-	const m = src.match(/(?:export\s+)?const\s+app\s*=\s*new\s+App\s*\(/);
-	if (m?.index === undefined) return null;
-	const open = m.index + m[0].length - 1;
-	const close = findBalancedClose(src, open);
-	if (close === -1) return null;
-	let end = close + 1;
-	if (src[end] === ";") end++;
-	return end;
+export function findAppDeclEnd(src: string, name = "app"): number | null {
+	const instance = detectAppInstances(src).find((i) => i.name === name);
+	return instance ? instance.declEnd : null;
 }
 
 /**
- * Find where to insert registration lines before app.listen / route
+ * Find where to insert registration lines before <name>.listen / route
  * handlers / exports, with fallback chain. Returns insertion index and
  * the matched text starting at that index.
  */
-export function findInsertionIndex(src: string): {
+export function findInsertionIndex(src: string, name = "app"): {
 	index: number;
 	before: string;
 } {
-	// Pattern 1: app.listen(
-	const listenMatch = src.match(/(app\.listen\s*\()/);
+	const ref = escapeRegExp(name);
+	// Pattern 1: <name>.listen(
+	const listenMatch = src.match(new RegExp(`(${ref}\\.listen\\s*\\()`));
 	if (listenMatch?.index !== undefined && listenMatch[1]) {
 		return { index: listenMatch.index, before: listenMatch[1] };
 	}
-	// Pattern 2: app.get( or app.post( etc (route handlers)
-	const routeMatch = src.match(/\n(app\.(get|post|put|delete|patch|all|use)\s*\()/);
+	// Pattern 2: <name>.get( or <name>.post( etc (route handlers)
+	const routeMatch = src.match(
+		new RegExp(`\\n(${ref}\\.(?:get|post|put|delete|patch|all|use)\\s*\\()`),
+	);
 	if (routeMatch?.index !== undefined && routeMatch[1]) {
 		return { index: routeMatch.index + 1, before: routeMatch[1] };
 	}
-	// Pattern 3: export default app
-	const exportDefaultMatch = src.match(/\n(export\s+default\s+app)/);
+	// Pattern 3: export default <name>
+	const exportDefaultMatch = src.match(new RegExp(`\\n(export\\s+default\\s+${ref}\\b)`));
 	if (exportDefaultMatch?.index !== undefined && exportDefaultMatch[1]) {
 		return { index: exportDefaultMatch.index + 1, before: exportDefaultMatch[1] };
 	}
-	// Pattern 4: export const app = new App(...) — insert after the
-	// balanced declaration (options object supported)
-	const exportConstMatch = src.match(/export\s+const\s+app\s*=\s*new\s+App\s*\(/);
-	if (exportConstMatch?.index !== undefined) {
-		const open = exportConstMatch.index + exportConstMatch[0].length - 1;
-		const close = findBalancedClose(src, open);
-		if (close !== -1) {
-			let end = close + 1;
-			if (src[end] === ";") end++;
-			return { index: end, before: "" };
-		}
+	// Pattern 4: <name> declaration — insert after the balanced
+	// declaration (options object supported)
+	const instance = detectAppInstances(src).find((i) => i.name === name);
+	if (instance) {
+		return { index: instance.declEnd, before: "" };
 	}
 	// Fallback: append at end
 	return { index: src.length, before: "" };
@@ -167,25 +298,28 @@ export function ensureImport(src: string, imp: string): string {
 /**
  * Collect controllers imported from @/modules/*.
  * excludeFromScan: skip controllers already passed to registerController.
+ * name: the app instance variable that owns the registrations.
  */
 export function collectImportedControllers(
 	src: string,
 	excludeFromScan: boolean,
+	name = "app",
 ): string[] {
 	const imports = src.match(
 		/import\s*\{\s*(\w+Controller)\s*\}\s*from\s*["']@\/modules\/\w+["']/g,
 	);
 	const controllers: string[] = [];
 	if (imports) {
+		const ref = escapeRegExp(name);
 		for (const imp of imports) {
 			const match = imp.match(/\{\s*(\w+Controller)\s*\}/);
 			if (match?.[1]) {
 				if (excludeFromScan) {
 					const rcSingleMatch = src.match(
-						new RegExp(`app\\.registerController\\((${match[1]})\\)`),
+						new RegExp(`${ref}\\.registerController\\((${match[1]})\\)`),
 					);
 					const rcArrayMatch = src.match(
-						new RegExp(`app\\.registerController\\(\\[([^\\]]*?${match[1]}[^\\]]*?)\\]\\)`),
+						new RegExp(`${ref}\\.registerController\\(\\[([^\\]]*?${match[1]}[^\\]]*?)\\]\\)`),
 					);
 					if (rcSingleMatch || rcArrayMatch) continue;
 				}

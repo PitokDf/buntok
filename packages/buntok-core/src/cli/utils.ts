@@ -124,3 +124,34 @@ export function resolveNames(entity: string): EntityNames {
 		pluralSnake: pluralize(snake),
 	};
 }
+
+/**
+ * Interactively select one option from a list. Returns the chosen index,
+ * or `null` when stdin is not a TTY (CI / piped input) so callers fall
+ * back to a deterministic default instead of hanging.
+ */
+export async function selectFrom(
+	question: string,
+	choices: string[],
+	defaultIndex = 0,
+): Promise<number | null> {
+	if (!process.stdin.isTTY || choices.length === 0) return null;
+	const { createInterface } = await import("node:readline");
+	const rl = createInterface({ input: process.stdin, output: process.stdout });
+	try {
+		const lines = choices
+			.map((choice, i) => `  ${i + 1}. ${choice}`)
+			.join("\n");
+		const answer: string = await new Promise((resolve) => {
+			console.log(lines);
+			rl.question(`${question} [${defaultIndex + 1}]: `, resolve);
+		});
+		const trimmed = answer.trim();
+		if (trimmed === "") return defaultIndex;
+		const picked = Number.parseInt(trimmed, 10);
+		if (Number.isNaN(picked) || picked < 1 || picked > choices.length) return null;
+		return picked - 1;
+	} finally {
+		rl.close();
+	}
+}

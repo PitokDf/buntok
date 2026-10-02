@@ -53,6 +53,7 @@ function printUsage() {
   --force                Overwrite files that already exist
   --base                 Generate code extending BaseRepository/BaseService/BaseController (default: plain code)
   --fields "a:string,b:int?"  Field list for the schema when there is no Prisma model
+  --app <instance>       App instance to register the controller into (default: auto-detect, e.g. --app apiV1)
 
 \x1b[36mOptions (for check command):\x1b[0m
   --json                 Output results as JSON
@@ -76,7 +77,8 @@ function printUsage() {
   buntok create user                      # Generate all files for user entity
   buntok g user --repo --service          # Generate repository and service only
   buntok g user --drizzle                 # Generate with Drizzle ORM
-  buntok g user --dry-run                 # Preview what would be generated
+  buntok g user --dry-run                # Preview what would be generated
+  buntok g user --app apiV1              # Register into the apiV1 App instance
   buntok db migrate                       # Run pending migrations
   buntok db seed                          # Seed database
   buntok debug:routes                     # Show all registered routes
