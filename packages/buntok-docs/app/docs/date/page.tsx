@@ -75,6 +75,7 @@ export default function DatePage() {
 const date = parseISO("2024-10-01T14:30:45Z");
 isValid(date);                                   // true
 
+// Outputs below are shown for a server in UTC+7
 format(date, "EEEE, d MMMM yyyy 'pukul' HH:mm"); // "Tuesday, 1 October 2024 pukul 21:30"
 format(date, "PPpp");                            // "10/01/2024, 9:30:45 PM"
 formatISO(date);                                 // "2024-10-01T21:30:45+07:00"
@@ -105,7 +106,7 @@ formatDistanceStrict(addDays(now, 14), now, { unit: "day", addSuffix: true });
 // "in 14 days"
 
 formatRelative(addDays(now, 1), now);
-// "tomorrow at 20:15"
+// e.g. "tomorrow at 20:15"
 
 differenceInCalendarDays(now, new Date("2024-10-01")); // calendar-day difference
 getWeek(now);                                          // week of year
@@ -121,7 +122,7 @@ getQuarter(now);                                       // 1–4`}
       </Heading>
       <CodeBlock
         code={`import {
-  intervalToDuration, isWithinInterval, eachDayOfInterval, isSameDay,
+  intervalToDuration, isWithinInterval, eachDayOfInterval,
 } from "@buntok/core/date";
 
 intervalToDuration({ start: date, end: addDays(date, 400) });
@@ -191,10 +192,12 @@ const now = new Date();
 const tomorrow = addDays(now, 1);
 
 format(now, "EEEE, d MMMM yyyy", { locale: id });
-// "Jumat, 2 Oktober 2026"
+// e.g. "Jumat, 2 Oktober 2026"
 
-format(now, "EEEE, d MMMM yyyy", { locale: ja });    // "火曜日, 1 10月 2024"
-formatRelative(tomorrow, now, { locale: ja });       // "明日の21:30"
+format(now, "EEEE, d MMMM yyyy", { locale: ja });
+// e.g. "金曜日, 2 10月 2026"
+formatRelative(tomorrow, now, { locale: ja });
+// localized relative pattern (ja)
 getWeek(now, { locale: ar });                        // locale week rules`}
       />
       <p className="my-3 text-text-secondary leading-relaxed">
@@ -210,6 +213,31 @@ for (const locale of Object.values(locales)) {
 
 registry["id"];    // Indonesian locale
 registry["zh-CN"]; // Simplified Chinese`}
+      />
+
+      {/* ──────────────── FULL EXAMPLE ──────────────── */}
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        Full Example
+      </Heading>
+      <CodeBlock
+        code={`import { format, formatDistance, subDays, addDays } from "@buntok/core/date";
+import { id } from "@buntok/core/date/locale";
+
+// API endpoint summarizing this week in Indonesian
+app.get("/reports/week", (ctx) => {
+  const now = new Date();
+  const since = subDays(now, 7);
+
+  return ctx.json({
+    today: format(now, "EEEE, d MMMM yyyy", { locale: id }), // "Jumat, 2 Oktober 2026"
+    window: formatDistance(since, now, { addSuffix: true, locale: id }), // "7 hari yang lalu"
+    days: [...Array(7)].map((_, i) => format(addDays(since, i), "d MMM", { locale: id })),
+    // e.g. ["25 Sep", "26 Sep", ...]
+  });
+});`}
       />
 
       {/* ──────────────── WHICH IMPORT ──────────────── */}

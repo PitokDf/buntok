@@ -1,5 +1,6 @@
 import { Heading } from "@/components/ui/Heading";
 import { CodeBlock } from "@/components/ui/CodeBlock";
+import { Callout } from "@/components/ui/Callout";
 
 export const metadata = {
   title: "Timezone",
@@ -21,6 +22,16 @@ export default function TimezonePage() {
         the Intl API (built-in, zero-deps).
       </p>
 
+      <Callout type="tip" title="Timezone vs Date Library">
+        These helpers convert instants <em>across zones</em> (parse, format,
+        offset, grouping). For date-fns-style formatting tokens, distances,
+        intervals, and 95 locales, see{" "}
+        <a href="/docs/date" className="text-accent underline">
+          Date Library
+        </a>
+        .
+      </Callout>
+
       {/* ──────────────── PARSE TIME ──────────────── */}
       <Heading
         level={2}
@@ -34,13 +45,19 @@ export default function TimezonePage() {
       <CodeBlock
         code={`import { parseTime } from "@buntok/core";
 
-// Time only
-const date = parseTime("14:30", "Asia/Jakarta");
+// Wall-clock string without zone info — interpreted in that timezone
+const meeting = parseTime("2024-01-15 14:30", "America/New_York");
+// → 2024-01-15T19:30:00.000Z (UTC instant, correct on any server TZ)
 
-// Date + time
-const date = parseTime("2024-01-15 14:30", "America/New_York");
+// Strings that already carry a zone are used as-is
+parseTime("2024-01-15T14:30:00+07:00", "Asia/Jakarta").toISOString();
+// "2024-01-15T07:30:00.000Z"
 
-// Returns a Date object in the specified timezone`}
+// Must include a date (bare times like "14:30" throw)
+parseTime("14:30", "Asia/Jakarta");
+// Error: Invalid date string: "14:30"
+
+// Returns a UTC Date instant; print it with formatInTimezone below`}
       />
 
       {/* ──────────────── FORMAT IN TIMEZONE ──────────────── */}
@@ -56,15 +73,17 @@ const date = parseTime("2024-01-15 14:30", "America/New_York");
       <CodeBlock
         code={`import { formatInTimezone } from "@buntok/core";
 
-// 3rd arg is enum: "short" | "default" | "full" (not custom pattern)
-const formatted = formatInTimezone(new Date(), "Asia/Jakarta", "short");
-// "14:30" — short
+const date = new Date("2024-01-15T14:30:00Z");
 
-formatInTimezone(new Date(), "Asia/Jakarta", "default");
-// "2024-01-15 14:30:00" — default (includes date)
+// 3rd arg is enum: "short" | "default" | "full" (not a custom pattern)
+formatInTimezone(date, "Asia/Jakarta", "short");
+// "2024-01-15 21:30" — YYYY-MM-DD HH:mm
 
-formatInTimezone(new Date(), "Asia/Jakarta", "full");
-// "Monday, January 15, 2024 at 14:30:00 GMT+07:00" — full`}
+formatInTimezone(date, "Asia/Jakarta", "default");
+// "2024-01-15 21:30:00" — includes seconds
+
+formatInTimezone(date, "Asia/Jakarta", "full");
+// "2024-01-15 21:30:00.000" — adds milliseconds`}
       />
 
       {/* ──────────────── TO TIMEZONE PARTS ──────────────── */}
@@ -163,8 +182,8 @@ isValidTimezone("Invalid/Zone");     // false`}
               ["getTimezoneOffsetString(tz)", "Offset as string (+07:00)"],
               ["toISOWithTimezone(date, tz)", "ISO string with offset (2024-01-15T17:30:00+07:00)"],
               ['groupByTimezone(items, field, tz, "day")', "Group items by hour/day/month/year"],
-              ["getGroupLabels(groupBy)", "Get group labels"],
-              ["formatGroupLabel(label, groupBy, tz)", "Format label for display"],
+              ["getGroupLabels(groupMap, groupBy, locale?)", "Map of group key → localized label"],
+              ["formatGroupLabel(key, groupBy, locale?)", "Localize a single key (default en-US)"],
             ].map(([fn, desc]) => (
               <tr key={fn} className="border-b border-border-primary/50 hover:bg-bg-tertiary/50 transition-colors">
                 <td className="px-4 py-2 font-mono text-accent text-xs">{fn}</td>
@@ -178,16 +197,17 @@ isValidTimezone("Invalid/Zone");     // false`}
         code={`import {
   toISOWithTimezone, groupByTimezone, getGroupLabels, formatGroupLabel,
 } from "@buntok/core";
-// Types: GroupByKey = "hour"|"day"|"month"|"year", GroupByTimezoneOptions { locale?, labelFormatter? }
+// GroupByKey = "hour"|"day"|"month"|"year"; GroupByTimezoneOptions { locale?, labelFormatter? }
 
-toISOWithTimezone(new Date(), "Asia/Jakarta");
+toISOWithTimezone(new Date("2024-01-15T10:30:00Z"), "Asia/Jakarta");
 // "2024-01-15T17:30:00+07:00"
 
 const grouped = groupByTimezone(orders, "createdAt", "Asia/Jakarta", "day");
 // Map<string, Order[]> — e.g. "2024-01-15" → [orders]
 
-const labels = getGroupLabels("day"); // ["2024-01-15", ...]
-formatGroupLabel("2024-01-15", "day", "Asia/Jakarta"); // "15 Jan 2024"`}
+const labels = getGroupLabels(grouped, "day");
+// Map { "2024-01-15" => "Monday, January 15, 2024" }
+formatGroupLabel("2024-01-15", "day", "en-US"); // "Monday, January 15, 2024"`}
       />
 
       {/* ──────────────── FULL EXAMPLE ──────────────── */}
