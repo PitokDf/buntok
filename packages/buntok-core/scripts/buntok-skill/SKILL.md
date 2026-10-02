@@ -1,6 +1,6 @@
 ---
 name: buntok-skill
-description: Use when the user is building, coding, or asking questions about a project that uses @buntok/core. Covers routing, controllers, decorators, validation, file upload, middleware, helpers, error handling, IoC container, SSE, WebSocket, and all utility functions.
+description: Use when the user is building, coding, or asking questions about a project that uses @buntok/core. Covers routing, controllers, decorators, validation, file upload, middleware, helpers, the date library (@buntok/core/date with fp & locales), error handling, IoC container, SSE, WebSocket, and all utility functions.
 ---
 
 # @buntok/core Skill Guide
@@ -16,7 +16,7 @@ Use this order when starting or changing a Buntok project:
 3. Keep `src/index.ts` focused on app construction and route registration. Start a local server from the root `server.ts` or the generated `dev` script.
 4. Use `app.request()` in tests instead of binding a port.
 5. Run `buntok check` and the relevant Bun tests after changing routes, middleware, schemas, or generated code.
-6. Do not invent APIs. Confirm an export in `src/core-exports.ts` or a method in `src/app.ts` before using it in code or documentation.
+6. Do not invent APIs. Confirm an export in `src/core-exports.ts`, a subpath in `package.json` `exports` (e.g. `@buntok/core/date`), or a method in `src/app.ts` before using it in code or documentation.
 
 ### Choose an application style
 
@@ -108,6 +108,7 @@ buntok create user --typeorm            # use TypeORM
 buntok create user --force              # overwrite files that already exist
 buntok create user --base               # extend BaseRepository/BaseService/BaseController (default: plain classes)
 buntok create note --fields "title:string,body:string?"  # schema fields when there is no Prisma model
+buntok create user --app apiV1             # register the generated controller into the apiV1 instance
 
 # Auto: creates src/modules/user/ with:
 #   user.repository.ts, user.service.ts, user.controller.ts, user.schema.ts, index.ts
@@ -142,6 +143,8 @@ buntok dev                              # convenience wrapper around bun --watch
 buntok dev --expose                     # start with public tunnel URL
 ```
 
+> **Controller registration target:** `create` registers the generated controller in the file that declares your `App` (searched in order: `server.ts`, `src/index.ts`, `src/main.ts`, `src/app.ts`, `src/server.ts`, `index.ts` — preferring a file with an exported instance), never the listener-only entry. Both `const app = new App(...)` instances and group declarations (`const apiv1 = app.group("/api/v1")`) are detected. With a single instance it is automatic; with several it prompts on a TTY and in CI falls back to a deterministic default (name `app` → plain App → the instance calling `.listen(` → an exported one → first) with a warning. Pass `--app <name>` to choose explicitly — an unknown name errors before any file is written, and existing `registerController([...])` arrays are merged, not duplicated.
+
 ### 4. Build / DB / Docs
 
 ```bash
@@ -168,7 +171,7 @@ buntok db reset --dry-run                    # preview destructive command
 | `buntok dev` | `--expose --port=PORT` | Start dev server (HMR). Watches `.env`/`.env.local`/`.env.development` and auto-restarts on change. `--expose` creates public tunnel via localtunnel |
 | `buntok build` | — | Build to `.buntok/` |
 | `buntok check` | `--json --plain` | TypeScript type check with error details and summary |
-| `buntok create <entity>` | `--repo --service --controller --schema --prisma --drizzle --typeorm --dry-run --force --base --fields` | Generate module files |
+| `buntok create <entity>` | `--repo --service --controller --schema --prisma --drizzle --typeorm --dry-run --force --base --fields --app` | Generate module files; `--app <name>` picks the App/group instance that registers the controller |
 | `buntok db <cmd>` | `migrate, seed, reset, generate, studio, status` | ORM delegation (confirmation required for `reset`; local seeders run when the ORM has no seed config) |
 | `buntok debug:routes` | `--json` | Show all registered routes with middleware chains |
 | `buntok make:factory <entity>` | `--dry-run --force --fields` | Generate data factory (`src/factories/<entity>.factory.ts`) |
@@ -2364,6 +2367,8 @@ formatCurrency(1000, "USD");   // "$1,000.00"
 
 ## Date Helpers
 
+Quick root-barrel helpers. For the complete date-fns API (format, parse, distances, locales) use the `@buntok/core/date` subpath — see **Date Library** below.
+
 ```ts
 import {
   formatDate, timeAgo, formatDuration,
@@ -2382,6 +2387,114 @@ endOfDay(new Date());                     // 23:59:59.999
 isBefore(new Date("2024-01-01"), new Date("2024-01-02")); // true
 isAfter(new Date("2024-01-02"), new Date("2024-01-01"));  // true
 ```
+
+---
+
+## Date Library
+
+Complete, dependency-free port of the date-fns v4 API on three subpaths. **Not exported from the root barrel** — always import from the subpath. You do not need to install `date-fns`; behavior is parity-tested against date-fns@4.4.0 (tokens, rounding, and locale output match exactly).
+
+| Subpath | Exports | Contents |
+|---------|--------:|----------|
+| `@buntok/core/date` | 250 | Full surface: format & parse, distances, relative time, intervals & durations, comparisons, start/end of, math, weeks & quarters, ISO/RFC helpers |
+| `@buntok/core/date/fp` | 396 | Curried variants of every function — arguments reversed for partial application |
+| `@buntok/core/date/locale` | 95 | Locale objects: `id`, `en-US`, `ja`, `ar`, `ru`, `zh-CN`, `de`, `pt-BR`, ... |
+
+### Format, parse & distances
+
+```ts
+import {
+  format, parse, parseISO, isValid, formatISO,
+  formatDistance, formatDistanceStrict, formatRelative,
+  addDays, subDays, differenceInCalendarDays, getWeek, getQuarter,
+} from "@buntok/core/date";
+
+const date = parseISO("2024-10-01T14:30:45Z");
+isValid(date);                                          // true
+format(date, "EEEE, d MMMM yyyy 'pukul' HH:mm");        // "Tuesday, 1 October 2024 pukul 21:30"
+format(date, "PPpp");                                   // "10/01/2024, 9:30:45 PM"
+formatISO(date);                                        // "2024-10-01T21:30:45+07:00"
+parse("10.01.2024", "MM.dd.yyyy", new Date());          // reference date fills missing fields
+
+const now = new Date();
+formatDistance(subDays(now, 10), now, { addSuffix: true });                    // "10 days ago"
+formatDistanceStrict(addDays(now, 14), now, { unit: "day", addSuffix: true }); // "in 14 days"
+formatRelative(addDays(now, 1), now);                    // "tomorrow at 20:15"
+
+differenceInCalendarDays(now, date);                     // calendar-day difference
+getWeek(date);                                           // week of year (options: weekStartsOn, locale)
+getQuarter(date);                                        // 1–4
+```
+
+Intervals and durations:
+
+```ts
+import {
+  intervalToDuration, isWithinInterval, eachDayOfInterval, isSameDay,
+} from "@buntok/core/date";
+
+intervalToDuration({ start: date, end: addDays(date, 400) });
+// { years: 1, months: 1, days: 4, hours: 0, ... }
+
+isWithinInterval(date, { start: now, end: addDays(now, 7) }); // true/false
+eachDayOfInterval({ start: now, end: addDays(now, 3) });      // Date[4]
+```
+
+### Functional style (`@buntok/core/date/fp`)
+
+Every export has a curried variant. Arguments are **reversed** relative to the main API so the varying argument can be supplied last; the argument list can also be split across calls:
+
+```ts
+import {
+  format, addDays, addWeeks, formatWithOptions, nextMonday,
+} from "@buntok/core/date/fp";
+
+const now = new Date();
+
+addDays(10)(now);                    // main: addDays(now, 10) — same result
+addDays()(10)(now);                  // curried chain — same result
+addDays(10, now);                    // full application in one call
+
+const dayName = format("EEEE");      // reusable partial: date → weekday
+dayName(now);                        // e.g. "Friday"
+
+format("PP")(addWeeks(2)(now));      // composition: e.g. "Oct 16, 2026"
+nextMonday(now);                     // arity-1 functions take the date directly
+
+import { id } from "@buntok/core/date/locale";
+formatWithOptions({ locale: id }, "EEEE, d MMMM yyyy")(now); // "Jumat, 2 Oktober 2026"
+```
+
+### Locales (`@buntok/core/date/locale`)
+
+95 locales, each with `code`, `options`, `localize`, `formatLong`, `formatDistance`, `formatRelative`, and `match`:
+
+```ts
+import * as locales from "@buntok/core/date/locale";
+import { id, ja, ar, zhCN } from "@buntok/core/date/locale";
+import { format, formatRelative, getWeek } from "@buntok/core/date";
+
+Object.keys(locales).length;                              // 95
+
+const now = new Date();
+const tomorrow = addDays(now, 1);
+
+format(now, "EEEE, d MMMM yyyy", { locale: id });         // "Jumat, 2 Oktober 2026"
+formatRelative(tomorrow, now, { locale: ja });            // localized relative pattern
+getWeek(now, { locale: ar });                             // locale week rules (weekStartsOn, firstWeekContainsDate)
+```
+
+To look up a locale, iterate `Object.keys(locales)`; the `code` property (e.g. `"zh-CN"`) is the canonical key when you build a registry from the module.
+
+### When to use what
+
+| Need | Use |
+|------|-----|
+| Quick one-offs in app code | Root-barrel Date Helpers above (`formatDate`, `timeAgo`, ...) |
+| Full formatting/parsing/comparisons | `@buntok/core/date` |
+| Pipelines, reusable partials, point-free style | `@buntok/core/date/fp` |
+| Non-English output, locale week rules | `@buntok/core/date/locale` passed as `{ locale }` option |
+| Timezone conversion/formatting | Timezone Helpers (Intl-based, above) |
 
 ---
 

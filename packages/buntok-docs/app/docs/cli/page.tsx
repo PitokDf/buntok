@@ -503,6 +503,36 @@ bunx buntok create user --typeorm`}
         level={3}
         className="text-xl font-semibold mt-6 mb-2 text-text-primary"
       >
+        Controller Registration (&#8209;&#8209;app)
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        The generated controller is registered automatically in the file that
+        declares your <code>App</code> (e.g. <code>src/index.ts</code>) — not
+        the listener-only <code>server.ts</code>. Both{" "}
+        <code>const app = new App(...)</code> instances and group declarations
+        like <code>const apiv1 = app.group("/api/v1")</code> are detected. Use{" "}
+        <code>--app</code> to pick the target explicitly:
+      </p>
+      <CodeBlock
+        code={`# Register into the apiV1 instance (or group)
+bunx buntok create user --app apiV1
+
+# Single App instance → registered automatically, no flag needed
+bunx buntok create user`}
+      />
+      <Callout type="info">
+        With <strong>multiple</strong> instances the CLI prompts on a TTY and,
+        in non-interactive environments (CI), falls back to a deterministic
+        default with a warning. An unknown <code>--app</code> name errors
+        before any file is written, and existing{" "}
+        <code>registerController([&hellip;])</code> arrays are merged instead of
+        duplicated.
+      </Callout>
+
+      <Heading
+        level={3}
+        className="text-xl font-semibold mt-6 mb-2 text-text-primary"
+      >
         Dry Run
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">

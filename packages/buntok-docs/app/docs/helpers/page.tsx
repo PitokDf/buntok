@@ -477,6 +477,15 @@ const tomorrow = addDays(new Date(), 1);
 formatDuration(3661); // "1h 1m 1s"
 startOfDay(new Date()); // 00:00:00 today`}
       />
+      <Callout type="tip" title="Need more?">
+        For the full date-fns surface — format &amp; parse tokens, distances,
+        intervals, 396 fp variants, and 95 locales — use{" "}
+        <code>@buntok/core/date</code>. See{" "}
+        <a href="/docs/date" className="text-accent underline">
+          Date Library
+        </a>
+        .
+      </Callout>
 
       {/* ──────────────── STRING ──────────────── */}
       <Heading

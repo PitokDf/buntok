@@ -50,6 +50,7 @@ export const DOC_ROUTES: DocRoute[] = [
   { href: "/docs/download", title: "Download / Export", section: "Utilities", description: "File downloads, data export (CSV/JSON), and archive creation with Bun.Archive." },
   { href: "/docs/client", title: "Client SDK", section: "Utilities", description: "Type-safe RPC client with retry, timeout, interceptors, contracts." },
   { href: "/docs/timezone", title: "Timezone", section: "Utilities", description: "Timezone utilities, date conversion, Temporal API integration." },
+  { href: "/docs/date", title: "Date Library", section: "Utilities", description: "Complete date-fns port on @buntok/core/date: format, parse, distances, 396 fp variants, and 95 locales." },
   { href: "/docs/ai", title: "AI Module", section: "Utilities", description: "AI module integration, streaming responses, LLM providers, embeddings." },
   { href: "/docs/vector-search", title: "Vector Search", section: "Utilities", description: "Semantic search with pgvector, AI embeddings, cosine similarity, hybrid search." },
   { href: "/docs/api-docs", title: "API Docs", section: "Utilities", description: "Auto-generated API documentation, Swagger/OpenAPI integration." },
