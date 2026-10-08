@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
+import { createCommand } from "../../src/cli/commands/create";
 import { dbCommand } from "../../src/cli/commands/db";
 import { makeFactoryCommand } from "../../src/cli/commands/make-factory";
 import { makeSeederCommand } from "../../src/cli/commands/make-seeder";
@@ -27,9 +28,19 @@ const PKG = JSON.stringify(
 	2,
 );
 
-const INDEX_LISTEN = `import { App } from "@buntok/core";
+const BARE_PKG = JSON.stringify(
+	{
+		name: "bare-app",
+		version: "0.0.0",
+		dependencies: { "@buntok/core": "2.2.2" },
+	},
+	null,
+	2,
+);
 
-const app = new App();
+const INDEX_LISTEN = `import { Buntok } from "@buntok/core";
+
+const app = new Buntok();
 
 app.listen(3000);
 `;
@@ -217,7 +228,7 @@ describe("db seed fallback", () => {
 			dbCommand(["seed", "--dry-run"]),
 		);
 
-		expect(output).toContain("npx prisma seed");
+		expect(output).toContain("npx prisma db seed");
 		expect(output).not.toContain("local seeders");
 	});
 
@@ -231,7 +242,7 @@ describe("db seed fallback", () => {
 			dbCommand(["seed", "--dry-run"]),
 		);
 
-		expect(output).toContain("npx prisma seed");
+		expect(output).toContain("npx prisma db seed");
 		expect(output).not.toContain("local seeders");
 	});
 });
@@ -283,5 +294,116 @@ describe("CLI routing (subprocess)", () => {
 		expect(code).toBe(1);
 		expect(out).toContain("Unknown command");
 		expect(out).toContain("Did you mean");
+	});
+
+	it("prints usage for --help with exit code 0", () => {
+		const dir = makeProject({ "package.json": PKG });
+
+		const { code, out } = runCli(dir, ["--help"]);
+
+		expect(code).toBe(0);
+		expect(out).toContain("Usage:");
+		expect(out).toContain("--prisma");
+		expect(out).toContain("auto-detect, falls back to plain code");
+	});
+
+	it("prints the version for --version with exit code 0", () => {
+		const dir = makeProject({ "package.json": PKG });
+
+		const { code, out } = runCli(dir, ["--version"]);
+
+		expect(code).toBe(0);
+		expect(out).toContain("Buntok CLI v");
+	});
+
+	it("reports the invoked alias when an entity name is missing", () => {
+		const dir = makeProject({ "package.json": PKG });
+
+		const { code, out } = runCli(dir, ["g"]);
+
+		expect(code).toBe(1);
+		expect(out).toContain("entity name is required for g command");
+	});
+});
+
+describe("ORM plain fallback", () => {
+	it("create generates plain code when the project has no ORM", async () => {
+		const dir = makeProject({
+			"package.json": BARE_PKG,
+			"src/index.ts": INDEX_LISTEN,
+		});
+
+		const { output, exitCode } = await runCapturing(dir, () =>
+			createCommand("cendol", ["--fields", "a:string,b:int?"]),
+		);
+
+		expect(exitCode).toBe(0);
+		expect(output).toContain("orm: plain");
+
+		const repo = readProject(dir, "src/modules/cendol/cendol.repository.ts");
+		expect(repo).toContain("class CendolRepository");
+		expect(repo).not.toContain("@prisma/client");
+		expect(repo).not.toContain("@/lib/prisma");
+
+		const service = readProject(dir, "src/modules/cendol/cendol.service.ts");
+		expect(service).not.toContain("@prisma/client");
+		expect(service).not.toContain("@/lib/prisma");
+
+		const controller = readProject(
+			dir,
+			"src/modules/cendol/cendol.controller.ts",
+		);
+		expect(controller).not.toContain("@prisma/client");
+	});
+
+	it("make:seeder generates a plain seeder without ORM imports", async () => {
+		const dir = makeProject({ "package.json": BARE_PKG });
+
+		const { output, exitCode } = await runCapturing(dir, () =>
+			makeSeederCommand("cendol", []),
+		);
+
+		expect(exitCode).toBe(0);
+		expect(output).toContain("orm: plain");
+
+		const seeder = readProject(dir, "src/db/seeders/cendol.seeder.ts");
+		expect(seeder).not.toContain("@prisma/client");
+		expect(seeder).not.toContain("@/lib/prisma");
+	});
+
+	it("make:factory skips the Prisma type import without an ORM", async () => {
+		const dir = makeProject({ "package.json": BARE_PKG });
+
+		await runInProject(dir, () =>
+			makeFactoryCommand("cendol", ["--fields", "a:string"]),
+		);
+
+		const factory = readProject(dir, "src/factories/cendol.factory.ts");
+		expect(factory).not.toContain("@prisma/client");
+		expect(factory).toContain("faker.");
+	});
+});
+
+describe("db prisma command mapping", () => {
+	it("maps subcommands to real prisma CLI commands", async () => {
+		const dir = makeProject({
+			"package.json": PKG,
+			"prisma/schema.prisma": "model A { id String @id }",
+		});
+
+		const cases = [
+			["migrate", "npx prisma migrate dev"],
+			["status", "npx prisma migrate status"],
+			["reset", "npx prisma migrate reset --force"],
+			["generate", "npx prisma generate"],
+		] as const;
+
+		for (const [sub, expected] of cases) {
+			const { output, exitCode } = await runCapturing(dir, () =>
+				dbCommand([sub, "--dry-run"]),
+			);
+			expect(exitCode).toBe(0);
+			expect(output).toContain(expected);
+		}
 	});
 });

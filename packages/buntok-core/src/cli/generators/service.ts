@@ -1,4 +1,5 @@
 import type { ORM } from "./repository.js";
+import { detectORMOrNull } from "../project.js";
 import { toCamelCase } from "../utils.js";
 
 export interface ServiceOptions {
@@ -24,8 +25,11 @@ function getTypeORMType(pascalName: string): string {
 function resolveTypeRef(
 	entityName: string,
 	pascalName: string,
-	detectedOrm: ORM,
+	detectedOrm: ORM | null,
 ): { typeImport: string; typeRef: string } {
+	if (detectedOrm === null) {
+		return { typeImport: "", typeRef: "any" };
+	}
 	switch (detectedOrm) {
 		case "drizzle":
 			return { typeImport: getDrizzleType(entityName), typeRef: pascalName };
@@ -107,11 +111,11 @@ export function generateService(
 	entityName: string,
 	pascalName: string,
 	withRepo: boolean = true,
-	orm?: ORM,
+	orm?: ORM | null,
 	options?: ServiceOptions,
 ): string {
 	if (withRepo) {
-		const detectedOrm = orm ?? "prisma";
+		const detectedOrm = orm ?? detectORMOrNull();
 		const { typeImport, typeRef } = resolveTypeRef(
 			entityName,
 			pascalName,

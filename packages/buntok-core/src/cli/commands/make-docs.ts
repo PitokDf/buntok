@@ -18,7 +18,7 @@ export async function makeDocsCommand() {
 
 		if (!appInstance?.openApiDocs) {
 			throw new Error(
-				"Could not find an exported 'app' instance in src/index.ts. Make sure you export your app: `export const app = new App();`",
+				"Could not find an exported 'app' instance in src/index.ts. Make sure you export your app: `export const app = new Buntok();`",
 			);
 		}
 

@@ -21,9 +21,9 @@ const PKG = JSON.stringify(
 	2,
 );
 
-const INDEX_LISTEN = `import { App } from "@buntok/core";
+const INDEX_LISTEN = `import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 
 app.listen(3000);
 `;
@@ -118,10 +118,10 @@ describe("create: registerController injection (non-container)", () => {
 		);
 
 		expect(readProject(dir, "src/index.ts")).toBe(
-			`import { App } from "@buntok/core";
+			`import { Buntok } from "@buntok/core";
 import { UserController } from "@/modules/user";
 
-const app = new App();
+const app = new Buntok();
 
 app.registerController([UserController]);
 
@@ -133,9 +133,9 @@ app.listen(3000);
 	it("existing single registration converts to array", async () => {
 		const dir = makeProject({
 			"package.json": PKG,
-			"src/index.ts": `import { App } from "@buntok/core";
+			"src/index.ts": `import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 
 app.registerController(HelloController);
 
@@ -148,10 +148,10 @@ app.listen(3000);
 		);
 
 		expect(readProject(dir, "src/index.ts")).toBe(
-			`import { App } from "@buntok/core";
+			`import { Buntok } from "@buntok/core";
 import { UserController } from "@/modules/user";
 
-const app = new App();
+const app = new Buntok();
 
 app.registerController([HelloController, UserController]);
 
@@ -163,9 +163,9 @@ app.listen(3000);
 	it("existing registration array merges", async () => {
 		const dir = makeProject({
 			"package.json": PKG,
-			"src/index.ts": `import { App } from "@buntok/core";
+			"src/index.ts": `import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 
 app.registerController([HelloController, PostController]);
 
@@ -183,10 +183,10 @@ app.listen(3000);
 	});
 
 	it("same controller already registered: index unchanged (no import duplication)", async () => {
-		const original = `import { App } from "@buntok/core";
+		const original = `import { Buntok } from "@buntok/core";
 import { UserController } from "@/modules/user";
 
-const app = new App();
+const app = new Buntok();
 
 app.registerController(UserController);
 
@@ -205,10 +205,10 @@ app.listen(3000);
 	});
 
 	it("existing controller import is not duplicated", async () => {
-		const original = `import { App } from "@buntok/core";
+		const original = `import { Buntok } from "@buntok/core";
 import { UserController } from "@/modules/user";
 
-const app = new App();
+const app = new Buntok();
 
 app.listen(3000);
 `;
@@ -253,10 +253,10 @@ describe("create: container flow (--service)", () => {
 		await runInProject(dir, () => createCommand("user", ["--prisma"]));
 
 		expect(readProject(dir, "src/index.ts")).toBe(
-			`import { App, Container } from "@buntok/core";
+			`import { Buntok, Container } from "@buntok/core";
 import { UserController } from "@/modules/user";
 
-const app = new App();
+const app = new Buntok();
 const container = new Container();
 
 container.scan([UserController]);
@@ -273,9 +273,9 @@ app.listen(3000);
 	it("merge into existing scan + registerController", async () => {
 		const dir = makeProject({
 			"package.json": PKG,
-			"src/index.ts": `import { App, Container } from "@buntok/core";
+			"src/index.ts": `import { Buntok, Container } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 const container = new Container();
 
 container.scan([HelloController]);
@@ -289,10 +289,10 @@ app.listen(3000);
 		await runInProject(dir, () => createCommand("user", ["--prisma"]));
 
 		expect(readProject(dir, "src/index.ts")).toBe(
-			`import { App, Container } from "@buntok/core";
+			`import { Buntok, Container } from "@buntok/core";
 import { UserController } from "@/modules/user";
 
-const app = new App();
+const app = new Buntok();
 const container = new Container();
 
 container.scan([HelloController, UserController]);
@@ -305,10 +305,10 @@ app.listen(3000);
 	});
 
 	it("already registered in scan: index unchanged", async () => {
-		const original = `import { App, Container } from "@buntok/core";
+		const original = `import { Buntok, Container } from "@buntok/core";
 import { UserController } from "@/modules/user";
 
-const app = new App();
+const app = new Buntok();
 const container = new Container();
 
 container.scan([UserController]);
@@ -334,12 +334,12 @@ import { env } from "./src/env";
 
 app.listen(env.PORT);
 `;
-	const INDEX = `import { App } from "@buntok/core";
+	const INDEX = `import { Buntok } from "@buntok/core";
 
-export const app = new App();
+export const app = new Buntok();
 `;
 
-	it("registers in the App declaration file, never in listener-only server.ts", async () => {
+	it("registers in the Buntok declaration file, never in listener-only server.ts", async () => {
 		const dir = makeProject({
 			"package.json": PKG,
 			"server.ts": SERVER,
@@ -352,24 +352,24 @@ export const app = new App();
 
 		expect(readProject(dir, "server.ts")).toBe(SERVER);
 		expect(readProject(dir, "src/index.ts")).toBe(
-			`import { App } from "@buntok/core";
+			`import { Buntok } from "@buntok/core";
 import { UserController } from "@/modules/user";
 
-export const app = new App();
+export const app = new Buntok();
 app.registerController([UserController]);
 
 `,
 		);
 	});
 
-	it("prefers src/app.ts when it hosts the exported instance", async () => {
+	it("prefers src/buntok.ts when it hosts the exported instance", async () => {
 		const dir = makeProject({
 			"package.json": PKG,
 			"server.ts": SERVER,
 			"src/index.ts": `export { app } from "./app";\n`,
-			"src/app.ts": `import { App } from "@buntok/core";
+			"src/buntok.ts": `import { Buntok } from "@buntok/core";
 
-export const app = new App();
+export const app = new Buntok();
 `,
 		});
 
@@ -379,16 +379,16 @@ export const app = new App();
 
 		expect(readProject(dir, "server.ts")).toBe(SERVER);
 		expect(readProject(dir, "src/index.ts")).toBe(`export { app } from "./app";\n`);
-		expect(readProject(dir, "src/app.ts")).toContain(
+		expect(readProject(dir, "src/buntok.ts")).toContain(
 			"app.registerController([UserController]);",
 		);
 	});
 });
 
 describe("create: renamed app instance", () => {
-	const INDEX = `import { App } from "@buntok/core";
+	const INDEX = `import { Buntok } from "@buntok/core";
 
-export const apiV1 = new App();
+export const apiV1 = new Buntok();
 
 apiV1.listen(3000);
 `;
@@ -401,10 +401,10 @@ apiV1.listen(3000);
 		);
 
 		expect(readProject(dir, "src/index.ts")).toBe(
-			`import { App } from "@buntok/core";
+			`import { Buntok } from "@buntok/core";
 import { UserController } from "@/modules/user";
 
-export const apiV1 = new App();
+export const apiV1 = new Buntok();
 
 apiV1.registerController([UserController]);
 
@@ -429,10 +429,10 @@ apiV1.listen(3000);
 });
 
 describe("create: multiple app instances", () => {
-	const MULTI = `import { App } from "@buntok/core";
+	const MULTI = `import { Buntok } from "@buntok/core";
 
-export const apiV1 = new App();
-export const apiV2 = new App();
+export const apiV1 = new Buntok();
+export const apiV2 = new Buntok();
 
 apiV1.listen(3000);
 apiV2.listen(4000);
@@ -484,7 +484,7 @@ apiV2.listen(4000);
 		);
 
 		expect(run.exitCode).toBe(0);
-		expect(run.output).toContain("multiple App instances");
+		expect(run.output).toContain("multiple Buntok instances");
 		expect(run.output).toContain("--app <name>");
 		const index = readProject(dir, "src/index.ts");
 		expect(index).toContain("apiV1.registerController([UserController]);");
@@ -493,9 +493,9 @@ apiV2.listen(4000);
 });
 
 describe("create: RouterGroup instance (--app <group>)", () => {
-	const GROUPS = `import { App } from "@buntok/core";
+	const GROUPS = `import { Buntok } from "@buntok/core";
 
-export const app = new App();
+export const app = new Buntok();
 const apiv1 = app.group("/api/v1");
 const apiv2 = app.group("/api/v2");
 
@@ -510,10 +510,10 @@ app.listen(3000);
 		);
 
 		expect(readProject(dir, "src/index.ts")).toBe(
-			`import { App } from "@buntok/core";
+			`import { Buntok } from "@buntok/core";
 import { UserController } from "@/modules/user";
 
-export const app = new App();
+export const app = new Buntok();
 const apiv1 = app.group("/api/v1");
 apiv1.registerController([UserController]);
 
@@ -524,7 +524,7 @@ app.listen(3000);
 		);
 	});
 
-	it("container flow attaches the container to the owning App, not the group", async () => {
+	it("container flow attaches the container to the owning Buntok, not the group", async () => {
 		const dir = makeProject({ "package.json": PKG, "src/index.ts": GROUPS });
 
 		await runInProject(dir, () =>
@@ -533,10 +533,10 @@ app.listen(3000);
 
 		const index = readProject(dir, "src/index.ts");
 		expect(index).toBe(
-			`import { App, Container } from "@buntok/core";
+			`import { Buntok, Container } from "@buntok/core";
 import { UserController } from "@/modules/user";
 
-export const app = new App();
+export const app = new Buntok();
 const container = new Container();
 const apiv1 = app.group("/api/v1");
 container.scan([UserController]);
@@ -589,9 +589,9 @@ describe("create: insertion fallbacks", () => {
 	it("export default app: registration inserted before export", async () => {
 		const dir = makeProject({
 			"package.json": PKG,
-			"src/index.ts": `import { App } from "@buntok/core";
+			"src/index.ts": `import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 
 export default app;
 `,
@@ -602,10 +602,10 @@ export default app;
 		);
 
 		expect(readProject(dir, "src/index.ts")).toBe(
-			`import { App } from "@buntok/core";
+			`import { Buntok } from "@buntok/core";
 import { UserController } from "@/modules/user";
 
-const app = new App();
+const app = new Buntok();
 
 app.registerController([UserController]);
 
@@ -617,9 +617,9 @@ export default app;
 	it("route handler present: registration inserted before app.get", async () => {
 		const dir = makeProject({
 			"package.json": PKG,
-			"src/index.ts": `import { App } from "@buntok/core";
+			"src/index.ts": `import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 
 app.get("/hello", () => "hi");
 `,
@@ -630,10 +630,10 @@ app.get("/hello", () => "hi");
 		);
 
 		expect(readProject(dir, "src/index.ts")).toBe(
-			`import { App } from "@buntok/core";
+			`import { Buntok } from "@buntok/core";
 import { UserController } from "@/modules/user";
 
-const app = new App();
+const app = new Buntok();
 
 app.registerController([UserController]);
 

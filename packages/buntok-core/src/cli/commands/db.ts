@@ -32,7 +32,15 @@ async function confirm(message: string): Promise<boolean> {
 }
 
 function prismaCommand(subcommand: string, args: string[], dryRun = false): void {
-	const cmd = `npx prisma ${subcommand} ${args.join(" ")}`.trim();
+	const commands: Record<string, string> = {
+		migrate: "migrate dev",
+		seed: "db seed",
+		reset: "migrate reset --force",
+		status: "migrate status",
+		generate: "generate",
+		studio: "studio",
+	};
+	const cmd = `npx prisma ${commands[subcommand] ?? subcommand} ${args.join(" ")}`.trim();
 	runCommand(cmd, dryRun);
 }
 

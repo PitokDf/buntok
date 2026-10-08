@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import { join } from "node:path";
-import { detectORM, type ORM } from "../generators/repository.js";
-import { formatWithBiome } from "../project.js";
+import type { ORM } from "../generators/repository.js";
+import { detectORMOrNull, formatWithBiome } from "../project.js";
 import { toCamelCase, toPascalCase, toSnakeCase } from "../utils.js";
 import { makeFactoryCommand } from "./make-factory.js";
 
@@ -108,7 +108,45 @@ export async function seed${pascalName}() {
 `;
 }
 
-function generateSeeder(name: string, pascalName: string, orm: ORM, useFactory: boolean): string {
+function generatePlainSeeder(
+	name: string,
+	pascalName: string,
+	useFactory: boolean,
+): string {
+	const factoryFile = toSnakeCase(name);
+	if (useFactory) {
+		return `import { ${pascalName}Factory } from "@/factories/${factoryFile}.factory";
+
+export async function seed${pascalName}() {
+  console.log("Seeding ${pascalName}...");
+
+  const items = ${pascalName}Factory.buildMany(100);
+  console.log(\`Generated \${items.length} ${name} records (no ORM detected - persist them in your own data layer)\`);
+
+  console.log("✓ ${pascalName} seeded successfully");
+}
+`;
+	}
+	return `export async function seed${pascalName}() {
+  console.log("Seeding ${pascalName}...");
+
+  // TODO: Insert your dummy data here
+  // console.log([{ name: "Dummy 1" }, { name: "Dummy 2" }]);
+
+  console.log("✓ ${pascalName} seeded successfully");
+}
+`;
+}
+
+function generateSeeder(
+	name: string,
+	pascalName: string,
+	orm: ORM | null,
+	useFactory: boolean,
+): string {
+	if (orm === null) {
+		return generatePlainSeeder(name, pascalName, useFactory);
+	}
 	switch (orm) {
 		case "drizzle":
 			return generateDrizzleSeeder(name, pascalName, useFactory);
@@ -122,11 +160,11 @@ function generateSeeder(name: string, pascalName: string, orm: ORM, useFactory: 
 
 export async function makeSeederCommand(name: string, flags: string[] = []) {
 	const pascalName = toPascalCase(name);
-	const orm = detectORM();
+	const orm = detectORMOrNull();
 	const useFactory = flags.includes("--factory");
 	const dryRun = flags.includes("--dry-run");
 	const force = flags.includes("--force");
-	console.log(`\n\x1b[36mScaffolding Seeder for ${pascalName} (orm: ${orm}${useFactory ? ", using factory" : ""}${dryRun ? ", dry-run" : ""})...\x1b[0m\n`);
+	console.log(`\n\x1b[36mScaffolding Seeder for ${pascalName} (orm: ${orm ?? "plain"}${useFactory ? ", using factory" : ""}${dryRun ? ", dry-run" : ""})...\x1b[0m\n`);
 
 	const seederDir = "src/db/seeders";
 
@@ -172,7 +210,7 @@ export async function makeSeederCommand(name: string, flags: string[] = []) {
 		const factoryPath = `src/factories/${toSnakeCase(name)}.factory.ts`;
 		if (!existsSync(factoryPath)) {
 			console.log(
-				`\n\x1b[90mFactory not found at ${factoryPath} — generating it...\x1b[0m`,
+				`\n\x1b[90mFactory not found at ${factoryPath} - generating it...\x1b[0m`,
 			);
 			await makeFactoryCommand(name, []);
 		}

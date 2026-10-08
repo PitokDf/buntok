@@ -43,6 +43,23 @@ function getUniqueFiles(errors: TSError[]): string[] {
 	return [...new Set(errors.map((e) => e.file))];
 }
 
+function countProjectFiles(cwd: string, tsconfigPath: string): number {
+	try {
+		const proc = Bun.spawnSync(
+			["bunx", "tsc", "--noEmit", "--listFilesOnly", "--project", tsconfigPath],
+			{ cwd },
+		);
+		const out = proc.stdout?.toString() || "";
+		return out
+			.split("\n")
+			.map((line) => line.trim())
+			.filter((line) => line.startsWith("/") && !line.includes("node_modules"))
+			.length;
+	} catch {
+		return 0;
+	}
+}
+
 export async function checkCommand(flags: string[] = []): Promise<void> {
 	const cwd = process.cwd();
 	const tsconfigPath = join(cwd, "tsconfig.json");
@@ -95,7 +112,7 @@ export async function checkCommand(flags: string[] = []): Promise<void> {
 					success: true,
 					errors: [],
 					errorCount: 0,
-					fileCount: 0,
+					fileCount: countProjectFiles(cwd, tsconfigPath),
 				}),
 			);
 		} else {

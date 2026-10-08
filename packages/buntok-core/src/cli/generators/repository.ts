@@ -1,7 +1,7 @@
-import { detectORM, type ORM } from "../project.js";
+import { detectORMOrNull, type ORM } from "../project.js";
 import { toCamelCase } from "../utils.js";
 
-export { detectORM };
+export { detectORM } from "../project.js";
 export type { ORM };
 
 export interface RepositoryOptions {
@@ -136,18 +136,61 @@ export class ${pascalName}Repository {
 `;
 }
 
+function generatePlainRepository(pascalName: string): string {
+	return `export class ${pascalName}Repository {
+  private items = new Map<string | number, any>();
+
+  async findAll(): Promise<any[]> {
+    return Array.from(this.items.values());
+  }
+
+  async findById(id: string | number): Promise<any | null> {
+    return this.items.get(id) ?? null;
+  }
+
+  async create(data: any): Promise<any> {
+    const id = (data?.id ?? this.items.size + 1) as string | number;
+    const item = { ...data, id };
+    this.items.set(id, item);
+    return item;
+  }
+
+  async update(id: string | number, data: any): Promise<any> {
+    const item = this.items.get(id);
+    if (!item) return null;
+    const merged = { ...item, ...data, id };
+    this.items.set(id, merged);
+    return merged;
+  }
+
+  async delete(id: string | number): Promise<boolean> {
+    return this.items.delete(id);
+  }
+
+  async count(): Promise<number> {
+    return this.items.size;
+  }
+}
+`;
+}
+
 /**
  * Generate repository file content based on ORM.
- * Default is plain (explicit CRUD methods); `options.base` opts into the
- * BaseRepository variant (Prisma only — Drizzle/TypeORM stay plain).
+ * Uses the passed ORM, otherwise auto-detects from the project; when no ORM
+ * is found it falls back to a plain in-memory repository. `options.base` opts
+ * into the BaseRepository variant (Prisma only - Drizzle/TypeORM stay plain).
  */
 export function generateRepository(
 	entityName: string,
 	pascalName: string,
-	orm?: ORM,
+	orm?: ORM | null,
 	options?: RepositoryOptions,
 ): string {
-	const detectedOrm = orm ?? detectORM();
+	const detectedOrm = orm ?? detectORMOrNull();
+
+	if (detectedOrm === null) {
+		return generatePlainRepository(pascalName);
+	}
 
 	switch (detectedOrm) {
 		case "drizzle":

@@ -25,7 +25,7 @@ function sanitizeSchema(schema: any): any {
 		return z.string().openapi({ format: "binary", description: "Binary file" });
 	}
 
-	// ZodObject — recurse into shape
+	// ZodObject - recurse into shape
 	if (typeName === "ZodObject" || typeName === "object") {
 		const shape =
 			typeof schema._def.shape === "function"
@@ -38,12 +38,12 @@ function sanitizeSchema(schema: any): any {
 		return z.object(newShape as Record<string, z.ZodTypeAny>);
 	}
 
-	// ZodArray — recurse into element
+	// ZodArray - recurse into element
 	if (typeName === "ZodArray" || typeName === "array") {
 		return z.array(sanitizeSchema(schema._def.type));
 	}
 
-	// ZodOptional / ZodNullable — recurse into inner
+	// ZodOptional / ZodNullable - recurse into inner
 	if (typeName === "ZodOptional" || typeName === "optional") {
 		return sanitizeSchema(schema._def.innerType).optional();
 	}
@@ -70,7 +70,7 @@ export async function makeDocsCommand() {
 
 		if (!appInstance || !appInstance.openApiDocs) {
 			throw new Error(
-				"Could not find an exported 'app' instance in src/index.ts. Make sure you export your app: `export const app = new App();`",
+				"Could not find an exported 'app' instance in src/index.ts. Make sure you export your app: `export const app = new Buntok();`",
 			);
 		}
 
@@ -150,7 +150,7 @@ export async function makeDocsCommand() {
 			`\x1b[32m✔ OpenAPI JSON generated at public/docs/swagger.json\x1b[0m`,
 		);
 
-		// Scalar UI — index.html so app.static("/docs", "./public/docs") just works
+		// Scalar UI - index.html so app.static("/docs", "./public/docs") just works
 		const htmlPath = resolve(docsDir, "index.html");
 		const html = `<!doctype html>
 <html>

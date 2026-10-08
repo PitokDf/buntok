@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
 	fakerLinesForFields,
@@ -35,9 +36,9 @@ function generateFactoryTemplate(
   // name: faker.person.fullName(),
   // email: faker.internet.email(),`;
 
-	// Prisma projects get the generated model type; other ORMs get an inline
-	// type derived from the schema fields when available.
-	if (orm === "prisma" || (!orm && !fields)) {
+	// Prisma projects get the generated model type; everyone else gets an
+	// inline type derived from the schema fields when available.
+	if (orm === "prisma") {
 		const typeImport = `import type { ${interfaceName} } from "@prisma/client";`;
 		return {
 			typeImport,
@@ -56,6 +57,34 @@ function generateFactoryTemplate(
 		typeDecl,
 		body,
 	};
+}
+
+function ensureFakerDependency(targetDir: string): void {
+	if (process.env.BUNTOK_NO_AUTO_INSTALL === "1") return;
+
+	const pkgPath = join(targetDir, "package.json");
+	if (!existsSync(pkgPath)) return;
+
+	try {
+		const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+		const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+		if (allDeps["@faker-js/faker"]) return;
+	} catch {
+		return;
+	}
+
+	console.log("\x1b[90m• Installing @faker-js/faker...\x1b[0m");
+	try {
+		execSync("bun add -d @faker-js/faker", {
+			cwd: targetDir,
+			stdio: "ignore",
+		});
+		console.log("\x1b[32m✓ Installed\x1b[0m @faker-js/faker");
+	} catch {
+		console.warn(
+			"\x1b[33m⚠ Failed to install @faker-js/faker, run: bun add -d @faker-js/faker\x1b[0m",
+		);
+	}
 }
 
 export async function makeFactoryCommand(
@@ -125,6 +154,7 @@ ${shape.typeDecl ? `\n${shape.typeDecl}\n` : ""}`;
 
 	// Write factory file
 	writeFileSync(filePath, content, "utf-8");
+	ensureFakerDependency(targetDir);
 	if (formatWithBiome([filePath])) {
 		console.log(
 			"\x1b[90m✨ Auto-formatted generated factory file with Biome\x1b[0m",

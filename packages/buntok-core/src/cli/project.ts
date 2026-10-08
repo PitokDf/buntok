@@ -49,32 +49,46 @@ export const ENTRY_CANDIDATES = [
 	"server.ts",
 	"src/index.ts",
 	"src/main.ts",
+	"src/buntok.ts",
 	"src/app.ts",
 	"src/server.ts",
 	"index.ts",
 ] as const;
 
 /**
- * Find the app entry file (relative path) or null when none exists.
- * Prefers a candidate that actually hosts the app (listen/new App/export).
+ * All existing entry files (relative path) in preference order: candidates
+ * that look like they host the app (listen/new Buntok/default export) first,
+ * then the remaining ones.
  */
-export function findEntryFile(cwd: string = process.cwd()): string | null {
+export function findEntryFiles(cwd: string = process.cwd()): string[] {
 	const existing: string[] = [];
 	for (const candidate of ENTRY_CANDIDATES) {
 		if (existsSync(join(cwd, candidate))) existing.push(candidate);
 	}
-	if (existing.length === 0) return null;
+	const probe: string[] = [];
+	const rest: string[] = [];
 	for (const candidate of existing) {
 		try {
 			const src = readFileSync(join(cwd, candidate), "utf-8");
-			if (/app\.listen\s*\(|new\s+App\s*\(|export\s+default\s+app/.test(src)) {
-				return candidate;
+			if (/app\.listen\s*\(|new\s+(?:App|Buntok)\s*\(|export\s+default\s+app/.test(src)) {
+				probe.push(candidate);
+			} else {
+				rest.push(candidate);
 			}
 		} catch {
-			// unreadable candidate — keep looking
+			// unreadable candidate - keep looking
+			rest.push(candidate);
 		}
 	}
-	return existing[0] ?? null;
+	return [...probe, ...rest];
+}
+
+/**
+ * Find the app entry file (relative path) or null when none exists.
+ * Prefers a candidate that actually hosts the app (listen/new Buntok/export).
+ */
+export function findEntryFile(cwd: string = process.cwd()): string | null {
+	return findEntryFiles(cwd)[0] ?? null;
 }
 
 /** Escape a string for use inside a regular expression. */
@@ -89,7 +103,7 @@ export interface AppInstance {
 	declEnd: number;
 	/** Whether the declaration is exported. */
 	exported: boolean;
-	/** `app` for `new App(...)`, `group` for `X = Y.group(...)`. */
+	/** `app` for `new Buntok(...)`, `group` for `X = Y.group(...)`. */
 	kind: "app" | "group";
 	/** For groups: the receiver, e.g. `app` in `const apiv1 = app.group("/api/v1")`. */
 	owner?: string;
@@ -134,7 +148,7 @@ function statementEnd(src: string, from: number): number {
 
 /**
  * Detect every app-hosting declaration in a source file:
- * - `const app = new App(...)` (generic `new App<DI>()` too)
+ * - `const app = new Buntok(...)` (generic `new Buntok<DI>()` too)
  * - `const apiv1 = app.group("/api/v1")` (RouterGroup targets)
  */
 export function detectAppInstances(src: string): AppInstance[] {
@@ -146,14 +160,14 @@ export function detectAppInstances(src: string): AppInstance[] {
 		const exported = m[0].startsWith("export ");
 		const rhsStart = m.index + m[0].length;
 
-		if (/^new\s+App(?:\s*<[^>]*>)?\s*\(/.test(src.slice(rhsStart, rhsStart + 200))) {
+		if (/^new\s+(?:App|Buntok)(?:\s*<[^>]*>)?\s*\(/.test(src.slice(rhsStart, rhsStart + 200))) {
 			const declEnd = statementEnd(src, m.index);
 			instances.push({ name, declEnd, exported, kind: "app" });
 			continue;
 		}
 
-		// RouterGroup: `X = <receiver>.group(...)` — the receiver is the
-		// owner (an App, or another group whose owner we resolve later).
+		// RouterGroup: `X = <receiver>.group(...)` - the receiver is the
+		// owner (a Buntok, or another group whose owner we resolve later).
 		const stmtEnd = statementEnd(src, m.index);
 		const region = src.slice(rhsStart, stmtEnd);
 		GROUP_CALL.lastIndex = 0;
@@ -165,8 +179,8 @@ export function detectAppInstances(src: string): AppInstance[] {
 			last = g;
 		}
 		if (!first || !last) continue;
-		// Owner = receiver before the FIRST .group( — for chains like
-		// `app.group("/a").group("/b")` that root is still the App.
+		// Owner = receiver before the FIRST .group( - for chains like
+		// `app.group("/a").group("/b")` that root is still the Buntok.
 		const owner = region.slice(0, first.index).replace(/\s+/g, "");
 		if (!/^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/.test(owner)) continue;
 		const open = rhsStart + last.index + last[0].length - 1;
@@ -190,11 +204,11 @@ export function detectAppInstances(src: string): AppInstance[] {
 }
 
 /**
- * Find the file that actually declares the App instance (registration
+ * Find the file that actually declares the Buntok instance (registration
  * target), e.g. `src/app.ts` / `src/index.ts`. A file that merely calls
  * `app.listen()` (the scaffolded `server.ts`) never wins over the
  * declaration file. Falls back to the entry file when no candidate
- * declares an App.
+ * declares a Buntok.
  */
 export function findAppDeclarationFile(cwd: string = process.cwd()): string | null {
 	let plainApp: string | null = null;
@@ -211,7 +225,7 @@ export function findAppDeclarationFile(cwd: string = process.cwd()): string | nu
 			if (apps.length > 0) plainApp ??= candidate;
 			else groupOnly ??= candidate;
 		} catch {
-			// unreadable candidate — keep looking
+			// unreadable candidate - keep looking
 		}
 	}
 	return plainApp ?? groupOnly ?? findEntryFile(cwd);
@@ -232,7 +246,7 @@ function findBalancedClose(src: string, openIndex: number): number {
 }
 
 /**
- * End of a `const <name> = new App(...)` declaration (options object
+ * End of a `const <name> = new Buntok(...)` declaration (options object
  * supported), or null when there is no declaration for that instance.
  */
 export function findAppDeclEnd(src: string, name = "app"): number | null {
@@ -267,7 +281,7 @@ export function findInsertionIndex(src: string, name = "app"): {
 	if (exportDefaultMatch?.index !== undefined && exportDefaultMatch[1]) {
 		return { index: exportDefaultMatch.index + 1, before: exportDefaultMatch[1] };
 	}
-	// Pattern 4: <name> declaration — insert after the balanced
+	// Pattern 4: <name> declaration - insert after the balanced
 	// declaration (options object supported)
 	const instance = detectAppInstances(src).find((i) => i.name === name);
 	if (instance) {

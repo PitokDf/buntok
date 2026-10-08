@@ -1466,7 +1466,7 @@
       if (schema.default !== undefined) return schema.default;
       if (schema.enum && schema.enum.length > 0) return schema.enum[0];
 
-      // Handle nullable - deterministik: return null only jika type explicitly nullable dan tidak ada value (jangan random)
+      // Handle nullable - deterministic: return null only if the type is explicitly nullable and there is no value (never random)
       if (schema.nullable && schema.type === 'null') return null;
 
       // Handle $ref if present in components
@@ -1483,7 +1483,7 @@
         const obj = {};
         if (schema.properties) {
           Object.entries(schema.properties).forEach(([key, prop]) => {
-            // nullable per-property - deterministik: tetap isi value, tidak random null
+            // nullable per-property - deterministic: always fill the value, never random null
             if (prop.nullable && prop.type === 'null') { obj[key] = null; return; }
 
             if (prop.example !== undefined) {
@@ -3006,7 +3006,7 @@
       schemaTbody.querySelectorAll('tr[data-schema-path]').forEach(tr => {
         const fullPath = tr.dataset.schemaPath;
         if (!fullPath) return;
-        // Skip array-item paths (e.g. addresses[0].city) — handled by renderArrayItems
+        // Skip array-item paths (e.g. addresses[0].city) - handled by renderArrayItems
         if (fullPath.includes('[')) return;
         const val = getNestedValue(bodySchemaValues, fullPath);
         if (val === undefined) return;

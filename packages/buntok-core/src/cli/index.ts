@@ -29,7 +29,7 @@ function printUsage() {
 \x1b[36mCommands:\x1b[0m
   init                   Setup project: copy SKILL.md + configure package.json + generate env.ts
   dev                    Start development server with hot reload
-  build                  Build project for production (output → .buntok/)
+  build                  Build project for production (output → buntok/)
   check                  Run TypeScript type check
   create <entity>        Generate all files for entity (repo, service, controller, schema)
   db <command>           Database operations (migrate, seed, reset, generate, studio, status)
@@ -41,19 +41,27 @@ function printUsage() {
   make:seeder <entity>   Generate database seeder for entity
   make:middleware <name>  Generate middleware file
 
+\x1b[36mGlobal options:\x1b[0m
+  --help, -h             Show this help
+  --version, -v          Show CLI version
+
+\x1b[36mOptions (for dev):\x1b[0m
+  --port=PORT            Dev server port (default: env PORT or 1212)
+  --expose               Public tunnel URL via localtunnel (requires: bun add -d localtunnel)
+
 \x1b[36mOptions (for create):\x1b[0m
   --repo                 Generate only repository
   --service              Generate only service
   --controller           Generate only controller
   --schema               Generate only schema
-  --prisma               Use Prisma ORM (default: auto-detect)
+  --prisma               Use Prisma ORM (default: auto-detect, falls back to plain code)
   --drizzle              Use Drizzle ORM
   --typeorm              Use TypeORM
   --dry-run              Preview files without writing
   --force                Overwrite files that already exist
   --base                 Generate code extending BaseRepository/BaseService/BaseController (default: plain code)
   --fields "a:string,b:int?"  Field list for the schema when there is no Prisma model
-  --app <instance>       App instance to register the controller into (default: auto-detect, e.g. --app apiV1)
+  --app <instance>       Buntok instance to register the controller into (default: auto-detect, e.g. --app apiV1)
 
 \x1b[36mOptions (for check command):\x1b[0m
   --json                 Output results as JSON
@@ -78,7 +86,7 @@ function printUsage() {
   buntok g user --repo --service          # Generate repository and service only
   buntok g user --drizzle                 # Generate with Drizzle ORM
   buntok g user --dry-run                # Preview what would be generated
-  buntok g user --app apiV1              # Register into the apiV1 App instance
+  buntok g user --app apiV1              # Register into the apiV1 Buntok instance
   buntok db migrate                       # Run pending migrations
   buntok db seed                          # Seed database
   buntok debug:routes                     # Show all registered routes
@@ -104,6 +112,15 @@ export async function main() {
 		return;
 	}
 
+	if (command === "--help" || command === "-h" || command === "help") {
+		printUsage();
+		return;
+	}
+	if (command === "--version" || command === "-v" || command === "version") {
+		printBanner();
+		return;
+	}
+
 	switch (command) {
 		case "init":
 			await initCommand();
@@ -123,7 +140,7 @@ export async function main() {
 		case "create":
 			if (!arg1) {
 				console.error(
-					"\x1b[31mError: entity name is required for create command\x1b[0m",
+					`\x1b[31mError: entity name is required for ${command} command\x1b[0m`,
 				);
 				process.exitCode = 1;
 				return;

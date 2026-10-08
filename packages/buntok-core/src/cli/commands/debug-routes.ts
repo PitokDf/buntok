@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { findEntryFile } from "../project.js";
+import { findEntryFiles } from "../project.js";
 
 function getMethodColor(method: string): string {
 	switch (method) {
@@ -51,7 +51,7 @@ function printRouteTable(routes: any[]): void {
 	// Print rows
 	for (const route of routes) {
 		const methodColor = getMethodColor(route.method);
-		const mwStr = (route.middlewares || []).length > 0 ? route.middlewares.join(", ") : "—";
+		const mwStr = (route.middlewares || []).length > 0 ? route.middlewares.join(", ") : "-";
 		const truncatedMw = mwStr.length > 40 ? mwStr.slice(0, 37) + "..." : mwStr;
 
 		const row = [
@@ -90,39 +90,59 @@ export async function debugRoutesCommand(flags: string[]): Promise<void> {
 	const isJson = flags.includes("--json");
 	const targetDir = process.cwd();
 
+	// Importing the entry must not boot the HTTP server (app.listen in
+	// server.ts would otherwise keep the process alive forever)
+	process.env.BUNTOK_CLI_NO_LISTEN = "1";
+
 	// Find the user's app entry point (shared candidate list + content probe)
-	const entry = findEntryFile(targetDir);
+	const candidates = findEntryFiles(targetDir);
 
-	if (!entry) {
+	if (candidates.length === 0) {
 		console.error("\x1b[31mError: Could not find app entry point (server.ts, src/index.ts, src/main.ts, src/app.ts, or src/server.ts)\x1b[0m");
-		process.exitCode = 1;
-		return;
+		process.exit(1);
 	}
-	const entryFile = resolve(targetDir, entry);
 
-	try {
-		// Import the user's app to trigger route registration
-		const fileUrl = pathToFileURL(entryFile).href;
-		const mod = await import(fileUrl);
+	// Import candidates in preference order until one exports the app.
+	// A listener-only entry (old server.ts without `export { app }`) falls
+	// through to the next candidate instead of failing outright.
+	let app: any = null;
+	let importError: { entry: string; err: any } | null = null;
 
-		// Find the app instance — check default export and named exports
-		let app: any = null;
-		if (mod.default && mod.default.routeDebugInfo) {
-			app = mod.default;
-		} else {
-			// Search all exports for an app-like object
-			for (const key of Object.keys(mod)) {
-				if (mod[key] && mod[key].routeDebugInfo) {
-					app = mod[key];
-					break;
-				}
-			}
+	for (const entry of candidates) {
+		const entryFile = resolve(targetDir, entry);
+		let mod: any;
+		try {
+			const fileUrl = pathToFileURL(entryFile).href;
+			mod = await import(fileUrl);
+		} catch (err: any) {
+			if (!importError) importError = { entry, err };
+			continue;
 		}
 
+		if (mod.default && mod.default.routeDebugInfo) {
+			app = mod.default;
+			break;
+		}
+		for (const key of Object.keys(mod)) {
+			if (mod[key] && mod[key].routeDebugInfo) {
+				app = mod[key];
+				break;
+			}
+		}
+		if (app) break;
+	}
+
+	try {
 		if (!app) {
-			console.error("\x1b[31mError: Could not find App instance with routeDebugInfo. Make sure your entry point exports a Buntok App instance.\x1b[0m");
-			process.exitCode = 1;
-			return;
+			if (importError) {
+				console.error(`\x1b[31mError importing ${importError.entry}: ${importError.err.message}\x1b[0m`);
+				if (importError.err.stack) {
+					console.error(`\x1b[90m${importError.err.stack}\x1b[0m`);
+				}
+				process.exit(1);
+			}
+			console.error(`\x1b[31mError: Could not find Buntok instance with routeDebugInfo (checked: ${candidates.join(", ")}). Make sure your entry point exports a Buntok app instance.\x1b[0m`);
+			process.exit(1);
 		}
 
 		const routes = app.routeDebugInfo || [];
@@ -133,11 +153,12 @@ export async function debugRoutesCommand(flags: string[]): Promise<void> {
 			printRouteTable(routes);
 			printSourceSummary(routes);
 		}
+		process.exit(0);
 	} catch (err: any) {
 		console.error(`\x1b[31mError importing app: ${err.message}\x1b[0m`);
 		if (err.stack) {
 			console.error(`\x1b[90m${err.stack}\x1b[0m`);
 		}
-		process.exitCode = 1;
+		process.exit(1);
 	}
 }

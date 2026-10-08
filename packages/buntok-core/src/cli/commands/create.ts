@@ -16,7 +16,7 @@ import {
 	collectImportedControllers,
 	type AppInstance,
 	detectAppInstances,
-	detectORM,
+	detectORMOrNull,
 	escapeRegExp,
 	ensureImport,
 	findAppDeclarationFile,
@@ -125,7 +125,7 @@ function parseOptions(args: string[]): CreateOptions {
 }
 
 interface RegistrationTarget {
-	/** File that declares the App instance(s), e.g. `src/app.ts`. */
+	/** File that declares the Buntok instance(s), e.g. `src/app.ts`. */
 	file: string;
 	instances: AppInstance[];
 	/** Instance that owns the registration, e.g. `app` or `apiV1`. */
@@ -172,7 +172,7 @@ function resolveContainerHost(name: string, instances: AppInstance[]): string {
 }
 
 /**
- * Pick the registration file (the one declaring `new App(...)`, not the
+ * Pick the registration file (the one declaring `new Buntok(...)`, not the
  * listener-only `server.ts`) and the target instance. Honors `--app`,
  * prompts when several instances exist on a TTY, and falls back to a
  * deterministic default in CI.
@@ -191,7 +191,7 @@ async function resolveRegistrationTarget(
 	if (options.app) {
 		if (instances.length === 0) {
 			console.error(
-				`\x1b[31mError: --app ${options.app} given, but no App instance is declared in ${file}\x1b[0m`,
+				`\x1b[31mError: --app ${options.app} given, but no Buntok instance is declared in ${file}\x1b[0m`,
 			);
 			process.exitCode = 1;
 			return { error: true };
@@ -199,7 +199,7 @@ async function resolveRegistrationTarget(
 		if (!instances.some((i) => i.name === options.app)) {
 			const available = instances.map(instanceLabel).join(", ");
 			console.error(
-				`\x1b[31mError: App instance "${options.app}" not found in ${file} (available: ${available})\x1b[0m`,
+				`\x1b[31mError: Buntok instance "${options.app}" not found in ${file} (available: ${available})\x1b[0m`,
 			);
 			process.exitCode = 1;
 			return { error: true };
@@ -209,7 +209,7 @@ async function resolveRegistrationTarget(
 
 	if (instances.length === 0) {
 		console.log(
-			`\x1b[33m⚠ No App instance declared in ${file} — registering via "app"\x1b[0m`,
+			`\x1b[33m⚠ No Buntok instance declared in ${file} - registering via "app"\x1b[0m`,
 		);
 		return { target: { file, instances, name: "app" } };
 	}
@@ -223,7 +223,7 @@ async function resolveRegistrationTarget(
 	const defaultIndex = pickDefaultInstance(content, instances);
 	if (process.stdin.isTTY) {
 		const picked = await selectFrom(
-			`\x1b[36mRegister the controller to which App instance in ${file}?\x1b[0m`,
+			`\x1b[36mRegister the controller to which Buntok instance in ${file}?\x1b[0m`,
 			instances.map(instanceLabel),
 			defaultIndex,
 		);
@@ -233,7 +233,7 @@ async function resolveRegistrationTarget(
 	}
 	const chosen = names[defaultIndex] ?? names[0] ?? "app";
 	console.log(
-		`\x1b[33m⚠ ${file} declares multiple App instances (${names.join(", ")}) — registered via "${chosen}". Use --app <name> to pick another.\x1b[0m`,
+		`\x1b[33m⚠ ${file} declares multiple Buntok instances (${names.join(", ")}) - registered via "${chosen}". Use --app <name> to pick another.\x1b[0m`,
 	);
 	return { target: { file, instances, name: chosen } };
 }
@@ -241,10 +241,10 @@ async function resolveRegistrationTarget(
 export async function createCommand(entityName: string, args: string[]) {
 	const options = parseOptions(args);
 	const pascalName = toPascalCase(entityName);
-	const orm = options.orm ?? detectORM();
+	const orm = options.orm ?? detectORMOrNull();
 	const moduleDir = join("src/modules", entityName);
 
-	// Resolve where (and to which App instance) the controller gets
+	// Resolve where (and to which Buntok instance) the controller gets
 	// registered before touching any file, so an invalid --app fails clean.
 	const registration = await resolveRegistrationTarget(options);
 	if ("error" in registration) return;
@@ -280,12 +280,12 @@ export async function createCommand(entityName: string, args: string[]) {
 	// A service generated with a repo (or next to an existing one) gets the
 	// wired template; a controller generated next to an existing service does
 	// too. `--base` (or a base-styled module on disk) always implies the
-	// wired templates — the Base* variants carry @Dependencies themselves.
+	// wired templates - the Base* variants carry @Dependencies themselves.
 	const serviceWithRepo = options.repo || hasRepo || useBase;
 	const controllerWithService = options.service || hasService || useBase;
 
 	const prefix = options.dryRun ? "\x1b[33m[DRY RUN]\x1b[0m " : "";
-	console.log(`\n${prefix}\x1b[36mCreating ${pascalName} entity (orm: ${orm})...\x1b[0m\n`);
+	console.log(`\n${prefix}\x1b[36mCreating ${pascalName} entity (orm: ${orm ?? "plain"})...\x1b[0m\n`);
 
 	// Ensure module directory exists (skip in dry-run)
 	if (!options.dryRun) {
@@ -429,7 +429,7 @@ export async function createCommand(entityName: string, args: string[]) {
 		}
 	}
 
-	// Auto-register in the file that declares the App instance — never the
+	// Auto-register in the file that declares the Buntok instance - never the
 	// listener-only entry (server.ts). Null on dry-run / non-controller runs.
 	const target = registration.target;
 	if (target && existsSync(target.file)) {
@@ -491,12 +491,12 @@ export async function createCommand(entityName: string, args: string[]) {
 				// Step 3: Add/merge container.scan()
 				const existingScan = content.match(scanRegex);
 				if (existingScan?.[1]) {
-					// Already has scan — merge
+					// Already has scan - merge
 					const existing = existingScan[1].trim();
 					const merged = existing ? `${existing}, ${controllerName}` : controllerName;
 					content = content.replace(scanRegex, `container.scan([${merged}]);`);
 				} else {
-					// No scan found — collect all imported @Dependencies controllers
+					// No scan found - collect all imported @Dependencies controllers
 					const allControllers = collectImportedControllers(content, true, inst);
 					if (!allControllers.includes(controllerName)) {
 						allControllers.push(controllerName);
@@ -505,8 +505,8 @@ export async function createCommand(entityName: string, args: string[]) {
 				}
 
 				// Step 4: Add <host>.setContainer(container) if missing.
-				// RouterGroup has no setContainer() — attach to the owning
-				// App instead (`apiv1 = app.group(...)` → `app`).
+				// RouterGroup has no setContainer() - attach to the owning
+				// Buntok instead (`apiv1 = app.group(...)` → `app`).
 				const host = resolveContainerHost(inst, target.instances);
 				const hostRef = escapeRegExp(host);
 				const setContainerRegex = new RegExp(
@@ -520,16 +520,16 @@ export async function createCommand(entityName: string, args: string[]) {
 				content = ensureImport(content, controllerImport);
 			}
 
-			// Step 5: Add/merge registerController() — required for endpoint registration
+			// Step 5: Add/merge registerController() - required for endpoint registration
 			const rcSingleNew = content.match(rcSingleRegex);
 			const rcArrayNew = content.match(rcArrayRegex);
 			if (rcArrayNew?.[1]) {
-				// Already has array — merge
+				// Already has array - merge
 				const existing = rcArrayNew[1].trim();
 				const merged = existing ? `${existing}, ${controllerName}` : controllerName;
 				content = content.replace(rcArrayRegex, `${inst}.registerController([${merged}]);`);
 			} else if (rcSingleNew?.[1]) {
-				// Has single — convert to array
+				// Has single - convert to array
 				content = content.replace(
 					rcSingleRegex,
 					`${inst}.registerController([${rcSingleNew[1]}, ${controllerName}]);`,
@@ -573,7 +573,7 @@ export async function createCommand(entityName: string, args: string[]) {
 							"\nconst container = new Container();" +
 							content.slice(declEnd);
 					} else {
-						// No `const <inst> = new App(...)` to anchor on — declare
+						// No `const <inst> = new Buntok(...)` to anchor on - declare
 						// the container directly above the inserted block.
 						const insertion = findInsertionIndex(content, inst);
 						const prefix =

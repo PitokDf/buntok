@@ -60,7 +60,7 @@ describe("project: findEntryFile", () => {
 	it("prefers a candidate that hosts the app", async () => {
 		const dir = makeProject({
 			"server.ts": "export const x = 1;",
-			"src/index.ts": "const app = new App();\napp.listen(3000);",
+			"src/index.ts": "const app = new Buntok();\napp.listen(3000);",
 		});
 		await runInProject(dir, () => {
 			expect(findEntryFile(process.cwd())).toBe("src/index.ts");
@@ -84,6 +84,25 @@ describe("project: findEntryFile", () => {
 
 describe("project: detectAppInstances", () => {
 	it("detects a single exported instance", () => {
+		const src = `import { Buntok } from "@buntok/core";
+
+export const app = new Buntok();
+`;
+		const instances = detectAppInstances(src);
+		expect(instances).toHaveLength(1);
+		expect(instances[0]?.name).toBe("app");
+		expect(instances[0]?.exported).toBe(true);
+		expect(src.slice(0, instances[0]?.declEnd)).toEndWith("new Buntok();");
+	});
+
+	it("detects multiple instances with options objects", () => {
+		const src = `const apiV1 = new Buntok({ handleSignals: false });
+export const apiV2 = new Buntok();
+`;
+		expect(detectAppInstances(src).map((i) => i.name)).toEqual(["apiV1", "apiV2"]);
+	});
+
+	it("still detects legacy `new App()` (parsing proyek lama)", () => {
 		const src = `import { App } from "@buntok/core";
 
 export const app = new App();
@@ -95,17 +114,10 @@ export const app = new App();
 		expect(src.slice(0, instances[0]?.declEnd)).toEndWith("new App();");
 	});
 
-	it("detects multiple instances with options objects", () => {
-		const src = `const apiV1 = new App({ handleSignals: false });
-export const apiV2 = new App();
-`;
-		expect(detectAppInstances(src).map((i) => i.name)).toEqual(["apiV1", "apiV2"]);
-	});
-
-	it("matches generic App<DI> and let declarations", () => {
-		const src = `const app = new App<DI>();
-let legacy = new App();
-const typed: App = new App();
+	it("matches generic Buntok<DI> and let declarations", () => {
+		const src = `const app = new Buntok<DI>();
+let legacy = new Buntok();
+const typed: Buntok = new Buntok();
 `;
 		expect(detectAppInstances(src).map((i) => i.name)).toEqual([
 			"app",
@@ -123,9 +135,9 @@ app.listen(3000);
 	});
 
 	it("detects RouterGroup declarations with kind, owner and prefix", () => {
-		const src = `import { App } from "@buntok/core";
+		const src = `import { Buntok } from "@buntok/core";
 
-export const app = new App();
+export const app = new Buntok();
 const apiv1 = app.group("/api/v1");
 const apiv2 = app.group("/api/v2");
 `;
@@ -163,7 +175,7 @@ const apiv2 = app.group("/api/v2");
 	});
 
 	it("detects chained .group() calls with the root receiver as owner", () => {
-		const src = `const app = new App();
+		const src = `const app = new Buntok();
 const nested = app.group("/api").group("/v1");
 `;
 		const instances = detectAppInstances(src);
@@ -194,9 +206,9 @@ describe("project: findAppDeclarationFile", () => {
 
 app.listen(3000);
 `,
-			"src/index.ts": `import { App } from "@buntok/core";
+			"src/index.ts": `import { Buntok } from "@buntok/core";
 
-export const app = new App();
+export const app = new Buntok();
 `,
 		});
 		await runInProject(dir, () => {
@@ -206,11 +218,11 @@ export const app = new App();
 
 	it("prefers a file with an exported instance when several declare one", async () => {
 		const dir = makeProject({
-			"src/index.ts": "const app = new App();\n",
-			"src/app.ts": "export const app = new App();\n",
+			"src/index.ts": "const app = new Buntok();\n",
+			"src/buntok.ts": "export const app = new Buntok();\n",
 		});
 		await runInProject(dir, () => {
-			expect(findAppDeclarationFile(process.cwd())).toBe("src/app.ts");
+			expect(findAppDeclarationFile(process.cwd())).toBe("src/buntok.ts");
 		});
 	});
 
@@ -230,7 +242,7 @@ export const apiv1 = app.group("/api/v1");
 		});
 	});
 
-	it("falls back to the entry file when nothing declares an App", async () => {
+	it("falls back to the entry file when nothing declares an Buntok", async () => {
 		const dir = makeProject({
 			"server.ts": "export const x = 1;\n",
 			"src/index.ts": "export const y = 2;\n",
@@ -250,28 +262,28 @@ export const apiv1 = app.group("/api/v1");
 
 describe("project: findInsertionIndex", () => {
 	it("pattern 1: inserts before app.listen", () => {
-		const src = "const app = new App();\napp.listen(3000);\n";
+		const src = "const app = new Buntok();\napp.listen(3000);\n";
 		const { index, before } = findInsertionIndex(src);
 		expect(src.slice(index)).toStartWith("app.listen");
 		expect(before).toBe("app.listen(");
 	});
 
 	it("pattern 2: inserts before route handlers", () => {
-		const src = "const app = new App();\napp.get('/', (ctx) => ctx.json({}));\n";
+		const src = "const app = new Buntok();\napp.get('/', (ctx) => ctx.json({}));\n";
 		const { index, before } = findInsertionIndex(src);
 		expect(src.slice(index)).toStartWith("app.get(");
 		expect(before).toBe("app.get(");
 	});
 
 	it("pattern 3: inserts before export default app", () => {
-		const src = "const app = new App();\nexport default app;\n";
+		const src = "const app = new Buntok();\nexport default app;\n";
 		const { index, before } = findInsertionIndex(src);
 		expect(src.slice(index)).toStartWith("export default app");
 		expect(before).toBe("export default app");
 	});
 
 	it("pattern 4: inserts after a balanced export const app declaration", () => {
-		const src = "export const app = new App({\n  port: 3000,\n});\n";
+		const src = "export const app = new Buntok({\n  port: 3000,\n});\n";
 		const { index, before } = findInsertionIndex(src);
 		expect(before).toBe("");
 		expect(src.slice(0, index)).toContain("port: 3000");
@@ -286,21 +298,21 @@ describe("project: findInsertionIndex", () => {
 	});
 
 	it("renamed instance: anchors on apiV1.listen", () => {
-		const src = "const apiV1 = new App();\napiV1.listen(3000);\n";
+		const src = "const apiV1 = new Buntok();\napiV1.listen(3000);\n";
 		const { index, before } = findInsertionIndex(src, "apiV1");
 		expect(src.slice(index)).toStartWith("apiV1.listen");
 		expect(before).toBe("apiV1.listen(");
 	});
 
 	it("renamed instance: falls back to its own declaration", () => {
-		const src = "export const apiV1 = new App();\n";
+		const src = "export const apiV1 = new Buntok();\n";
 		const { index, before } = findInsertionIndex(src, "apiV1");
 		expect(before).toBe("");
 		expect(src.slice(index)).toBe("\n");
 	});
 
 	it("renamed instance: ignores a different instance's listen", () => {
-		const src = "const apiV1 = new App();\napiV1.listen(3000);\n";
+		const src = "const apiV1 = new Buntok();\napiV1.listen(3000);\n";
 		const { index } = findInsertionIndex(src, "apiV2");
 		expect(index).toBe(src.length);
 	});
@@ -308,14 +320,21 @@ describe("project: findInsertionIndex", () => {
 
 describe("project: findAppDeclEnd with instance name", () => {
 	it("returns the end of the apiV1 declaration", () => {
-		const src = "const apiV1 = new App({\n  handleSignals: false,\n});\napiV1.listen();";
+		const src = "const apiV1 = new Buntok({\n  handleSignals: false,\n});\napiV1.listen();";
 		const end = findAppDeclEnd(src, "apiV1");
 		expect(end).not.toBeNull();
 		expect(src.slice(end ?? 0)).toBe("\napiV1.listen();");
 	});
 
 	it("returns null for an instance that is not declared", () => {
-		expect(findAppDeclEnd("const app = new App();", "apiV1")).toBeNull();
+		expect(findAppDeclEnd("const app = new Buntok();", "apiV1")).toBeNull();
+	});
+
+	it("supports legacy new App(...) declarations", () => {
+		const src = "const app = new App({ handleSignals: true });\napp.listen();";
+		const end = findAppDeclEnd(src, "app");
+		expect(end).not.toBeNull();
+		expect(src.slice(end ?? 0)).toBe("\napp.listen();");
 	});
 });
 
@@ -327,8 +346,8 @@ describe("project: escapeRegExp", () => {
 });
 
 describe("project: findAppDeclEnd", () => {
-	it("returns index past new App(...) with options", () => {
-		const src = "const app = new App({\n  port: 3000,\n});\napp.listen();";
+	it("returns index past new Buntok(...) with options", () => {
+		const src = "const app = new Buntok({\n  port: 3000,\n});\napp.listen();";
 		const end = findAppDeclEnd(src);
 		expect(end).not.toBeNull();
 		expect(src.slice(end)).toBe("\napp.listen();");
@@ -341,32 +360,32 @@ describe("project: findAppDeclEnd", () => {
 
 describe("project: ensureImport", () => {
 	it("adds after the last import", () => {
-		const src = 'import { App } from "@buntok/core";\nconst app = new App();\n';
+		const src = 'import { Buntok } from "@buntok/core";\nconst app = new Buntok();\n';
 		const out = ensureImport(src, 'import { UserController } from "@/modules/user";');
 		expect(out).toBe(
-			'import { App } from "@buntok/core";\nimport { UserController } from "@/modules/user";\nconst app = new App();\n',
+			'import { Buntok } from "@buntok/core";\nimport { UserController } from "@/modules/user";\nconst app = new Buntok();\n',
 		);
 	});
 
 	it("does not duplicate an existing import", () => {
-		const src = 'import { App } from "@buntok/core";';
-		const out = ensureImport(src, 'import { App } from "@buntok/core";');
+		const src = 'import { Buntok } from "@buntok/core";';
+		const out = ensureImport(src, 'import { Buntok } from "@buntok/core";');
 		expect(out).toBe(src);
 	});
 
 	it("unshifts when there are no imports", () => {
-		const out = ensureImport("const app = 1;", 'import { App } from "@buntok/core";');
-		expect(out).toStartWith('import { App } from "@buntok/core";');
+		const out = ensureImport("const app = 1;", 'import { Buntok } from "@buntok/core";');
+		expect(out).toStartWith('import { Buntok } from "@buntok/core";');
 	});
 });
 
 describe("project: collectImportedControllers", () => {
-	const SRC = `import { App } from "@buntok/core";
+	const SRC = `import { Buntok } from "@buntok/core";
 import { UserController } from "@/modules/user";
 import { CategoryController } from "@/modules/category";
 import { Other } from "@/utils/other";
 
-const app = new App();
+const app = new Buntok();
 app.registerController(CategoryController);
 app.registerController([UserController]);
 `;
@@ -384,7 +403,7 @@ app.registerController([UserController]);
 
 	it("keeps unregistered controllers when excluding", () => {
 		const src = `import { UserController } from "@/modules/user";
-const app = new App();
+const app = new Buntok();
 app.registerController(UserController);`;
 		expect(collectImportedControllers(src, false)).toEqual(["UserController"]);
 		expect(collectImportedControllers(src, true)).toEqual([]);

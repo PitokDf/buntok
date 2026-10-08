@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 /**
  * Static route scanner: parses `@Controller` / `@Get` / `@Post` / ... string
- * literals from source files — no app import, no runtime needed.
+ * literals from source files - no app import, no runtime needed.
  */
 
 export interface ScannedRoute {
@@ -18,6 +18,7 @@ const SKIP_DIRS = new Set([
 	"node_modules",
 	"dist",
 	".buntok",
+	"buntok",
 	".git",
 	"build",
 	"coverage",

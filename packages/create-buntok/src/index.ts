@@ -1,10 +1,23 @@
 #!/usr/bin/env bun
 
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
-
-const __dirname = import.meta.dir;
+import {
+	BIOME_CONFIG,
+	DOCKERFILE_TEMPLATE,
+	DOCKERIGNORE_CONTENT,
+	ENV_CONTENT,
+	ENV_EXAMPLE_CONTENT,
+	ENV_TS_TEMPLATE,
+	GITIGNORE_CONTENT,
+	INDEX_TEMPLATE,
+	SERVER_TS_TEMPLATE,
+	TSCONFIG_TEMPLATE,
+	VSCODE_SETTINGS,
+	VERCEL_JSON_TEMPLATE,
+	copySkillMd,
+} from "@buntok/core/cli/templates";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -77,182 +90,6 @@ function askChoice(
 	});
 }
 
-// ── Templates ────────────────────────────────────────────
-
-const BIOME_CONFIG = {
-	vcs: { enabled: true, clientKind: "git", useIgnoreFile: true },
-	files: {
-		ignoreUnknown: true,
-		includes: [
-			"**",
-			"!**/node_modules",
-			"!**/dist",
-			"!**/.buntok",
-			"!**/coverage",
-		],
-	},
-	formatter: {
-		enabled: true,
-		indentStyle: "tab",
-		indentWidth: 2,
-		lineWidth: 100,
-		lineEnding: "lf",
-	},
-	linter: {
-		enabled: true,
-		rules: {
-			preset: "recommended",
-			correctness: { noUnusedImports: { level: "warn", fix: "safe" } },
-			suspicious: { noExplicitAny: "off" },
-		},
-	},
-	javascript: {
-		formatter: { quoteStyle: "double", trailingCommas: "all" },
-	},
-};
-
-const TSCONFIG_TEMPLATE = {
-	compilerOptions: {
-		lib: ["ESNext"],
-		target: "ESNext",
-		module: "Preserve",
-		moduleDetection: "force",
-		jsx: "react-jsx",
-		allowJs: true,
-		types: ["bun", "node"],
-		moduleResolution: "bundler",
-		allowImportingTsExtensions: true,
-		verbatimModuleSyntax: true,
-		noEmit: true,
-		strict: true,
-		noUncheckedIndexedAccess: true,
-		exactOptionalPropertyTypes: true,
-		noImplicitOverride: true,
-		noFallthroughCasesInSwitch: true,
-		isolatedModules: true,
-		skipLibCheck: true,
-		paths: { "@/*": ["./src/*"] },
-	},
-	include: ["src/**/*"],
-	exclude: ["node_modules", ".buntok"],
-};
-
-const VSCODE_SETTINGS = {
-	"editor.formatOnSave": true,
-	"editor.defaultFormatter": "biomejs.biome",
-	"editor.codeActionsOnSave": {
-		"source.fixAll.biome": "explicit",
-		"source.organizeImports.biome": "explicit",
-	},
-	"[javascript]": { "editor.defaultFormatter": "biomejs.biome" },
-	"[typescript]": { "editor.defaultFormatter": "biomejs.biome" },
-	"[typescriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
-	"[json]": { "editor.defaultFormatter": "biomejs.biome" },
-	"[jsonc]": { "editor.defaultFormatter": "biomejs.biome" },
-	"[html]": { "editor.defaultFormatter": "biomejs.biome" },
-	"[css]": { "editor.defaultFormatter": "biomejs.biome" },
-};
-
-const INDEX_TEMPLATE = `import { App } from "@buntok/core";
-import "./env";
-
-export const app = new App();
-
-app.get("/", (ctx) => {
-	return ctx.json({ message: "Hello from Buntok!" });
-});
-
-export default app;
-`;
-
-const ENV_TS_TEMPLATE = `import { App } from "@buntok/core";
-import { z } from "@buntok/core/middlewares/validator";
-
-export const env = App.validateEnv({
-	PORT: z.coerce.number().default(1212),
-	AUTH_STORE: z.enum(["header", "cookie"]).default("header"),
-	AUTH_COOKIE: z.string().default("session"),
-	NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-});
-`;
-
-const SERVER_TS_TEMPLATE = `import { app } from "./src/index";
-import { env } from "./src/env";
-
-app.listen(env.PORT);
-`;
-
-const ENV_CONTENT = `PORT=1212
-AUTH_STORE=header
-AUTH_COOKIE=session
-`;
-
-const ENV_EXAMPLE_CONTENT = `# PORT: port is using for the app
-# AUTH_STORE: Where to store/read JWT tokens
-#   - "header" (default): Read from Authorization: Bearer <token> header
-#   - "cookie": Read from HttpOnly cookie (set AUTH_COOKIE for cookie name)
-# AUTH_COOKIE: Cookie name for JWT storage (only used when AUTH_STORE=cookie)
-PORT=1212
-AUTH_STORE=header
-AUTH_COOKIE=session
-`;
-
-const GITIGNORE_CONTENT = `node_modules/
-.buntok/
-.env
-.env.local
-.env.*.local
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-*.log
-npm-debug.log*
-coverage/
-`;
-
-const DOCKERFILE_TEMPLATE = `# Builder
-FROM oven/bun:1-alpine AS builder
-WORKDIR /app
-
-COPY package.json bun.lock* ./
-RUN bun install --frozen-lockfile --production
-
-COPY src/ src/
-COPY server.ts ./
-COPY tsconfig.json ./
-COPY package.json ./
-
-RUN bun run build
-
-# Production
-FROM oven/bun:1-alpine
-WORKDIR /app
-
-COPY --from=builder /app/.buntok .buntok
-COPY --from=builder /app/node_modules node_modules
-COPY --from=builder /app/package.json ./
-
-EXPOSE 1212
-
-ENV NODE_ENV=production
-ENV PORT=1212
-
-CMD ["bun", ".buntok/server.js"]
-`;
-
-const DOCKERIGNORE_CONTENT = `node_modules
-dist
-.buntok
-*.log
-.env
-.env.*
-coverage
-`;
-
 const DOCKER_COMPOSE_TEMPLATE = `version: "3.8"
 services:
   app:
@@ -262,52 +99,6 @@ services:
     env_file:
       - .env
 `;
-
-const VERCEL_JSON_TEMPLATE = {
-	$schema: "https://openapi.vercel.sh/vercel.json",
-	framework: "bun",
-	bunVersion: "1.4.x",
-};
-
-// ── SKILL.md copy ────────────────────────────────────────
-
-function findSkillMdSource(): string | null {
-	// Try relative path (monorepo dev)
-	const relativePath = join(
-		__dirname,
-		"..",
-		"..",
-		"buntok-core",
-		"scripts",
-		"buntok-skill",
-		"SKILL.md",
-	);
-	if (existsSync(relativePath)) return relativePath;
-
-	// Try resolving from @buntok/core package
-	try {
-		const pkgJson = require.resolve("@buntok/core/package.json");
-		const pkgDir = dirname(pkgJson);
-		const skillPath = join(pkgDir, "scripts", "buntok-skill", "SKILL.md");
-		if (existsSync(skillPath)) return skillPath;
-	} catch {}
-
-	return null;
-}
-
-function copySkillMd(projectRoot: string) {
-	const source = findSkillMdSource();
-	if (!source) {
-		console.warn("\x1b[33m\u26a0 SKILL.md not found, skipping.\x1b[0m");
-		return;
-	}
-	const destDir = join(projectRoot, ".agents", "skills", "buntok-skill");
-	mkdirSync(destDir, { recursive: true });
-	writeFileSync(join(destDir, "SKILL.md"), readFileSync(source, "utf-8"), "utf-8");
-	console.log(
-		"\x1b[32m\u2713 Created\x1b[0m .agents/skills/buntok-skill/SKILL.md",
-	);
-}
 
 // ── ORM templates ────────────────────────────────────────
 
@@ -537,7 +328,7 @@ async function main() {
 		scripts: {
 			dev: "bun --watch server.ts",
 			build: "buntok build",
-			start: "bun .buntok/server.js",
+			start: "bun buntok/server.js",
 			check: "bunx @biomejs/biome check --write .",
 			format: "bunx @biomejs/biome format --write .",
 			lint: "bunx @biomejs/biome lint .",

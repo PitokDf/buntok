@@ -1,4 +1,5 @@
 import { resolveNames, toCamelCase } from "../utils.js";
+import { detectORMOrNull } from "../project.js";
 import type { ORM } from "./repository.js";
 
 export interface ControllerOptions {
@@ -154,30 +155,35 @@ export function generateController(
 	entityName: string,
 	pascalName: string,
 	withService: boolean = true,
-	orm?: ORM,
+	orm?: ORM | null,
 	options?: ControllerOptions,
 ): string {
 	const route = options?.route ?? resolveNames(entityName).route;
 
 	if (withService) {
-		const detectedOrm = orm ?? "prisma";
+		const detectedOrm = orm ?? detectORMOrNull();
 		let typeImport: string;
 		let typeRef: string;
 
-		switch (detectedOrm) {
-			case "drizzle":
-				typeImport = getDrizzleType(entityName);
-				typeRef = pascalName;
-				break;
-			case "typeorm":
-				typeImport = getTypeORMType(pascalName);
-				typeRef = pascalName;
-				break;
-			case "prisma":
-			default:
-				typeImport = getPrismaType(pascalName);
-				typeRef = pascalName;
-				break;
+		if (detectedOrm === null) {
+			typeImport = "";
+			typeRef = "any";
+		} else {
+			switch (detectedOrm) {
+				case "drizzle":
+					typeImport = getDrizzleType(entityName);
+					typeRef = pascalName;
+					break;
+				case "typeorm":
+					typeImport = getTypeORMType(pascalName);
+					typeRef = pascalName;
+					break;
+				case "prisma":
+				default:
+					typeImport = getPrismaType(pascalName);
+					typeRef = pascalName;
+					break;
+			}
 		}
 
 		return options?.base

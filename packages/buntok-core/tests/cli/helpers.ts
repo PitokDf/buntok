@@ -10,6 +10,9 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
+// Keep CLI tests hermetic: init / make:factory must not hit the network.
+process.env.BUNTOK_NO_AUTO_INSTALL = "1";
+
 const tmpDirs: string[] = [];
 
 function writeRaw(dir: string, rel: string, content: string): void {

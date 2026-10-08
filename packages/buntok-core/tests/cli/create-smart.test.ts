@@ -22,9 +22,9 @@ const PKG = JSON.stringify(
 	2,
 );
 
-const INDEX_LISTEN = `import { App } from "@buntok/core";
+const INDEX_LISTEN = `import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 
 app.listen(3000);
 `;
@@ -51,13 +51,13 @@ describe("create: cross-generator awareness", () => {
 		);
 
 		const index = readProject(dir, "src/index.ts");
-		expect(index).toContain('import { App, Container } from "@buntok/core";');
+		expect(index).toContain('import { Buntok, Container } from "@buntok/core";');
 		expect(index).toContain("const container = new Container();");
 		expect(index).toContain("container.scan([UserController]);");
 		expect(index).toContain("app.setContainer(container);");
 		expect(index).toContain("app.registerController([UserController]);");
 		// order: container declared after app, before its usages
-		expect(index.indexOf("const app = new App();")).toBeLessThan(
+		expect(index.indexOf("const app = new Buntok();")).toBeLessThan(
 			index.indexOf("const container = new Container();"),
 		);
 		expect(index.indexOf("const container = new Container();")).toBeLessThan(
@@ -309,12 +309,12 @@ describe("create: entry awareness + route warnings", () => {
 		);
 	});
 
-	it("handles an entry with an options object (container declared after App)", async () => {
+	it("handles an entry with an options object (container declared after Buntok)", async () => {
 		const dir = makeProject({
 			"package.json": PKG,
-			"src/index.ts": `import { App } from "@buntok/core";
+			"src/index.ts": `import { Buntok } from "@buntok/core";
 
-const app = new App({
+const app = new Buntok({
   port: 3000,
 });
 
