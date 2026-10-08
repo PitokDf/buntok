@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - benchmarks
+      - master
   pull_request:
 
 jobs:
