@@ -18,7 +18,7 @@ export default function DownloadPage() {
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         Helper functions for serving files, file downloads, data export, and archive creation.
-        Zero dependencies — uses{" "}
+        Zero dependencies - uses{" "}
         <code className="font-mono text-accent text-sm">Bun.Archive</code>{" "}
         (native tar) for archives.
       </p>

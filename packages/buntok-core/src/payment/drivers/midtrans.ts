@@ -282,12 +282,12 @@ export class MidtransDriver implements PaymentDriver {
 		input: CreateCheckoutInput,
 		opts?: PaymentOptions,
 	): Promise<CheckoutResult> {
-		// Core API path — direct charge (QRIS, bank transfer, e-wallet)
+		// Core API path - direct charge (QRIS, bank transfer, e-wallet)
 		if (opts && "paymentType" in opts) {
 			return this.createCoreCheckout(input, opts);
 		}
 
-		// Snap path — redirect to hosted checkout page
+		// Snap path - redirect to hosted checkout page
 		return this.createSnapCheckout(input, opts);
 	}
 

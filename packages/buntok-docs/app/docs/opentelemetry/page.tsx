@@ -13,7 +13,7 @@ export default function OpenTelemetryPage() {
       <Heading level={1}>OpenTelemetry</Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         Distributed tracing with per-request spans following HTTP semantic conventions. All telemetry
-        dependencies are lazily imported — zero startup cost until the plugin is installed.
+        dependencies are lazily imported - zero startup cost until the plugin is installed.
       </p>
 
       <Heading level={2} className="text-xl font-semibold mt-8 mb-3 text-text-primary">
@@ -51,7 +51,7 @@ app.plugin(otelPlugin({
             <tr className="border-b border-border-primary">
               <td className="px-4 py-2 font-mono text-accent">serviceName</td>
               <td className="px-4 py-2 font-mono text-xs">string</td>
-              <td className="px-4 py-2">—</td>
+              <td className="px-4 py-2">-</td>
               <td className="px-4 py-2">
                 <strong>Required.</strong> Service name for trace identification.
               </td>
@@ -59,7 +59,7 @@ app.plugin(otelPlugin({
             <tr className="border-b border-border-primary">
               <td className="px-4 py-2 font-mono text-accent">serviceVersion</td>
               <td className="px-4 py-2 font-mono text-xs">string</td>
-              <td className="px-4 py-2">—</td>
+              <td className="px-4 py-2">-</td>
               <td className="px-4 py-2">Service version.</td>
             </tr>
             <tr className="border-b border-border-primary">
@@ -128,7 +128,7 @@ app.plugin(otelPlugin({
           <strong>Records exceptions</strong> on error (stack trace captured)
         </li>
         <li>
-          <strong>Graceful shutdown</strong> on <code>SIGTERM</code>/<code>SIGINT</code> — flushes
+          <strong>Graceful shutdown</strong> on <code>SIGTERM</code>/<code>SIGINT</code> - flushes
           remaining spans
         </li>
       </ol>
@@ -154,7 +154,7 @@ app.plugin(otelPlugin({
         Console Exporter (Development)
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        Logs traces to console — useful for debugging:
+        Logs traces to console - useful for debugging:
       </p>
       <CodeBlock
         language="typescript"

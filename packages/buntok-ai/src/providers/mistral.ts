@@ -20,7 +20,7 @@ export class MistralProvider extends BaseProvider {
   readonly name = "mistral"
 
   private getClient() {
-    // Dynamic import — user must install `@mistralai/mistralai`
+    // Dynamic import - user must install `@mistralai/mistralai`
     // biome-ignore lint: dynamic import
     const MistralAI = require("@mistralai/mistralai").default || require("@mistralai/mistralai")
     return new MistralAI({

@@ -73,7 +73,7 @@ import type { RouteContract } from "@buntok/core/client";`}
         language="typescript"
         code={`const api = createClient(routes, "http://localhost:1212");
 
-// Fully typed — params, body, and return type are all inferred
+// Fully typed - params, body, and return type are all inferred
 const user = await api.getUser({ params: { id: "1" } });
 // user: { id: string; name: string }
 
@@ -103,7 +103,7 @@ const created = await api.createUser({
             <tr className="border-b border-border-primary">
               <td className="px-4 py-2 font-mono text-accent">headers</td>
               <td className="px-4 py-2 font-mono text-xs">Record&lt;string, string&gt;</td>
-              <td className="px-4 py-2">—</td>
+              <td className="px-4 py-2">-</td>
               <td className="px-4 py-2">Headers sent on every request</td>
             </tr>
             <tr className="border-b border-border-primary">
@@ -133,13 +133,13 @@ const created = await api.createUser({
             <tr className="border-b border-border-primary">
               <td className="px-4 py-2 font-mono text-accent">onRequest</td>
               <td className="px-4 py-2 font-mono text-xs">(req) =&gt; Request</td>
-              <td className="px-4 py-2">—</td>
+              <td className="px-4 py-2">-</td>
               <td className="px-4 py-2">Request interceptor</td>
             </tr>
             <tr className="border-b border-border-primary">
               <td className="px-4 py-2 font-mono text-accent">onResponse</td>
               <td className="px-4 py-2 font-mono text-xs">(res) =&gt; Response</td>
-              <td className="px-4 py-2">—</td>
+              <td className="px-4 py-2">-</td>
               <td className="px-4 py-2">Response interceptor</td>
             </tr>
             <tr className="border-b border-border-primary">
@@ -217,7 +217,7 @@ try {
       />
 
       <Callout type="info">
-        The <code>RouteContract</code> type is type-only — <code>params</code>, <code>query</code>,{" "}
+        The <code>RouteContract</code> type is type-only - <code>params</code>, <code>query</code>,{" "}
         <code>body</code>, and <code>response</code> fields are never read at runtime. They only
         exist for TypeScript inference.
       </Callout>

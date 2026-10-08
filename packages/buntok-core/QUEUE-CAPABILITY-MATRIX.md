@@ -24,7 +24,7 @@ This document describes the delivery guarantees and capabilities of each queue d
 
 - **Use case:** Development, testing, single-process apps.
 - **Durability:** Jobs are lost on process crash.
-- **Delivery:** Best-effort — no acknowledgment mechanism.
+- **Delivery:** Best-effort - no acknowledgment mechanism.
 - **Crash recovery:** Not supported. Jobs in flight are lost.
 - **Scope:** Process-local. Not shared across instances.
 

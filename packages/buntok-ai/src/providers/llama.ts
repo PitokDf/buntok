@@ -7,7 +7,7 @@ export interface LlamaProviderConfig {
 }
 
 /**
- * Meta Llama provider — via Meta's Model API (OpenAI-compatible).
+ * Meta Llama provider - via Meta's Model API (OpenAI-compatible).
  * Uses OpenAI SDK format pointed at api.meta.ai
  */
 export class LlamaProvider extends OpenAICompatibleProvider {

@@ -7,7 +7,7 @@ export interface GroqProviderConfig {
 }
 
 /**
- * Groq provider — ultra-fast inference via OpenAI-compatible API.
+ * Groq provider - ultra-fast inference via OpenAI-compatible API.
  * Get API key at: https://console.groq.com
  */
 export class GroqProvider extends OpenAICompatibleProvider {

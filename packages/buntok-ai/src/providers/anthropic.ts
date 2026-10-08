@@ -18,7 +18,7 @@ export class AnthropicProvider extends BaseProvider {
   readonly name = "anthropic"
 
   private getClient() {
-    // Dynamic import — user must install `@anthropic-ai/sdk`
+    // Dynamic import - user must install `@anthropic-ai/sdk`
     // biome-ignore lint: dynamic import
     const Anthropic = require("@anthropic-ai/sdk").default || require("@anthropic-ai/sdk")
     return new Anthropic({

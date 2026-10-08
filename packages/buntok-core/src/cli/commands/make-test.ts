@@ -110,7 +110,7 @@ export async function makeTestCommand(name: string, flags: string[] = []) {
 
 	if (!hasService) {
 		console.error(
-			`\x1b[31mError: No service found at ${servicePath} — the unit test would import a file that does not exist.\x1b[0m`,
+			`\x1b[31mError: No service found at ${servicePath} - the unit test would import a file that does not exist.\x1b[0m`,
 		);
 		console.error(
 			`  Generate it first: \x1b[36mbuntok create ${name} --service\x1b[0m`,

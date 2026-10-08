@@ -13,7 +13,7 @@ export default function DevServerPage() {
       <Heading level={1}>Dev Server</Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         Bun development server with HMR (Hot Module Replacement) enabled. Thin wrapper around{" "}
-        <code>Bun.serve()</code> with <code>development: true</code> — automatic re-bundling, source
+        <code>Bun.serve()</code> with <code>development: true</code> - automatic re-bundling, source
         maps, and hot reload when files change.
       </p>
 
@@ -27,7 +27,7 @@ export default function DevServerPage() {
       </Heading>
 
       <Heading level={3} className="text-lg font-semibold mt-6 mb-2 text-text-primary">
-        Minimal — default returns 404
+        Minimal - default returns 404
       </Heading>
       <CodeBlock
         language="typescript"
@@ -40,7 +40,7 @@ devServer({
       />
 
       <Heading level={3} className="text-lg font-semibold mt-6 mb-2 text-text-primary">
-        With routes — serve HTML files
+        With routes - serve HTML files
       </Heading>
       <CodeBlock
         language="typescript"
@@ -98,14 +98,14 @@ devServer({
             <tr className="border-b border-border-primary">
               <td className="px-4 py-2 font-mono text-accent">routes</td>
               <td className="px-4 py-2 font-mono text-xs">Record&lt;string, unknown&gt;</td>
-              <td className="px-4 py-2">—</td>
-              <td className="px-4 py-2">Bun routes object — maps paths to HTML files or handlers</td>
+              <td className="px-4 py-2">-</td>
+              <td className="px-4 py-2">Bun routes object - maps paths to HTML files or handlers</td>
             </tr>
             <tr className="border-b border-border-primary">
               <td className="px-4 py-2 font-mono text-accent">fetch</td>
               <td className="px-4 py-2 font-mono text-xs">(req: Request) =&gt; Response</td>
               <td className="px-4 py-2">404 handler</td>
-              <td className="px-4 py-2">Custom fetch handler — used when no routes provided</td>
+              <td className="px-4 py-2">Custom fetch handler - used when no routes provided</td>
             </tr>
             <tr className="border-b border-border-primary">
               <td className="px-4 py-2 font-mono text-accent">hmr</td>
@@ -122,13 +122,13 @@ devServer({
             <tr className="border-b border-border-primary">
               <td className="px-4 py-2 font-mono text-accent">onReady</td>
               <td className="px-4 py-2 font-mono text-xs">(info) =&gt; void</td>
-              <td className="px-4 py-2">—</td>
+              <td className="px-4 py-2">-</td>
               <td className="px-4 py-2">Called when server starts</td>
             </tr>
             <tr className="border-b border-border-primary">
               <td className="px-4 py-2 font-mono text-accent">...rest</td>
               <td className="px-4 py-2 font-mono text-xs">BunServeOptions</td>
-              <td className="px-4 py-2">—</td>
+              <td className="px-4 py-2">-</td>
               <td className="px-4 py-2">Any additional Bun.serve() options</td>
             </tr>
           </tbody>
@@ -140,13 +140,13 @@ devServer({
       </Heading>
       <ul className="my-3 text-text-secondary leading-relaxed list-disc list-inside space-y-1">
         <li>
-          <strong>Web/frontend development</strong> — HMR for HTML, CSS, JS changes
+          <strong>Web/frontend development</strong> - HMR for HTML, CSS, JS changes
         </li>
         <li>
-          <strong>Full-stack apps</strong> — serve templates + API routes simultaneously
+          <strong>Full-stack apps</strong> - serve templates + API routes simultaneously
         </li>
         <li>
-          <strong>Framework development</strong> — test BunTok itself with hot reload
+          <strong>Framework development</strong> - test BunTok itself with hot reload
         </li>
       </ul>
 
@@ -155,15 +155,15 @@ devServer({
       </Heading>
       <ul className="my-3 text-text-secondary leading-relaxed list-disc list-inside space-y-1">
         <li>
-          <strong>Pure API servers</strong> — <code>bun --watch server.ts</code> is simpler and
+          <strong>Pure API servers</strong> - <code>bun --watch server.ts</code> is simpler and
           sufficient
         </li>
         <li>
-          <strong>Vercel deployment</strong> — Vercel handles serving; use <code>app.fetch()</code>{" "}
+          <strong>Vercel deployment</strong> - Vercel handles serving; use <code>app.fetch()</code>{" "}
           instead
         </li>
         <li>
-          <strong>Production</strong> — always use <code>bun run build</code> +{" "}
+          <strong>Production</strong> - always use <code>bun run build</code> +{" "}
           <code>bun run start</code>
         </li>
       </ul>
@@ -238,7 +238,7 @@ Starting development server with tunnel...
       <Callout type="info" title="Auto-restart on .env changes">
         <code>buntok dev</code> also watches <code>.env</code>,{" "}
         <code>.env.development</code>, and <code>.env.local</code>. When any of
-        them changes, the server restarts automatically with the fresh values —
+        them changes, the server restarts automatically with the fresh values -
         Bun&apos;s own <code>--watch</code> ignores <code>.env</code> files, so
         no manual restart is needed after editing environment variables.
       </Callout>

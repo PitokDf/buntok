@@ -17,7 +17,7 @@ export interface YogaPluginConfig {
 /**
  * GraphQL Yoga plugin for BunTok.
  *
- * Wraps `graphql-yoga` which has native Web Standard `fetch` support —
+ * Wraps `graphql-yoga` which has native Web Standard `fetch` support -
  * zero adapter code needed.
  *
  * @requires `graphql-yoga` and `graphql` as peer dependencies.
@@ -51,7 +51,7 @@ export function yogaPlugin(config: YogaPluginConfig): Plugin {
 				graphqlEndpoint: path,
 			});
 
-			// Yoga implements the standard fetch interface — delegate directly
+			// Yoga implements the standard fetch interface - delegate directly
 			app.get(path, async (ctx) => {
 				return yoga.fetch(ctx.request);
 			});

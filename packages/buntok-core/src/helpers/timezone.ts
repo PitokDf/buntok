@@ -55,7 +55,7 @@ export function parseTime(timeStr: string, timezone: string): Date {
 
 	// Adjust: move from local interpretation to target timezone.
 	// d was parsed in the machine's zone, so subtract the machine offset and
-	// add the target offset — result is correct on any machine timezone.
+	// add the target offset - result is correct on any machine timezone.
 	const adjusted = new Date(d.getTime() + (offset - utcOffset) * 60000);
 	return adjusted;
 }

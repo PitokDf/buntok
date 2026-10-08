@@ -1,7 +1,7 @@
 {
   "name": "@buntok/ai",
   "version": "1.0.0",
-  "description": "Provider-agnostic AI SDK for Buntok — streaming, tool calling, chat history, RAG, and middleware",
+  "description": "Provider-agnostic AI SDK for Buntok - streaming, tool calling, chat history, RAG, and middleware",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

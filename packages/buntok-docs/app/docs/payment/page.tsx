@@ -334,10 +334,10 @@ app.post("/webhooks/stripe",
       <CodeBlock
         code={`import {
   PaymentError,              // base class (extends HttpError)
-  PaymentProviderError,      // 502 — provider API error
-  PaymentVerificationError,  // 400 — webhook signature mismatch
-  PaymentIdempotencyError,   // 409 — idempotency key reuse
-  PaymentConfigurationError, // 500 — invalid driver config
+  PaymentProviderError,      // 502 - provider API error
+  PaymentVerificationError,  // 400 - webhook signature mismatch
+  PaymentIdempotencyError,   // 409 - idempotency key reuse
+  PaymentConfigurationError, // 500 - invalid driver config
 } from "@buntok/core/payment";`}
       />
 

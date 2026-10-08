@@ -1,4 +1,4 @@
-# Public API Inventory — @buntok/core
+# Public API Inventory - @buntok/core
 
 Generated: 2026-09-11
 Scope: `packages/buntok-core/src/core-exports.ts` + all subpath exports
@@ -9,7 +9,7 @@ Scope: `packages/buntok-core/src/core-exports.ts` + all subpath exports
 |---------|-------|-----|-------|
 | `.` | `.js` | `.cjs` | `.d.ts` / `.d.cts` |
 | `./client` | `./client/index.js` | `./client/index.cjs` | `.d.ts` / `.d.cts` |
-| `./dev` | `./dev/index.js` | — | `.d.ts` |
+| `./dev` | `./dev/index.js` | - | `.d.ts` |
 | `./plugins/graphql` | `./plugins/graphql/index.js` | `./plugins/graphql/index.cjs` | `.d.ts` / `.d.cts` |
 | `./plugins/graphql/apollo` | `./plugins/graphql/apollo/index.js` | `./plugins/graphql/apollo/index.cjs` | `.d.ts` / `.d.cts` |
 | `./plugins/graphql/yoga` | `./plugins/graphql/yoga/index.js` | `./plugins/graphql/yoga/index.cjs` | `.d.ts` / `.d.cts` |
@@ -88,14 +88,14 @@ Scope: `packages/buntok-core/src/core-exports.ts` + all subpath exports
 | `applyDecorators` | function | `decorators.ts` | ✅ |
 | `getMetadata` | function | `decorators.ts` | ✅ |
 
-### Helpers — Async
+### Helpers - Async
 | Export | Kind | Source | Verified |
 |--------|------|--------|----------|
 | `delay` | function | `helpers/async.ts` | ✅ |
 | `retry` | function | `helpers/async.ts` | ✅ |
 | `asyncHandler` | function | `helpers/async-handler.ts` | ✅ |
 
-### Helpers — Error Classes
+### Helpers - Error Classes
 | Export | Kind | Source | Verified |
 |--------|------|--------|----------|
 | `BadRequestError` | class | `helpers/async-handler.ts` | ✅ |
@@ -110,7 +110,7 @@ Scope: `packages/buntok-core/src/core-exports.ts` + all subpath exports
 | `UnauthorizedError` | class | `helpers/async-handler.ts` | ✅ |
 | `UnprocessableEntityError` | class | `helpers/async-handler.ts` | ✅ |
 
-### Helpers — Cookie
+### Helpers - Cookie
 | Export | Kind | Source | Verified |
 |--------|------|--------|----------|
 | `deleteCookie` | function | `helpers/cookie.ts` | ✅ |
@@ -120,7 +120,7 @@ Scope: `packages/buntok-core/src/core-exports.ts` + all subpath exports
 | `serializeCookie` | function | `helpers/cookie.ts` | ✅ |
 | `setCookie` | function | `helpers/cookie.ts` | ✅ |
 
-### Helpers — Crypto
+### Helpers - Crypto
 | Export | Kind | Source | Verified |
 |--------|------|--------|----------|
 | `decrypt` | function | `helpers/crypto.ts` | ✅ |
@@ -137,7 +137,7 @@ Scope: `packages/buntok-core/src/core-exports.ts` + all subpath exports
 | `sha256` | function | `helpers/crypto.ts` | ✅ |
 | `sha512` | function | `helpers/crypto.ts` | ✅ |
 
-### Helpers — Date / Timezone
+### Helpers - Date / Timezone
 | Export | Kind | Source | Verified |
 |--------|------|--------|----------|
 | `addDays` | function | `helpers/date.ts` | ✅ |
@@ -159,7 +159,7 @@ Scope: `packages/buntok-core/src/core-exports.ts` + all subpath exports
 | `toISOWithTimezone` | function | `helpers/timezone.ts` | ✅ |
 | `toTimezoneParts` | function | `helpers/timezone.ts` | ✅ |
 
-### Helpers — ID
+### Helpers - ID
 | Export | Kind | Source | Verified |
 |--------|------|--------|----------|
 | `generateCode` | function | `helpers/id.ts` | ✅ |
@@ -167,14 +167,14 @@ Scope: `packages/buntok-core/src/core-exports.ts` + all subpath exports
 | `resetCounter` | function | `helpers/id.ts` | ✅ |
 | `ulid` | function | `helpers/id.ts` | ✅ |
 
-### Helpers — Network
+### Helpers - Network
 | Export | Kind | Source | Verified |
 |--------|------|--------|----------|
 | `getClientIP` | function | `helpers/network.ts` | ✅ |
 | `isPrivateIP` | function | `helpers/network.ts` | ✅ |
 | `parseUserAgent` | function | `helpers/network.ts` | ✅ |
 
-### Helpers — Number
+### Helpers - Number
 | Export | Kind | Source | Verified |
 |--------|------|--------|----------|
 | `clamp` | function | `helpers/number.ts` | ✅ |
@@ -184,7 +184,7 @@ Scope: `packages/buntok-core/src/core-exports.ts` + all subpath exports
 | `random` | function | `helpers/number.ts` | ✅ |
 | `randomFloat` | function | `helpers/number.ts` | ✅ |
 
-### Helpers — Object
+### Helpers - Object
 | Export | Kind | Source | Verified |
 |--------|------|--------|----------|
 | `chunk` | function | `helpers/object.ts` | ✅ |
@@ -196,7 +196,7 @@ Scope: `packages/buntok-core/src/core-exports.ts` + all subpath exports
 | `pick` | function | `helpers/object.ts` | ✅ |
 | `uniq` | function | `helpers/object.ts` | ✅ |
 
-### Helpers — String
+### Helpers - String
 | Export | Kind | Source | Verified |
 |--------|------|--------|----------|
 | `camelCase` | function | `helpers/string.ts` | ✅ |
@@ -206,20 +206,20 @@ Scope: `packages/buntok-core/src/core-exports.ts` + all subpath exports
 | `snakeCase` | function | `helpers/string.ts` | ✅ |
 | `truncate` | function | `helpers/string.ts` | ✅ |
 
-### Helpers — Password
+### Helpers - Password
 | Export | Kind | Source | Verified |
 |--------|------|--------|----------|
 | `hashPassword` | function | `helpers/password.ts` | ✅ |
 | `verifyPassword` | function | `helpers/password.ts` | ✅ |
 
-### Helpers — Avatar
+### Helpers - Avatar
 | Export | Kind | Source | Verified |
 |--------|------|--------|----------|
 | `generateInitials` | function | `helpers/avatar.ts` | ✅ |
 | `avatarColor` | function | `helpers/avatar.ts` | ✅ |
 | `generateInitialAvatar` | function | `helpers/avatar.ts` | ✅ |
 
-### Helpers — File / Download / Export / Archive
+### Helpers - File / Download / Export / Archive
 | Export | Kind | Source | Verified |
 |--------|------|--------|----------|
 | `serveFileOrFallback` | function | `helpers/file.ts` | ✅ |

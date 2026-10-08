@@ -5,7 +5,7 @@ import { Callout } from "@/components/ui/Callout";
 export const metadata = {
   title: "Date Library",
   description:
-    "Complete date-fns port on @buntok/core/date: 250 functions, 396 fp variants, and 95 locales — zero dependencies.",
+    "Complete date-fns port on @buntok/core/date: 250 functions, 396 fp variants, and 95 locales - zero dependencies.",
 };
 
 export default function DatePage() {
@@ -25,7 +25,7 @@ export default function DatePage() {
 
       <Callout type="info" title="Subpath imports">
         The date library is <strong>not</strong> exported from the root
-        barrel — always import from <code>@buntok/core/date</code>,{" "}
+        barrel - always import from <code>@buntok/core/date</code>,{" "}
         <code>@buntok/core/date/fp</code>, or{" "}
         <code>@buntok/core/date/locale</code>.
       </Callout>
@@ -42,7 +42,7 @@ export default function DatePage() {
           <tbody>
             {[
               ["@buntok/core/date", "250", "Format & parse, distances, relative time, intervals & durations, comparisons, start/end of, math, weeks & quarters, ISO/RFC helpers"],
-              ["@buntok/core/date/fp", "396", "Curried variants of every function — arguments reversed for partial application"],
+              ["@buntok/core/date/fp", "396", "Curried variants of every function - arguments reversed for partial application"],
               ["@buntok/core/date/locale", "95", "Locale objects: id, en-US, ja, ar, ru, zh-CN, de, pt-BR, ..."],
             ].map(([subpath, count, desc]) => (
               <tr key={subpath} className="border-b border-border-primary/50 hover:bg-bg-tertiary/50 transition-colors">
@@ -153,8 +153,8 @@ eachDayOfInterval({ start: now, end: addDays(now, 3) });      // Date[4]`}
 
 const now = new Date();
 
-addDays(10)(now);                 // main: addDays(now, 10) — same result
-addDays()(10)(now);               // curried chain — same result
+addDays(10)(now);                 // main: addDays(now, 10) - same result
+addDays()(10)(now);               // curried chain - same result
 addDays(10, now);                 // full application in one call
 
 const dayName = format("EEEE");   // reusable partial: date → weekday
@@ -274,7 +274,7 @@ app.get("/reports/week", (ctx) => {
 
       <Callout type="tip" title="Zero dependencies">
         <code>date-fns</code> is only a dev dependency of the framework used
-        for parity tests — your application never installs it, and the root{" "}
+        for parity tests - your application never installs it, and the root{" "}
         <code>@buntok/core</code> barrel stays slim.
       </Callout>
     </div>

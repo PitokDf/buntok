@@ -18,7 +18,7 @@ import type {
 } from "./types"
 
 /**
- * Main AI class — unified interface for all providers.
+ * Main AI class - unified interface for all providers.
  *
  * @example
  * ```ts

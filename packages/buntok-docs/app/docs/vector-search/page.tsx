@@ -36,9 +36,9 @@ export default function VectorSearchPage() {
         Overview
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        <strong>Full-text search</strong> matches by keywords — the words in
+        <strong>Full-text search</strong> matches by keywords - the words in
         the query must appear in the data. <strong>Vector search</strong> matches
-        by meaning — a search for &quot;best wineries&quot; can surface an article
+        by meaning - a search for &quot;best wineries&quot; can surface an article
         titled &quot;Top Vineyards to Visit&quot; even though the words don&apos;t
         overlap.
       </p>

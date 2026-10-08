@@ -21,7 +21,7 @@ export class OpenAIProvider extends BaseProvider {
   readonly name = "openai"
 
   private getClient() {
-    // Dynamic import — user must install `openai`
+    // Dynamic import - user must install `openai`
     // biome-ignore lint: dynamic import
     const OpenAI = require("openai").default || require("openai")
     return new OpenAI({

@@ -1,4 +1,4 @@
-# Contract Mismatches — @buntok/core
+# Contract Mismatches - @buntok/core
 
 Tracking file for known contract mismatches between documentation, exports, and runtime behavior.
 

@@ -1,5 +1,5 @@
 // Aggregate middleware exports. `validator.ts` (zod-dependent) is intentionally
-// excluded — import it from "@buntok/core/middlewares/validator".
+// excluded - import it from "@buntok/core/middlewares/validator".
 
 export * from "./audit-log";
 export * from "./body-size-limit";

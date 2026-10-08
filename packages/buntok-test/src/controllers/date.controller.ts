@@ -49,7 +49,7 @@ function parseDateInput(input?: string): Date {
 	if (!isValid(date)) {
 		throw new HttpError(
 			400,
-			`invalid date "${input}" — expected ISO-8601, e.g. 2024-10-01T14:30:45Z`,
+			`invalid date "${input}" - expected ISO-8601, e.g. 2024-10-01T14:30:45Z`,
 		);
 	}
 	return date;
@@ -166,7 +166,7 @@ export class DateController {
 		const results = codes.map((code) => {
 			const locale = registry[code];
 			if (!locale) {
-				throw new HttpError(400, `unknown locale code "${code}" — see GET /date/locales/all`);
+				throw new HttpError(400, `unknown locale code "${code}" - see GET /date/locales/all`);
 			}
 			return {
 				code: locale.code,

@@ -24,7 +24,7 @@ export function TableOfContents() {
   const pathname = usePathname();
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // collect headings — scoped to prose/main, auto-assign ids, dedup
+  // collect headings - scoped to prose/main, auto-assign ids, dedup
   useEffect(() => {
     const collect = () => {
       const root =
@@ -36,7 +36,7 @@ export function TableOfContents() {
         root.querySelectorAll("h2, h3")
       ) as HTMLElement[];
 
-      // fallback to h2-h3 only — h1 is page title, h4 rarely used
+      // fallback to h2-h3 only - h1 is page title, h4 rarely used
       const seen = new Map<string, number>();
       const items: TocItem[] = els
         .filter((el) => el.textContent?.trim())
@@ -88,7 +88,7 @@ export function TableOfContents() {
     };
   }, [pathname]);
 
-  // active spy — IntersectionObserver + scroll fallback
+  // active spy - IntersectionObserver + scroll fallback
   useEffect(() => {
     if (headings.length === 0) return;
 

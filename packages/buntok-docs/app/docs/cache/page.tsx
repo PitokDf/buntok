@@ -250,7 +250,7 @@ class RedisCacheDriver implements CacheDriver {
   }
 }
 
-// Usage — drop-in replacement for the default memory driver
+// Usage - drop-in replacement for the default memory driver
 const cache = new Cache(new RedisCacheDriver());
 await cache.set("user:1", userData, 3600); // TTL 1 hour
 const user = await cache.get<User>("user:1");`}

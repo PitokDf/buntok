@@ -7,7 +7,7 @@ export interface XAIProviderConfig {
 }
 
 /**
- * xAI (Grok) provider — via OpenAI-compatible API.
+ * xAI (Grok) provider - via OpenAI-compatible API.
  * Get API key at: https://console.x.ai
  */
 export class XAIProvider extends OpenAICompatibleProvider {

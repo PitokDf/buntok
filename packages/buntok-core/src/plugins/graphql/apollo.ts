@@ -48,7 +48,7 @@ export function apolloPlugin(config: ApolloPluginConfig): Plugin {
 
 			// Start Apollo without its own HTTP server
 			const { url } = await startServer(server as any, { listen: { port: 0 } });
-			// We don't need the standalone server — we'll use our own route
+			// We don't need the standalone server - we'll use our own route
 			// But startServer is required to initialize Apollo internally
 
 			app.get(path, async (ctx) => {

@@ -6,7 +6,7 @@ export interface OllamaProviderConfig {
 }
 
 /**
- * Ollama provider — local LLM inference via OpenAI-compatible API.
+ * Ollama provider - local LLM inference via OpenAI-compatible API.
  * Requires Ollama running locally (default: http://localhost:11434)
  */
 export class OllamaProvider extends OpenAICompatibleProvider {

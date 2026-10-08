@@ -45,7 +45,7 @@ export default function TimezonePage() {
       <CodeBlock
         code={`import { parseTime } from "@buntok/core";
 
-// Wall-clock string without zone info — interpreted in that timezone
+// Wall-clock string without zone info - interpreted in that timezone
 const meeting = parseTime("2024-01-15 14:30", "America/New_York");
 // → 2024-01-15T19:30:00.000Z (UTC instant, correct on any server TZ)
 
@@ -77,13 +77,13 @@ const date = new Date("2024-01-15T14:30:00Z");
 
 // 3rd arg is enum: "short" | "default" | "full" (not a custom pattern)
 formatInTimezone(date, "Asia/Jakarta", "short");
-// "2024-01-15 21:30" — YYYY-MM-DD HH:mm
+// "2024-01-15 21:30" - YYYY-MM-DD HH:mm
 
 formatInTimezone(date, "Asia/Jakarta", "default");
-// "2024-01-15 21:30:00" — includes seconds
+// "2024-01-15 21:30:00" - includes seconds
 
 formatInTimezone(date, "Asia/Jakarta", "full");
-// "2024-01-15 21:30:00.000" — adds milliseconds`}
+// "2024-01-15 21:30:00.000" - adds milliseconds`}
       />
 
       {/* ──────────────── TO TIMEZONE PARTS ──────────────── */}
@@ -101,7 +101,7 @@ formatInTimezone(date, "Asia/Jakarta", "full");
 
 const parts = toTimezoneParts(new Date(), "Asia/Jakarta");
 // { year: 2024, month: 1, day: 15, hour: 14, minute: 30, second: 0 }
-// (6 fields — no weekday)
+// (6 fields - no weekday)
 `}
       />
 
@@ -203,7 +203,7 @@ toISOWithTimezone(new Date("2024-01-15T10:30:00Z"), "Asia/Jakarta");
 // "2024-01-15T17:30:00+07:00"
 
 const grouped = groupByTimezone(orders, "createdAt", "Asia/Jakarta", "day");
-// Map<string, Order[]> — e.g. "2024-01-15" → [orders]
+// Map<string, Order[]> - e.g. "2024-01-15" → [orders]
 
 const labels = getGroupLabels(grouped, "day");
 // Map { "2024-01-15" => "Monday, January 15, 2024" }

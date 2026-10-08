@@ -1,6 +1,6 @@
 /**
  * Secure password hashing using Bun's native Zig-based implementations.
- * Supports argon2id and bcrypt — memory-hard algorithms designed to resist
+ * Supports argon2id and bcrypt - memory-hard algorithms designed to resist
  * brute-force and rainbow table attacks.
  *
  * Uses `Bun.password` for 2-10x faster hashing than `node:crypto`,

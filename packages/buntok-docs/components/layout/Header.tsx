@@ -43,7 +43,7 @@ export function Header({ onToggleSidebar, isSidebarOpen }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full h-16 border-b border-border-primary bg-bg-primary/70 backdrop-blur-md supports-backdrop-filter:bg-bg-primary/60 transition-colors duration-200">
       <div className="flex h-full items-center px-4 lg:px-6">
-        {/* Mobile hamburger — docs & non-docs share one button */}
+        {/* Mobile hamburger - docs & non-docs share one button */}
         <button
           onClick={handleToggle}
           className={`${isDocs ? "lg:hidden" : "sm:hidden"} p-2 mr-2 rounded-lg hover:bg-bg-tertiary transition-colors`}

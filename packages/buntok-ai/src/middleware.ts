@@ -9,7 +9,7 @@ export interface RateLimiterOptions {
 }
 
 /**
- * Rate limiter middleware — limits requests per window per key.
+ * Rate limiter middleware - limits requests per window per key.
  */
 export function rateLimiter(options: RateLimiterOptions): Middleware {
   const requests = new Map<string, number[]>()
@@ -40,7 +40,7 @@ export interface UsageTrackerOptions {
 }
 
 /**
- * Usage tracker middleware — tracks token usage per request.
+ * Usage tracker middleware - tracks token usage per request.
  */
 export function usageTracker(options: UsageTrackerOptions): Middleware {
   return {
@@ -64,7 +64,7 @@ export interface CostEstimatorOptions {
 }
 
 /**
- * Cost estimator middleware — estimates cost based on token usage and pricing.
+ * Cost estimator middleware - estimates cost based on token usage and pricing.
  * Pricing is in USD per 1M tokens by default.
  */
 export function costEstimator(options: CostEstimatorOptions): Middleware {
@@ -98,7 +98,7 @@ export interface AILoggerOptions {
 }
 
 /**
- * Logger middleware — logs request/response details.
+ * Logger middleware - logs request/response details.
  */
 export function aiLogger(options: AILoggerOptions = {}): Middleware {
   const log = options.log || console.log
@@ -129,7 +129,7 @@ export interface AICacheOptions {
 }
 
 /**
- * Cache middleware — caches non-streaming responses.
+ * Cache middleware - caches non-streaming responses.
  */
 export function aiCache(options: AICacheOptions): Middleware {
   const ttl = options.ttlSeconds || 3600

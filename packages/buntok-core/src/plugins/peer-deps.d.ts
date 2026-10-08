@@ -1,5 +1,5 @@
 // Type declarations for optional peer dependencies
-// These are lazy-imported at runtime — types only needed at compile time
+// These are lazy-imported at runtime - types only needed at compile time
 
 declare module "@apollo/server" {
 	export class ApolloServer {

@@ -21,7 +21,7 @@ export default function FfiPage() {
       </p>
 
       <Callout type="info">
-        This is an internal optimization. You don't need to configure anything — the
+        This is an internal optimization. You don't need to configure anything - the
         framework automatically detects and uses the best available backend.
       </Callout>
 

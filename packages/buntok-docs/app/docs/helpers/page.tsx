@@ -386,12 +386,12 @@ result.files         // (UploadedFile | ImageUploadedFile)[]`}
           </thead>
           <tbody>
             {[
-              ["hash(data, algorithm?) — SYNC", "Hash data (default: SHA-256, Bun.CryptoHasher)"],
-              ["sha256(data) — SYNC", "SHA-256 hash"],
-              ["sha512(data) — SYNC", "SHA-512 hash"],
-              ["md5(data) — async", "MD5 hash (pure JS)"],
-              ["hmac(data, key, algorithm?) — async", "HMAC hash (WebCrypto)"],
-              ["hashVerify(data, expected, algorithm?) — async", "Verify hash matches"],
+              ["hash(data, algorithm?) - SYNC", "Hash data (default: SHA-256, Bun.CryptoHasher)"],
+              ["sha256(data) - SYNC", "SHA-256 hash"],
+              ["sha512(data) - SYNC", "SHA-512 hash"],
+              ["md5(data) - async", "MD5 hash (pure JS)"],
+              ["hmac(data, key, algorithm?) - async", "HMAC hash (WebCrypto)"],
+              ["hashVerify(data, expected, algorithm?) - async", "Verify hash matches"],
               ["randomBytes(length)", "Random bytes as Uint8Array"],
               ["randomHex(length)", "Random hex string"],
               ["randomAlphaNumeric(length)", "Random alphanumeric string"],
@@ -478,8 +478,8 @@ formatDuration(3661); // "1h 1m 1s"
 startOfDay(new Date()); // 00:00:00 today`}
       />
       <Callout type="tip" title="Need more?">
-        For the full date-fns surface — format &amp; parse tokens, distances,
-        intervals, 396 fp variants, and 95 locales — use{" "}
+        For the full date-fns surface - format &amp; parse tokens, distances,
+        intervals, 396 fp variants, and 95 locales - use{" "}
         <code>@buntok/core/date</code>. See{" "}
         <a href="/docs/date" className="text-accent underline">
           Date Library

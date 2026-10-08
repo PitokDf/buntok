@@ -26,7 +26,7 @@ describe("getTimezoneOffset", () => {
 
 	test("returns offset for America/New_York", () => {
 		const offset = getTimezoneOffset("America/New_York");
-		// EST = 300 (5h), EDT = 240 (4h) — positive means timezone is behind UTC
+		// EST = 300 (5h), EDT = 240 (4h) - positive means timezone is behind UTC
 		expect(offset === 300 || offset === 240).toBe(true);
 	});
 });

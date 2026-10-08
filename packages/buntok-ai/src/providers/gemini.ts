@@ -20,7 +20,7 @@ export class GeminiProvider extends BaseProvider {
   readonly name = "gemini"
 
   private getClient() {
-    // Dynamic import — user must install `@google/genai`
+    // Dynamic import - user must install `@google/genai`
     // biome-ignore lint: dynamic import
     const { GoogleGenAI } = require("@google/genai")
     return new GoogleGenAI({

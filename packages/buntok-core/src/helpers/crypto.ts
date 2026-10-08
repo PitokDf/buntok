@@ -35,7 +35,7 @@ export function hash(
 
 /**
  * Fast non-cryptographic hash using Bun's native wyhash.
- * Intended for cache keys, deduplication, hash maps — NOT for security.
+ * Intended for cache keys, deduplication, hash maps - NOT for security.
  * Much faster than SHA/MD5 for non-security use cases.
  *
  * @example

@@ -1,16 +1,16 @@
 # @buntok/ai
 
-Provider-agnostic AI SDK for [Buntok](https://www.npmjs.com/package/@buntok/core) — streaming, tool calling, chat history, RAG, and middleware.
+Provider-agnostic AI SDK for [Buntok](https://www.npmjs.com/package/@buntok/core) - streaming, tool calling, chat history, RAG, and middleware.
 
 ## Features
 
-- **10 Providers** — OpenAI, Anthropic, Gemini, Mistral, Cohere, Groq, Ollama, xAI, OpenRouter, Llama
-- **Streaming** — Vercel AI SDK Data Stream Protocol v1
-- **Tool Calling** — automatic tool execution with multi-round conversations
-- **Chat History** — in-memory session management
-- **Embeddings** — vector search for RAG
-- **Middleware** — rate limiter, usage tracker, cost estimator, logger, cache
-- **Zero core deps** — provider SDKs are optional peer dependencies
+- **10 Providers** - OpenAI, Anthropic, Gemini, Mistral, Cohere, Groq, Ollama, xAI, OpenRouter, Llama
+- **Streaming** - Vercel AI SDK Data Stream Protocol v1
+- **Tool Calling** - automatic tool execution with multi-round conversations
+- **Chat History** - in-memory session management
+- **Embeddings** - vector search for RAG
+- **Middleware** - rate limiter, usage tracker, cost estimator, logger, cache
+- **Zero core deps** - provider SDKs are optional peer dependencies
 
 ## Install
 
@@ -55,12 +55,12 @@ return streamResponse(ctx, stream)
 | Mistral | `@mistralai/mistralai` | `MISTRAL_API_KEY` |
 | Cohere | `@cohere-ai/sdk` | `COHERE_API_KEY` |
 | Groq | *(built-in)* | `GROQ_API_KEY` |
-| Ollama | *(built-in)* | — (localhost:11434) |
+| Ollama | *(built-in)* | - (localhost:11434) |
 | xAI | *(built-in)* | `XAI_API_KEY` |
 | OpenRouter | *(built-in)* | `OPENROUTER_API_KEY` |
 | Llama | *(built-in)* | `LLAMA_API_KEY` |
 
-Providers marked *(built-in)* use the OpenAI-compatible API format — no SDK needed.
+Providers marked *(built-in)* use the OpenAI-compatible API format - no SDK needed.
 
 ### Using Groq (fast inference)
 
@@ -229,13 +229,13 @@ class MyProvider implements Provider {
 
 ### Types
 
-- `Message` — chat message
-- `Tool` — tool definition
-- `ChatOptions` — chat request options
-- `ChatResponse` — chat response
-- `StreamChunk` — streaming chunk
-- `Middleware` — middleware interface
-- `Provider` — provider interface
+- `Message` - chat message
+- `Tool` - tool definition
+- `ChatOptions` - chat request options
+- `ChatResponse` - chat response
+- `StreamChunk` - streaming chunk
+- `Middleware` - middleware interface
+- `Provider` - provider interface
 
 ## License
 

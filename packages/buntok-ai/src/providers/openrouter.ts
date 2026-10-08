@@ -7,7 +7,7 @@ export interface OpenRouterProviderConfig {
 }
 
 /**
- * OpenRouter provider — 300+ models through one API.
+ * OpenRouter provider - 300+ models through one API.
  * Get API key at: https://openrouter.ai
  */
 export class OpenRouterProvider extends OpenAICompatibleProvider {

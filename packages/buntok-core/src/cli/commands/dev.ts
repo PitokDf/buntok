@@ -67,12 +67,12 @@ export async function devCommand(flags: string[]): Promise<void> {
 
 	let proc = spawnServer(nextEnv(loadEnvFiles(targetDir)));
 
-	// Restart when any .env file changes — Bun's own --watch ignores .env.
+	// Restart when any .env file changes - Bun's own --watch ignores .env.
 	let restartRequested = false;
 	const stopEnvWatch = watchEnvFiles(targetDir, (file) => {
 		if (restartRequested) return;
 		restartRequested = true;
-		console.log(`\x1b[33m  🔁 ${file} changed — restarting dev server...\x1b[0m`);
+		console.log(`\x1b[33m  🔁 ${file} changed - restarting dev server...\x1b[0m`);
 		proc.kill();
 	});
 
@@ -87,7 +87,7 @@ export async function devCommand(flags: string[]): Promise<void> {
 		}
 	};
 
-	// Kill the child whenever this process goes away — SIGTERM to the parent
+	// Kill the child whenever this process goes away - SIGTERM to the parent
 	// alone would otherwise leave an orphaned `bun --watch` behind.
 	const shutdown = async () => {
 		stopEnvWatch();

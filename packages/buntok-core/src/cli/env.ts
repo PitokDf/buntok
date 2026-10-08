@@ -110,7 +110,7 @@ export function watchEnvFiles(dir: string, onChange: (file: string) => void): ()
 			schedule(name);
 		});
 	} catch {
-		// Directory unreadable / no permission — env watching stays disabled.
+		// Directory unreadable / no permission - env watching stays disabled.
 		return () => {};
 	}
 

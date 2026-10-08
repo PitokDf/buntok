@@ -408,7 +408,7 @@ await mailer.sendTemplate({
         in the provider&apos;s dashboard and referenced by ID.
       </p>
       <CodeBlock
-        code={`// Resend — template UUID from Resend dashboard
+        code={`// Resend - template UUID from Resend dashboard
 await mailer.sendProviderTemplate({
   from: "noreply@example.com",
   to: "user@example.com",
@@ -420,7 +420,7 @@ await mailer.sendProviderTemplate({
   },
 });
 
-// SendGrid — template_id from SendGrid dashboard
+// SendGrid - template_id from SendGrid dashboard
 await mailer.sendProviderTemplate({
   from: "noreply@example.com",
   to: "user@example.com",

@@ -106,7 +106,7 @@ export interface SendProviderTemplateOptions extends Omit<MailOptions, "html" | 
 }
 
 /**
- * Mailable — base class for class-based email definitions (Laravel-style).
+ * Mailable - base class for class-based email definitions (Laravel-style).
  *
  * @example
  * ```ts
