@@ -1,7 +1,7 @@
 /**
  * Lightweight typed RPC client.
  *
- * buntok's `App` doesn't currently thread per-route generics through its
+ * buntok's `Buntok` doesn't currently thread per-route generics through its
  * method overloads (every `app.get/post/...` uses a fixed `Handler<DI>`),
  * so this client can't auto-infer types from your route definitions the
  * way Hono's `hc()` does. Instead, you declare each route's shape once as
@@ -101,9 +101,9 @@ export interface CreateClientOptions {
 	retryDelay?: number;
 	/** Retry only on these status codes (default: [408, 429, 500, 502, 503, 504]) */
 	retryOn?: number[];
-	/** Request interceptor — called before each request */
+	/** Request interceptor - called before each request */
  onRequest?: (request: Request) => Request | Promise<Request>;
-	/** Response interceptor — called after each response */
+	/** Response interceptor - called after each response */
 	onResponse?: (response: Response) => Response | Promise<Response>;
 }
 
@@ -204,7 +204,7 @@ export function createClient<T extends Record<string, AnyContract>>(
 					clearTimeout(timer);
 					if (err instanceof ClientError) throw err;
 
-					// AbortError or network error — retry if possible
+					// AbortError or network error - retry if possible
 					if (attempt < retries) {
 						lastError = err as Error;
 						continue;

@@ -1,9 +1,10 @@
 {
 	"name": "@buntok/core",
-	"version": "2.2.2",
+	"version": "2.2.4",
 	"description": "Blazing-fast, type-safe HTTP framework for Bun - AOT-compiled routing, decorators, Zod validation & IoC",
 	"module": "dist/core-exports.js",
 	"type": "module",
+	"sideEffects": false,
 	"main": "dist/core-exports.cjs",
 	"types": "dist/core-exports.d.ts",
 	"publishConfig": {
@@ -36,16 +37,16 @@
 			},
 			"default": "./dist/all.js"
 		},
-		"./app": {
+		"./buntok": {
 			"import": {
-				"types": "./dist/app.d.ts",
-				"default": "./dist/app.js"
+				"types": "./dist/buntok.d.ts",
+				"default": "./dist/buntok.js"
 			},
 			"require": {
-				"types": "./dist/app.d.cts",
-				"default": "./dist/app.cjs"
+				"types": "./dist/buntok.d.cts",
+				"default": "./dist/buntok.cjs"
 			},
-			"default": "./dist/app.js"
+			"default": "./dist/buntok.js"
 		},
 		"./auth": {
 			"import": {
@@ -486,6 +487,17 @@
 				"default": "./dist/plugins/graphql/yoga.cjs"
 			},
 			"default": "./dist/plugins/graphql/yoga.js"
+		},
+		"./cli/templates": {
+			"import": {
+				"types": "./dist/cli/templates.d.ts",
+				"default": "./dist/cli/templates.js"
+			},
+			"require": {
+				"types": "./dist/cli/templates.d.cts",
+				"default": "./dist/cli/templates.cjs"
+			},
+			"default": "./dist/cli/templates.js"
 		},
 		"./package.json": "./package.json"
 	},

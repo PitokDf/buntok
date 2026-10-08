@@ -1,6 +1,6 @@
 /**
  * Industrial SSE - Bun-only, in-memory default, pluggable to Redis/storage
- * Pattern mirip `StorageDriver` di `upload.ts:24` - default Memory, swap ke Redis tinggal inject.
+ * Pattern similar to `StorageDriver` in `upload.ts` - default Memory, swap to Redis by injecting.
  */
 
 export interface SSEMessage {
@@ -12,11 +12,11 @@ export interface SSEMessage {
 	id?: string | number;
 }
 
-// ── Pluggable History Store (mirip StorageDriver) ──
+// ── Pluggable History Store (similar to StorageDriver) ──
 export interface SSEHistoryStore {
-	/** Persist message (dipanggil setiap send dengan id) */
+	/** Persist message (called on every send with an id) */
 	add(message: SSEMessage): Promise<void> | void;
-	/** Ambil pesan setelah lastEventId */
+	/** Fetch messages after lastEventId */
 	getAfter(lastEventId: string): Promise<SSEMessage[]> | SSEMessage[];
 	/** Optional clear */
 	clear?(): Promise<void> | void;
@@ -27,7 +27,7 @@ export class MemorySSEHistory implements SSEHistoryStore {
 	private messages: SSEMessage[] = [];
 	constructor(private maxSize = 1000) {}
 	add(message: SSEMessage): void {
-		// hanya simpan yang punya id (butuh id untuk replay)
+		// only keep messages that have an id (replay needs an id)
 		if (message.id === undefined) return;
 		this.messages.push({ ...message });
 		if (this.messages.length > this.maxSize) this.messages.shift();
@@ -42,7 +42,7 @@ export class MemorySSEHistory implements SSEHistoryStore {
 	}
 }
 
-// ── Pluggable PubSub (untuk broadcast cluster) ──
+// ── Pluggable PubSub (for cluster broadcast) ──
 export interface SSEPubSub {
 	publish(channel: string, message: SSEMessage): Promise<void> | void;
 	subscribe(channel: string, handler: (msg: SSEMessage) => void): () => void;
@@ -87,12 +87,12 @@ export interface SSEOptions {
 	 * Callback to replay missed events on reconnection.
 	 * Receives the Last-Event-ID header value from the client.
 	 * Return an array of messages to replay.
-	 * Jika `historyStore` disediakan, callback ini opsional - store akan dipakai otomatis.
+	 * If `historyStore` is provided, this callback is optional - the store is used automatically.
 	 */
 	onReconnect?: (lastEventId: string) => Promise<SSEMessage[]>;
-	/** Pluggable history store - default MemorySSEHistory (mirip StorageDriver) */
+	/** Pluggable history store - default MemorySSEHistory (similar to StorageDriver) */
 	historyStore?: SSEHistoryStore;
-	/** Custom headers tambahan */
+	/** Additional custom headers */
 	headers?: Record<string, string>;
 }
 
@@ -103,7 +103,7 @@ const connectionTracker = {
 	connections: new Set<SSE>(),
 };
 
-// Global default history (dipakai jika options.historyStore tidak diisi)
+// Global default history (used when options.historyStore is not set)
 const defaultHistory = new MemorySSEHistory(1000);
 
 export class SSE {
@@ -119,7 +119,7 @@ export class SSE {
 		private request: Request,
 		private options: SSEOptions = {},
 	) {
-		// Capture Last-Event-ID header (case-insensitive) + query fallback untuk proxy
+		// Capture Last-Event-ID header (case-insensitive) + query fallback for proxies
 		const headerId = request.headers.get("last-event-id");
 		const url = new URL(request.url);
 		const queryId = url.searchParams.get("lastEventId") || url.searchParams.get("last-event-id");
@@ -166,7 +166,7 @@ export class SSE {
 					this.sendMessage({ event: eventName, data: "connected" });
 				}
 
-				// Send retry timeout - default 3000 jika tidak diisi tapi client expect
+				// Send retry timeout - default 3000 when unset (what clients expect)
 				if (this.options.retry !== undefined) {
 					this.sendRaw(`retry: ${this.options.retry}\n\n`);
 				} else {
@@ -180,9 +180,9 @@ export class SSE {
 				this.abortHandler = () => this.close();
 				this.request.signal.addEventListener("abort", this.abortHandler, { once: true } as AddEventListenerOptions);
 
-				// Replay missed events on reconnection - pakai store dulu, fallback onReconnect
+				// Replay missed events on reconnection - store first, fallback to onReconnect
 				if (this.lastEventId) {
-					// async tanpa block initial event
+					// async without blocking the initial event
 					queueMicrotask(() => this.replayMissedEvents());
 				}
 			},
@@ -200,7 +200,7 @@ export class SSE {
 			"Cache-Control2": "no-cache", // compat
 			...this.options.headers,
 		};
-		// Explicit Transfer-Encoding chunked tidak perlu di Bun (auto), tapi keep header untuk proxy
+		// Explicit Transfer-Encoding chunked is unnecessary in Bun (auto), but keep the header for proxies
 		return new Response(stream, {
 			status: 200,
 			headers: {
@@ -221,7 +221,7 @@ export class SSE {
 
 		try {
 			let missed: SSEMessage[] = [];
-			// Prioritas: historyStore → onReconnect
+			// Priority: historyStore → onReconnect
 			if (this.historyStore) {
 				const fromStore = await this.historyStore.getAfter(this.lastEventId);
 				if (fromStore && fromStore.length > 0) missed = fromStore;
@@ -239,11 +239,11 @@ export class SSE {
 	}
 
 	/**
-	 * Send a message to the client - auto persist ke historyStore jika ada id
+	 * Send a message to the client - auto-persists to historyStore when it has an id
 	 */
 	send(message: SSEMessage): void {
 		if (this.closed) return;
-		// persist dulu untuk replay
+		// persist first for replay
 		if (message.id !== undefined) {
 			try {
 				const r = this.historyStore.add(message);
@@ -275,7 +275,7 @@ export class SSE {
 	}
 
 	/**
-	 * Send SSE comment - untuk heartbeat custom
+	 * Send SSE comment - for custom heartbeats
 	 */
 	sendComment(comment: string): void {
 		const sanitized = String(comment).replace(/[\r\n]/g, " ");
@@ -303,15 +303,15 @@ export class SSE {
 	}
 
 	/**
-	 * Send raw string to the stream - dengan backpressure check
+	 * Send raw string to the stream - with backpressure check
 	 */
 	private sendRaw(raw: string): void {
 		if (this.closed || !this.controller) return;
-		// Backpressure: desiredSize <=0 berarti buffer penuh → drop atau tunggu
+		// Backpressure: desiredSize <=0 means the buffer is full → drop or wait
 		try {
 			const desired = (this.controller as unknown as { desiredSize?: number | null }).desiredSize;
 			if (desired !== null && desired !== undefined && desired <= 0) {
-				if (raw.startsWith(":")) return; // drop heartbeat jika penuh - jangan warn
+				if (raw.startsWith(":")) return; // drop heartbeat when full - do not warn
 			}
 			this.controller.enqueue(this.encoder.encode(raw));
 		} catch (_error) {
@@ -320,7 +320,7 @@ export class SSE {
 	}
 
 	/**
-	 * Validate event/id agar tidak break spec (no \r \n \0)
+	 * Validate event/id to keep the spec intact (no \r \n \0)
 	 */
 	private sanitizeField(value: string): string {
 		if (/[\r\n\0]/.test(value)) throw new Error(`Invalid SSE field contains newline: ${value}`);
@@ -351,7 +351,7 @@ export class SSE {
 			data = String(message.data);
 		}
 
-		// SSE spec: data cannot contain single \n, split ke multiple data: lines, handle \r\n
+		// SSE spec: data cannot contain single \n, split into multiple data: lines, handle \r\n
 		const dataLines = data.split(/\r\n|\r|\n/);
 		for (const line of dataLines) {
 			raw += `data: ${line}\n`;
@@ -362,10 +362,10 @@ export class SSE {
 	}
 
 	/**
-	 * Start heartbeat 30s fixed - keep-alive untuk LB/ALB
+	 * Start heartbeat 30s fixed - keep-alive for LB/ALB
 	 */
 	private startHeartbeat(): void {
-		// 30s fixed sesuai instruksi - tidak configurable per request (industrial default)
+		// 30s fixed per spec - not configurable per request (industrial default)
 		this.heartbeatInterval = setInterval(() => {
 			this.sendRaw(": heartbeat\n\n");
 		}, 30000);
@@ -431,14 +431,14 @@ export class SSE {
 		return connectionTracker.connections;
 	}
 
-	/** Graceful close all - dipakai di App.setupGracefulShutdown */
+	/** Graceful close all - used in Buntok.setupGracefulShutdown */
 	static closeAll(): void {
 		for (const c of [...connectionTracker.connections]) c.close();
 	}
 }
 
 /**
- * SSE Broadcaster - in-memory default, pluggable ke Redis via pubSub
+ * SSE Broadcaster - in-memory default, pluggable to Redis via pubSub
  *
  * @example Memory (default)
  * ```ts
@@ -446,7 +446,7 @@ export class SSE {
  * app.get("/events", (ctx) => { const sse = createSSE(ctx.request); broadcaster.add(sse); sse.onClose(()=>broadcaster.remove(sse)); return sse.connect(); })
  * broadcaster.broadcast("update", {count:42})
  * ```
- * @example Redis pluggable (mirip StorageDriver)
+ * @example Redis pluggable (similar to StorageDriver)
  * ```ts
  * class RedisSSEPubSub implements SSEPubSub { constructor(private redis: Redis){} publish(ch,msg){ redis.publish(ch, JSON.stringify(msg)) } subscribe(ch,cb){ redis.subscribe(ch,(m)=>cb(JSON.parse(m))); return ()=>redis.unsubscribe(ch)} }
  * const broadcaster = new SSEBroadcaster({ pubSub: new RedisSSEPubSub(redis), channel: "buntok:sse" })
@@ -477,7 +477,7 @@ export class SSEBroadcaster {
 		}
 		if (this.pubSub) {
 			this.unsubscribe = this.pubSub.subscribe(this.channel, (msg) => {
-				// fan-out ke local clients tanpa loop publish lagi
+				// fan-out to local clients without another publish loop
 				for (const c of [...this.clients]) {
 					if (c.isConnected) c.send(msg);
 					else this.clients.delete(c);
@@ -501,7 +501,7 @@ export class SSEBroadcaster {
 	}
 
 	/**
-	 * Broadcast a named event to all connected clients - via pubSub jika ada
+	 * Broadcast a named event to all connected clients - via pubSub when available
 	 */
 	broadcast(event: string, data: string | object): void {
 		const msg: SSEMessage = { event, data };
@@ -533,7 +533,7 @@ export class SSEBroadcaster {
 		data: string | object,
 	): void {
 		const msg: SSEMessage = { event, data };
-		// jika pubSub ada, tetap filter lokal (predicate tidak bisa di-remote)
+		// when pubSub is present, still filter locally (predicates cannot be remote)
 		for (const client of [...this.clients]) {
 			if (!client.isConnected) {
 				this.clients.delete(client);

@@ -1,4 +1,4 @@
-import type { Middleware } from "../app";
+import type { Middleware } from "../buntok";
 
 export interface RequestIdOptions {
 	/** Header name (default: x-request-id) */

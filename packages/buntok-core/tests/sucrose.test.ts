@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { analyzeHandler } from "../src/aot/sucrose";
 
-// NOTE: test functions are intentionally NOT named "handler" — the source
+// NOTE: test functions are intentionally NOT named "handler" - the source
 // containing a literal "handler(" triggers analyzeHandler's conservative
 // all-true fallback, which would mask the detection logic under test.
 
@@ -96,5 +96,29 @@ describe("analyzeHandler (sucrose)", () => {
 		const endpoint = () => 1;
 		const analysis = analyzeHandler(endpoint);
 		expect(analysis.needsFullContext).toBe(true);
+	});
+
+	it("detects ctx.set usage (mutable response headers)", () => {
+		function endpoint(ctx: any) {
+			ctx.set.headers["x-a"] = "1";
+			return "ok";
+		}
+		expect(analyzeHandler(endpoint).needsFullContext).toBe(true);
+	});
+
+	it("detects set.headers on aliased param (c.set.headers)", () => {
+		function endpoint(c: any) {
+			c.set.headers["x-a"] = "1";
+			return "ok";
+		}
+		expect(analyzeHandler(endpoint).needsFullContext).toBe(true);
+	});
+
+	it("detects destructured set param", () => {
+		const endpoint = ({ set }: any) => {
+			set.headers["x-a"] = "1";
+			return "ok";
+		};
+		expect(analyzeHandler(endpoint).needsFullContext).toBe(true);
 	});
 });

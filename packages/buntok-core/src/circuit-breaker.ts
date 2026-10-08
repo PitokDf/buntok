@@ -1,5 +1,5 @@
 /**
- * Circuit Breaker — fail-fast resilience pattern for protecting against cascading failures.
+ * Circuit Breaker - fail-fast resilience pattern for protecting against cascading failures.
  *
  * States:
  *   CLOSED  → normal operation, failures counted
@@ -335,6 +335,7 @@ export class CircuitBreaker {
 		this.consecutiveFailures = 0;
 
 		if (this.state === "half-open") {
+			this.halfOpenCalls = Math.max(0, this.halfOpenCalls - 1);
 			this.consecutiveSuccesses++;
 			if (this.consecutiveSuccesses >= this.options.successThreshold) {
 				this.transitionTo("closed");

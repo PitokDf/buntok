@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { App } from "../src/app";
+import { Buntok } from "../src/buntok";
 import { InternalServerError, NotFoundError } from "../src/helpers/async-handler";
 
 const PREV_NODE_ENV = process.env.NODE_ENV;
@@ -19,7 +19,7 @@ afterEach(() => {
 describe("default error handler: production message masking", () => {
 	it("keeps the message of a 4xx HttpError in production", async () => {
 		setNodeEnv("production");
-		const app = new App();
+		const app = new Buntok();
 		app.get("/categories", () => {
 			throw new NotFoundError("Categories not found");
 		});
@@ -37,7 +37,7 @@ describe("default error handler: production message masking", () => {
 
 	it("masks a 5xx HttpError message in production", async () => {
 		setNodeEnv("production");
-		const app = new App();
+		const app = new Buntok();
 		app.get("/pay", () => {
 			throw new InternalServerError("Payment gateway timeout");
 		});
@@ -55,7 +55,7 @@ describe("default error handler: production message masking", () => {
 
 	it("masks unexpected (non-HttpError) errors in production", async () => {
 		setNodeEnv("production");
-		const app = new App();
+		const app = new Buntok();
 		app.get("/boom", () => {
 			throw new Error("db creds invalid");
 		});
@@ -73,7 +73,7 @@ describe("default error handler: production message masking", () => {
 
 	it("shows the original message in development", async () => {
 		setNodeEnv("development");
-		const app = new App();
+		const app = new Buntok();
 		app.get("/boom", () => {
 			throw new Error("db creds invalid");
 		});
@@ -97,7 +97,7 @@ describe("default error handler: production message masking", () => {
 describe("default error handler: custom onError", () => {
 	it("lets app.onError override the default handler", async () => {
 		setNodeEnv("production");
-		const app = new App();
+		const app = new Buntok();
 		app.onError(() => new Response("custom handler", { status: 418 }));
 		app.get("/teapot", () => {
 			throw new NotFoundError("Categories not found");

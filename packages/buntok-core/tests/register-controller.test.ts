@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { App } from "../src/app";
+import { Buntok } from "../src/buntok";
 import { Controller, Get, Post, Use } from "../src/decorators";
 
 @Controller("/users")
@@ -46,7 +46,7 @@ class CommentController {
 
 describe("registerController with array", () => {
 	it("should register multiple controllers from array", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.registerController([UserController, PostController, AuthController]);
 
 		const res1 = await app.request("/users");
@@ -60,7 +60,7 @@ describe("registerController with array", () => {
 	});
 
 	it("should register single controller (backward compatible)", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.registerController(UserController);
 
 		const res = await app.request("/users");
@@ -68,7 +68,7 @@ describe("registerController with array", () => {
 	});
 
 	it("should work with RouterGroup", async () => {
-		const app = new App();
+		const app = new Buntok();
 		const api = app.group("/api/v1");
 		api.registerController([UserController, PostController]);
 
@@ -80,19 +80,19 @@ describe("registerController with array", () => {
 	});
 
 	it("should be chainable", () => {
-		const app = new App();
+		const app = new Buntok();
 		const result = app.registerController([UserController, PostController]);
 		expect(result).toBe(app);
 	});
 
 	it("should return this for single controller", () => {
-		const app = new App();
+		const app = new Buntok();
 		const result = app.registerController(UserController);
 		expect(result).toBe(app);
 	});
 
 	it("should handle mixed single and array calls", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.registerController(UserController);
 		app.registerController([PostController, AuthController]);
 
@@ -107,7 +107,7 @@ describe("registerController with array", () => {
 	});
 
 	it("should handle array with single element", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.registerController([CommentController]);
 
 		const res = await app.request("/comments");
@@ -135,7 +135,7 @@ describe("registerController with array", () => {
 			}
 		}
 
-		const app = new App();
+		const app = new Buntok();
 		const api = app.group("/api");
 		api.use(groupMw);
 		api.registerController(OrderedController);

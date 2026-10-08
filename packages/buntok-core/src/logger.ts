@@ -73,6 +73,7 @@ export class Logger {
 	private logDir: string | undefined;
 	private isProd: boolean;
 	private _logRequests: boolean;
+	private _enabled = true;
 
 	// Buffered file writer
 	private fileBuffer: string[] = [];
@@ -172,6 +173,7 @@ export class Logger {
 		message: string,
 		meta?: Record<string, unknown>,
 	) {
+		if (!this._enabled) return;
 		if (level < this.level) return;
 		const safeMeta = meta
 			? this.redactPatterns
@@ -249,8 +251,24 @@ export class Logger {
 		this.print(LogLevel.ERROR, "ERROR", message, meta);
 	}
 
+	/**
+	 * Master switch for all logger output (debug/info/warn/error).
+	 * Turn it off via `app.disable("logger")`.
+	 */
+	public get enabled(): boolean {
+		return this._enabled;
+	}
+
+	public set enabled(value: boolean) {
+		this._enabled = value;
+	}
+
 	public get logRequests(): boolean {
 		return this._logRequests;
+	}
+
+	public set logRequests(value: boolean) {
+		this._logRequests = value;
 	}
 
 	// Flush all buffers (useful for graceful shutdown)

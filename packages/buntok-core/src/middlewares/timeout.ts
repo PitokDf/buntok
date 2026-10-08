@@ -1,4 +1,4 @@
-import type { Middleware } from "../app";
+import type { Middleware } from "../buntok";
 
 /**
  * Request timeout middleware - automatically aborts the handler if it takes
@@ -17,7 +17,7 @@ import type { Middleware } from "../app";
  */
 export function timeout(ms: number, message = "Request timed out"): Middleware {
 	return async (_ctx, next) => {
-		// Industrial: skip timeout for SSE - SSE adalah long-lived, timeout akan bunuh koneksi 30s heartbeat
+		// Industrial: skip timeout for SSE - SSE is long-lived; a timeout would kill the 30s heartbeat connection
 		if (_ctx.request.headers.get("accept")?.includes("text/event-stream")) return next();
 		let timeoutId: ReturnType<typeof setTimeout>;
 

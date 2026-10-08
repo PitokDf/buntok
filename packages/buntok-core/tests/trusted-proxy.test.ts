@@ -1,10 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { App } from "../src/app";
+import { Buntok } from "../src/buntok";
 import { requestId } from "../src/middlewares/request-id";
 
 describe("trusted proxy", () => {
 	it("ignores forwarding headers by default", async () => {
-		const app = new App({ handleSignals: false });
+		const app = new Buntok({ handleSignals: false });
 		app.get("/ip", (ctx) => ctx.ip);
 
 		const response = await app.request("/ip", {
@@ -14,7 +14,7 @@ describe("trusted proxy", () => {
 	});
 
 	it("uses forwarded client IP when proxy depth is configured", async () => {
-		const app = new App({ handleSignals: false });
+		const app = new Buntok({ handleSignals: false });
 		app.setTrustedProxy({ depth: 1 });
 		app.get("/ip", (ctx) => ctx.ip);
 
@@ -24,8 +24,8 @@ describe("trusted proxy", () => {
 		expect(await response.text()).toBe("198.51.100.10");
 	});
 
-	it("correlates the request ID through the App pipeline", async () => {
-		const app = new App({ handleSignals: false });
+	it("correlates the request ID through the Buntok pipeline", async () => {
+		const app = new Buntok({ handleSignals: false });
 		app.use(requestId({ generator: () => "correlation-123" }));
 		app.get("/status", (ctx) => ctx.store.requestId as string);
 

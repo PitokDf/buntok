@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it, spyOn } from "bun:test";
-import { App } from "../src/app";
+import { Buntok } from "../src/buntok";
 
-const apps: App[] = [];
+const apps: Buntok[] = [];
 
 afterEach(async () => {
 	await Promise.all(apps.splice(0).map((app) => app.close()));
 });
 
-describe("App lifecycle", () => {
+describe("Buntok lifecycle", () => {
 	it("closes safely before listen", async () => {
-		const app = new App({ handleSignals: false });
+		const app = new Buntok({ handleSignals: false });
 		apps.push(app);
 
 		await expect(app.close()).resolves.toBeUndefined();
@@ -17,7 +17,7 @@ describe("App lifecycle", () => {
 	});
 
 	it("stops a listening server and is idempotent", async () => {
-		const app = new App({ handleSignals: false });
+		const app = new Buntok({ handleSignals: false });
 		apps.push(app);
 		app.get("/health", () => "ok");
 		app.listen(0);
@@ -33,14 +33,14 @@ describe("App lifecycle", () => {
 	});
 
 	it("supports shutdown as an alias for close", async () => {
-		const app = new App({ handleSignals: false });
+		const app = new Buntok({ handleSignals: false });
 		apps.push(app);
 
 		await expect(app.shutdown()).resolves.toBeUndefined();
 	});
 
 	it("closes registered resources before listen", async () => {
-		const app = new App({ handleSignals: false });
+		const app = new Buntok({ handleSignals: false });
 		let closed = 0;
 		app.registerResource({ close: () => { closed++; } });
 
@@ -50,7 +50,7 @@ describe("App lifecycle", () => {
 	});
 
 	it("disposes installed plugins during shutdown", async () => {
-		const app = new App({ handleSignals: false });
+		const app = new Buntok({ handleSignals: false });
 		let disposed = 0;
 		await app.plugin({
 			name: "lifecycle-plugin",
@@ -64,7 +64,7 @@ describe("App lifecycle", () => {
 	});
 
 	it("resolves close() before listen() without error", async () => {
-		const app = new App({ handleSignals: false });
+		const app = new Buntok({ handleSignals: false });
 		apps.push(app);
 
 		const result = await app.close();
@@ -73,7 +73,7 @@ describe("App lifecycle", () => {
 	});
 
 	it("stops listening after close and rejects new requests", async () => {
-		const app = new App({ handleSignals: false });
+		const app = new Buntok({ handleSignals: false });
 		apps.push(app);
 		app.get("/test", () => "alive");
 		app.listen(0);
@@ -95,7 +95,7 @@ describe("App lifecycle", () => {
 	});
 
 	it("handles shutdown with timeout option", async () => {
-		const app = new App({ handleSignals: false });
+		const app = new Buntok({ handleSignals: false });
 		apps.push(app);
 
 		let resourceClosed = false;
@@ -112,7 +112,7 @@ describe("App lifecycle", () => {
 	});
 
 	it("resource cleanup respects shutdown timeout", async () => {
-		const app = new App({ handleSignals: false });
+		const app = new Buntok({ handleSignals: false });
 		apps.push(app);
 
 		let slowResourceFinished = false;
@@ -137,7 +137,7 @@ describe("App lifecycle", () => {
 	});
 
 	it("registers and removes signal handlers on close", async () => {
-		const app = new App({ handleSignals: true });
+		const app = new Buntok({ handleSignals: true });
 		apps.push(app);
 		app.listen(0);
 
@@ -151,8 +151,8 @@ describe("App lifecycle", () => {
 	});
 
 	it("multiple app instances manage signals independently", async () => {
-		const app1 = new App({ handleSignals: true });
-		const app2 = new App({ handleSignals: true });
+		const app1 = new Buntok({ handleSignals: true });
+		const app2 = new Buntok({ handleSignals: true });
 		apps.push(app1, app2);
 
 		app1.listen(0);
@@ -173,7 +173,7 @@ describe("App lifecycle", () => {
 	});
 
 	it("graceful shutdown calls process.exit on signal", async () => {
-		const app = new App({ handleSignals: true });
+		const app = new Buntok({ handleSignals: true });
 		apps.push(app);
 		app.get("/test", () => "ok");
 		app.listen(0);
@@ -195,7 +195,7 @@ describe("App lifecycle", () => {
 	});
 
 	it("closes resources before process.exit on signal", async () => {
-		const app = new App({ handleSignals: true });
+		const app = new Buntok({ handleSignals: true });
 		apps.push(app);
 		app.listen(0);
 

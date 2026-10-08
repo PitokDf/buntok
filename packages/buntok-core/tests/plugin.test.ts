@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { createPlugin } from "../src/plugin";
-import { App } from "../src/app";
+import { Buntok } from "../src/buntok";
 
 describe("createPlugin", () => {
 	it("should create a plugin with name and install function", () => {
@@ -23,7 +23,7 @@ describe("createPlugin", () => {
 			},
 		});
 
-		const app = new App();
+		const app = new Buntok();
 		app.plugin(plugin);
 
 		const res = await app.request("/plugin-route");
@@ -40,7 +40,7 @@ describe("createPlugin", () => {
 			},
 		});
 
-		const app = new App();
+		const app = new Buntok();
 		await app.plugin(plugin);
 
 		const res = await app.request("/async-route");
@@ -77,7 +77,7 @@ describe("createPlugin", () => {
 			},
 		});
 
-		const app = new App();
+		const app = new Buntok();
 		app.plugin(plugin);
 
 		const res = await app.request("/mw-route");
@@ -100,7 +100,7 @@ describe("createPlugin", () => {
 			},
 		});
 
-		const app = new App();
+		const app = new Buntok();
 		app.plugin(plugin1);
 		app.plugin(plugin2);
 

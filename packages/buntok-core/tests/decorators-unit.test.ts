@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { App } from "../src/app";
+import { Buntok } from "../src/buntok";
 import {
 	Controller,
 	Get,
@@ -25,7 +25,7 @@ import {
 describe("Decorators", () => {
 	describe("HTTP method decorators", () => {
 		it("should register PUT routes", async () => {
-			const app = new App();
+			const app = new Buntok();
 
 			@Controller("/items")
 			class ItemController {
@@ -45,7 +45,7 @@ describe("Decorators", () => {
 		});
 
 		it("should register PATCH routes", async () => {
-			const app = new App();
+			const app = new Buntok();
 
 			@Controller("/items")
 			class ItemController {
@@ -64,7 +64,7 @@ describe("Decorators", () => {
 		});
 
 		it("should register DELETE routes", async () => {
-			const app = new App();
+			const app = new Buntok();
 
 			@Controller("/items")
 			class ItemController {
@@ -83,7 +83,7 @@ describe("Decorators", () => {
 		});
 
 		it("should register OPTIONS routes", async () => {
-			const app = new App();
+			const app = new Buntok();
 
 			@Controller("/items")
 			class ItemController {
@@ -102,7 +102,7 @@ describe("Decorators", () => {
 
 	describe("@Use decorator", () => {
 		it("should apply middleware to decorated route", async () => {
-			const app = new App();
+			const app = new Buntok();
 			let middlewareCalled = false;
 
 			const authMiddleware = async (ctx: any, next: () => any) => {
@@ -127,7 +127,7 @@ describe("Decorators", () => {
 		});
 
 		it("should stack multiple middleware", async () => {
-			const app = new App();
+			const app = new Buntok();
 			const order: string[] = [];
 
 			@Controller("/items")
@@ -158,7 +158,7 @@ describe("Decorators", () => {
 
 	describe("@UseGuard decorator", () => {
 		it("should allow request when guard returns true", async () => {
-			const app = new App();
+			const app = new Buntok();
 
 			const isOwner = (ctx: any) => {
 				return ctx.params.id === "1";
@@ -180,7 +180,7 @@ describe("Decorators", () => {
 		});
 
 		it("should return 403 when guard returns false", async () => {
-			const app = new App();
+			const app = new Buntok();
 
 			const isOwner = (ctx: any) => {
 				return ctx.params.id === "1";
@@ -202,7 +202,7 @@ describe("Decorators", () => {
 		});
 
 		it("should support async guards", async () => {
-			const app = new App();
+			const app = new Buntok();
 
 			const asyncGuard = async (ctx: any) => {
 				return ctx.params.token === "valid";
@@ -227,7 +227,7 @@ describe("Decorators", () => {
 		});
 
 		it("should chain multiple guards", async () => {
-			const app = new App();
+			const app = new Buntok();
 
 			const guard1 = () => true;
 			const guard2 = (ctx: any) => ctx.params.id !== "forbidden";
@@ -253,7 +253,7 @@ describe("Decorators", () => {
 
 	describe("@HttpCode decorator", () => {
 		it("should set custom status code", async () => {
-			const app = new App();
+			const app = new Buntok();
 
 			@Controller("/items")
 			class ItemController {
@@ -277,7 +277,7 @@ describe("Decorators", () => {
 
 	describe("@SetHeader decorator", () => {
 		it("should add static headers to response", async () => {
-			const app = new App();
+			const app = new Buntok();
 
 			@Controller("/items")
 			class ItemController {
@@ -300,7 +300,7 @@ describe("Decorators", () => {
 
 	describe("@Redirect decorator", () => {
 		it("should redirect to URL with 302", async () => {
-			const app = new App();
+			const app = new Buntok();
 
 			@Controller("/old")
 			class OldController {
@@ -319,7 +319,7 @@ describe("Decorators", () => {
 		});
 
 		it("should redirect with custom status code", async () => {
-			const app = new App();
+			const app = new Buntok();
 
 			@Controller("/old")
 			class OldController {
@@ -423,7 +423,7 @@ describe("Decorators", () => {
 
 	describe("applyDecorators", () => {
 		it("should compose multiple decorators", async () => {
-			const app = new App();
+			const app = new Buntok();
 
 			const AuthAndCache = applyDecorators(
 				Use(async (ctx: any, next: () => any) => {

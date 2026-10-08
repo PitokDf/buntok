@@ -1,6 +1,6 @@
 import type { ServerWebSocket } from "bun";
 import { z } from "zod";
-import type { WSData, WSHandler } from "./app";
+import type { WSData, WSHandler } from "./buntok";
 
 // Extended WSData with heartbeat
 interface WSDataWithHeartbeat<DI> extends WSData<DI> {
@@ -11,9 +11,9 @@ interface WSDataWithHeartbeat<DI> extends WSData<DI> {
 	};
 }
 
-// ── Pluggable PubSub (mirip StorageDriver) ──
+// ── Pluggable PubSub (similar to StorageDriver) ──
 export interface WSPubSub {
-	/** Publish ke channel - memory default, Redis pluggable */
+	/** Publish to a channel - memory default, Redis pluggable */
 	publish(channel: string, message: string | object): Promise<void> | void;
 	/** Subscribe - return unsubscribe */
 	subscribe(channel: string, handler: (message: string | object) => void): () => void;
@@ -88,8 +88,8 @@ export function validateWSMessage<T>(
 }
 
 /**
- * Room class - in-memory default, pluggable ke Redis via pubSub
- * Mirip LocalDiskStorage vs MemoryStorage pattern.
+ * Room class - in-memory default, pluggable to Redis via pubSub.
+ * Similar to the LocalDiskStorage vs MemoryStorage pattern.
  *
  * @example Memory (default)
  * ```ts
@@ -137,7 +137,7 @@ export class Room<DI = Record<string, unknown>> {
 
 	join(ws: ServerWebSocket<WSData<DI>>): void {
 		this.members.add(ws);
-		// Also Bun native subscribe untuk fan-out kernel (optional, not required jika pakai pubSub)
+		// Also Bun native subscribe for kernel fan-out (optional, not required when using pubSub)
 		try { (ws as unknown as { subscribe?: (c:string)=>void }).subscribe?.(this.channel); } catch {}
 	}
 
@@ -148,7 +148,7 @@ export class Room<DI = Record<string, unknown>> {
 
 	broadcast(message: string | object, exclude?: ServerWebSocket<WSData<DI>>): void {
 		if (this.pubSub) {
-			// via pubSub (Redis) - akan di-fanout ke semua instance termasuk self via subscribe
+			// via pubSub (Redis) - fans out to all instances including self via subscribe
 			const r = this.pubSub.publish(this.channel, message);
 			if (r instanceof Promise) r.catch(() => this.localBroadcast(message, exclude));
 			return;
@@ -158,12 +158,12 @@ export class Room<DI = Record<string, unknown>> {
 
 	private localBroadcast(message: string | object, exclude?: ServerWebSocket<WSData<DI>>): void {
 		const data = typeof message === "object" ? JSON.stringify(message) : message;
-		// Backpressure check: jika bufferedAmount tinggi, skip slow client
+		// Backpressure check: if bufferedAmount is high, skip the slow client
 		for (const member of [...this.members]) {
 			if (member !== exclude && member.readyState === 1) {
 				try {
 					const buffered = (member as unknown as { getBufferedAmount?: () => number }).getBufferedAmount?.() ?? 0;
-					if (buffered > 1024 * 1024) continue; // drop jika >1MB buffered
+					if (buffered > 1024 * 1024) continue; // drop when >1MB buffered
 					member.send(data);
 				} catch {}
 			}
@@ -212,7 +212,7 @@ export class Room<DI = Record<string, unknown>> {
 
 /**
  * WebSocket heartbeat - 30s fixed, Bun-only
- * Fix: pong event reset alive (bukan message/drain)
+ * Fix: pong event resets alive (not message/drain)
  */
 export function wsHeartbeat<DI = Record<string, unknown>>(
 	interval = 30_000,
@@ -236,8 +236,8 @@ export function wsHeartbeat<DI = Record<string, unknown>>(
 				try { ws.ping(); } catch {}
 			}, interval);
 		},
-		// `pong` handler khusus - akan di-wire di app.ts websocket.pong
-		// fallback untuk Bun versi lama: message juga reset (compat)
+		// Dedicated `pong` handler - wired in buntok.ts websocket.pong
+		// Fallback for older Bun versions: message also resets (compat)
 		message: (ws: ServerWebSocket<WSData<DI>>) => {
 			const wsData = ws.data as WSDataWithHeartbeat<DI>;
 			if (wsData.heartbeat) wsData.heartbeat.alive = true;
@@ -246,18 +246,18 @@ export function wsHeartbeat<DI = Record<string, unknown>>(
 			const wsData = ws.data as WSDataWithHeartbeat<DI>;
 			if (wsData.heartbeat?.timer) clearInterval(wsData.heartbeat.timer);
 		},
-		// drain tidak reset alive lagi (fix drain bug)
+		// drain no longer resets alive (drain bug fix)
 	} as unknown as WSHandler<DI>;
 }
 
-/** Internal helper untuk app.ts - reset pong */
+/** Internal helper for buntok.ts - reset pong */
 export function wsHeartbeatPong<DI>(ws: ServerWebSocket<WSData<DI>>): void {
 	const wsData = ws.data as unknown as WSDataWithHeartbeat<DI>;
 	if (wsData.heartbeat) wsData.heartbeat.alive = true;
 }
 
 /**
- * WebSocket rate limiter - in-memory default, pluggable ke Redis
+ * WebSocket rate limiter - in-memory default, pluggable to Redis
  * @example
  * const limiter = wsRateLimit({ windowMs: 1000, max: 10 })
  * app.ws("/chat", { ...limiter, message: (ws,msg)=>{} })
@@ -267,7 +267,7 @@ export interface WSRateLimitOptions<DI = Record<string, unknown>> {
 	max?: number;
 	store?: WSRateLimitStore;
 	keyGenerator?: (ws: ServerWebSocket<WSData<DI>>) => string;
-	/** Close code saat limit */
+	/** Close code when the limit is hit */
 	closeCode?: number;
 }
 export function wsRateLimit<DI = Record<string, unknown>>(opts: WSRateLimitOptions<DI> = {}): WSHandler<DI> {

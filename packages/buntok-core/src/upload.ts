@@ -1,6 +1,6 @@
 import { mkdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
-import type { Middleware } from "./app";
+import type { Middleware } from "./buntok";
 import type { Context } from "./context";
 import { BadRequestError } from "./helpers/async-handler";
 

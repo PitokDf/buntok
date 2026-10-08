@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { App } from "../src/app";
+import { Buntok } from "../src/buntok";
 import { z } from "zod";
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -22,7 +22,7 @@ describe("swagger.json auto-generation", () => {
 	afterEach(cleanup);
 
 	it("should generate swagger.json in background when listen() is called", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Test API", version: "1.0.0" });
 		app.get("/users", (ctx) => ctx.json([]));
 
@@ -34,7 +34,7 @@ describe("swagger.json auto-generation", () => {
 	});
 
 	it("should serve swagger.json from memory cache via request", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Cached API", version: "2.0.0" });
 		app.get("/test", (ctx) => ctx.json({ ok: true }));
 
@@ -54,7 +54,7 @@ describe("swagger.json auto-generation", () => {
 	});
 
 	it("should include registered routes in swagger.json", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Routes API" });
 		app.get("/users", (ctx) => ctx.json([]));
 		app.post("/users", (ctx) => ctx.json({ id: 1 }));
@@ -74,7 +74,7 @@ describe("swagger.json auto-generation", () => {
 	});
 
 	it("should include routes with zValidator schemas", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Validated API" });
 
 		app.get("/users", (ctx) => ctx.json([]));
@@ -93,7 +93,7 @@ describe("swagger.json auto-generation", () => {
 	});
 
 	it("should fallback to disk if memory cache is empty", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Disk API" });
 		app.get("/test", (ctx) => ctx.json({ ok: true }));
 
@@ -114,7 +114,7 @@ describe("swagger.json auto-generation", () => {
 	});
 
 	it("should serve docs UI at /docs", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "UI Test API", version: "3.0.0" });
 		app.get("/test", (ctx) => ctx.json({ ok: true }));
 
@@ -133,7 +133,7 @@ describe("swagger.json auto-generation", () => {
 		// Clean up any existing swagger.json first
 		cleanup();
 
-		const app = new App();
+		const app = new Buntok();
 		app.get("/test", (ctx) => ctx.json({ ok: true }));
 
 		app.listen(0);
@@ -145,7 +145,7 @@ describe("swagger.json auto-generation", () => {
 	});
 
 	it("should include custom title and version in swagger.json", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({
 			title: "My Custom API",
 			version: "5.0.0",
@@ -168,7 +168,7 @@ describe("swagger.json auto-generation", () => {
 	});
 
 	it("should handle multiple HTTP methods", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Multi Method API" });
 		app.get("/items", (ctx) => ctx.json([]));
 		app.post("/items", (ctx) => ctx.json({ id: 1 }));
@@ -191,7 +191,7 @@ describe("swagger.json auto-generation", () => {
 	});
 
 	it("should serve swagger.json from disk when memory cache is cleared", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Disk Fallback API" });
 		app.get("/test", (ctx) => ctx.json({ ok: true }));
 
@@ -218,7 +218,7 @@ describe("swagger.json auto-generation", () => {
 		// Clean up any existing swagger.json first
 		cleanup();
 
-		const app = new App();
+		const app = new Buntok();
 		app.get("/test", (ctx) => ctx.json({ ok: true }));
 
 		app.listen(0);
@@ -232,7 +232,7 @@ describe("swagger.json auto-generation", () => {
 	});
 
 	it("should serve swagger.json at custom basePath", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ path: "/api", title: "Custom Path API" });
 		app.get("/test", (ctx) => ctx.json({ ok: true }));
 
@@ -256,7 +256,7 @@ describe("swagger.json auto-generation", () => {
 	});
 
 	it("should serve docs UI at custom basePath", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ path: "/api-docs", title: "Custom Docs UI" });
 		app.get("/test", (ctx) => ctx.json({ ok: true }));
 
@@ -275,7 +275,7 @@ describe("swagger.json auto-generation", () => {
 	});
 
 	it("should serve docs UI at basePath with trailing slash", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Trailing Slash Test" });
 		app.get("/test", (ctx) => ctx.json({ ok: true }));
 
@@ -294,7 +294,7 @@ describe("swagger.json auto-generation", () => {
 	});
 
 	it("should serve tailwind.js via wildcard route", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Asset Test" });
 		app.get("/test", (ctx) => ctx.json({ ok: true }));
 
@@ -309,7 +309,7 @@ describe("swagger.json auto-generation", () => {
 	});
 
 	it("should serve font-googles.css via wildcard route", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Asset Test" });
 		app.get("/test", (ctx) => ctx.json({ ok: true }));
 

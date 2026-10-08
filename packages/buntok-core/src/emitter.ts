@@ -15,7 +15,7 @@
  *
  * // One-time listener
  * emitter.once("app:ready", () => {
- *   console.log("App is ready!");
+ *   console.log("Buntok is ready!");
  * });
  * ```
  */
@@ -257,7 +257,7 @@ export interface AppEvents {
 	"request:end": { method: string; path: string; status: number; duration: number; ctx?: any };
 	"request:error": { method: string; path: string; error: Error; ctx?: any };
 
-	// App events
+	// Buntok events
 	"app:ready": void;
 	"app:shutdown": void;
 

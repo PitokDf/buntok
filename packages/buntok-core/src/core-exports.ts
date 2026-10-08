@@ -1,7 +1,7 @@
 // VERSION
 export { VERSION } from "./version";
 
-// NOTE: This is the SLIM root entry — it only re-exports lightweight core
+// NOTE: This is the SLIM root entry - it only re-exports lightweight core
 // modules to keep cold start fast and work well on serverless platforms
 // (Vercel, etc.). Heavy/feature modules live behind subpath exports:
 //
@@ -32,19 +32,25 @@ export {
 	streamAI,
 } from "./ai";
 export type {
+	AfterHandleHook,
+	AppHook,
+	BeforeHandleHook,
+	DeriveHook,
 	EnvValidationOptions,
 	ErrorHandler,
 	ExtractParams,
 	Handler,
 	HandlerReturn,
+	LifecycleHookResult,
 	Middleware,
 	NotFoundHandler,
+	RequestHook,
 	RouteContext,
 	WSData,
 	WSHandler,
 	ZodCtx,
-} from "./app";
-export { App, type ApiDocsOptions, type AppOptions, type DisposableResource, type StaticOptions, type WSOptions, type RouteDebugInfo } from "./app";
+} from "./buntok";
+export { Buntok, type ApiDocsOptions, type BuntokOptions, type DisposableResource, type StaticOptions, type WSOptions, type RouteDebugInfo } from "./buntok";
 // Auth
 export { JwtService, requireAuth, type JwtOptions } from "./auth";
 export { redactLogMeta, type LoggerOptions } from "./logger";
@@ -65,6 +71,7 @@ export {
 	type ValueProvider,
 } from "./container";
 export { Context } from "./context";
+export type { HTTPHeaders } from "./context";
 export type { ControllerMeta, RouteMeta } from "./decorators";
 // Emitter
 export { emitter, EventEmitter } from "./emitter";
@@ -210,7 +217,11 @@ export {
 } from "./helpers/avatar";
 // File helpers
 export {
+	BuntokFile,
+	file,
 	serveFileOrFallback,
+	detectMimeType,
+	type FileOptions,
 	type ServeFileOptions,
 } from "./helpers/file";
 // Download helpers

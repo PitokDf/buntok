@@ -33,7 +33,7 @@ describe("CircuitBreaker", () => {
 		});
 	});
 
-	describe("fire() — success", () => {
+	describe("fire() - success", () => {
 		it("should return the result of the function", async () => {
 			const result = await breaker.fire(() => 42);
 			expect(result).toBe(42);
@@ -69,7 +69,7 @@ describe("CircuitBreaker", () => {
 		});
 	});
 
-	describe("fire() — failure", () => {
+	describe("fire() - failure", () => {
 		it("should throw the original error", async () => {
 			try {
 				await breaker.fire(() => { throw new Error("boom"); });
@@ -88,7 +88,7 @@ describe("CircuitBreaker", () => {
 		});
 	});
 
-	describe("state transitions — CLOSED → OPEN", () => {
+	describe("state transitions - CLOSED → OPEN", () => {
 		it("should open after consecutive failures reach threshold", async () => {
 			await breaker.fire(() => { throw new Error("1"); }).catch(() => {});
 			await breaker.fire(() => { throw new Error("2"); }).catch(() => {});
@@ -182,6 +182,29 @@ describe("CircuitBreaker", () => {
 			expect(b.getState()).toBe("open");
 
 			await new Promise((r) => setTimeout(r, 300)); // → half-open
+
+			await b.fire(() => "ok");
+			await b.fire(() => "ok");
+			expect(b.getState()).toBe("closed");
+		});
+
+		it("should recover with default halfOpenMaxCalls after sequential probes", async () => {
+			const b = new CircuitBreaker("test4", {
+				failureThreshold: 3,
+				successThreshold: 2,
+				timeout: 200,
+				minimumNumberOfCalls: 10,
+			});
+
+			for (let i = 0; i < 3; i++) {
+				await b.fire(() => {
+					throw new Error("fail");
+				}).catch(() => {});
+			}
+			expect(b.getState()).toBe("open");
+
+			await new Promise((r) => setTimeout(r, 300));
+			expect(b.getState()).toBe("half-open");
 
 			await b.fire(() => "ok");
 			await b.fire(() => "ok");

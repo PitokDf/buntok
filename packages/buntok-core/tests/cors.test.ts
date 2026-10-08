@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import { App } from "../src/app";
+import { Buntok } from "../src/buntok";
 import { Context } from "../src/context";
 import {
 	resolveOrigin,
@@ -136,13 +136,13 @@ describe("cors middleware", () => {
 
 describe("app.cors()", () => {
 	it("should be callable and return app instance", () => {
-		const app = new App();
+		const app = new Buntok();
 		const result = app.cors({ origin: "http://example.com" });
 		expect(result).toBe(app);
 	});
 
 	it("should add CORS middleware to the pipeline", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.get("/test", (ctx) => ctx.json({ ok: true }));
 
@@ -156,7 +156,7 @@ describe("app.cors()", () => {
 	});
 
 	it("should handle OPTIONS preflight via app.cors()", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({
 			origin: "http://example.com",
 			methods: ["GET", "POST"],
@@ -177,7 +177,7 @@ describe("app.cors()", () => {
 
 describe("CORS on error responses", () => {
 	it("should include CORS headers when handler throws BadRequestError (400)", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({
 			origin: "http://example.com",
 			credentials: true,
@@ -198,7 +198,7 @@ describe("CORS on error responses", () => {
 	});
 
 	it("should include CORS headers when handler throws UnprocessableEntityError (422)", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.get("/unprocessable", () => {
 			throw new UnprocessableEntityError("validation failed");
@@ -215,7 +215,7 @@ describe("CORS on error responses", () => {
 	});
 
 	it("should include CORS headers when handler throws generic Error (500)", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.get("/crash", () => {
 			throw new Error("unexpected");
@@ -232,7 +232,7 @@ describe("CORS on error responses", () => {
 	});
 
 	it("should include CORS headers on 404 not found response", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 
 		const res = await app.request("/nonexistent", {
@@ -246,7 +246,7 @@ describe("CORS on error responses", () => {
 	});
 
 	it("should restrict origin on error responses based on config", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: ["http://allowed.com"] });
 		app.get("/bad", () => {
 			throw new BadRequestError("bad");
@@ -261,7 +261,7 @@ describe("CORS on error responses", () => {
 	});
 
 	it("should not add CORS headers when app.cors() is not used", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.get("/bad", () => {
 			throw new BadRequestError("bad");
 		});
@@ -275,7 +275,7 @@ describe("CORS on error responses", () => {
 	});
 
 	it("should work with custom error handler that throws", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.onError((err, ctx) => {
 			return ctx.json(
@@ -298,7 +298,7 @@ describe("CORS on error responses", () => {
 	});
 
 	it("should set credentials header on error responses", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({
 			origin: "http://example.com",
 			credentials: true,
@@ -316,7 +316,7 @@ describe("CORS on error responses", () => {
 	});
 
 	it("should work with function-based origin on error responses", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({
 			origin: (origin) => origin.includes("trusted"),
 		});
@@ -335,7 +335,7 @@ describe("CORS on error responses", () => {
 	});
 
 	it("should include CORS headers when handler returns a plain string", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.get("/text", () => "hello world");
 
@@ -351,7 +351,7 @@ describe("CORS on error responses", () => {
 	});
 
 	it("should include CORS headers when handler returns a number", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.get("/number", () => 42);
 
@@ -367,7 +367,7 @@ describe("CORS on error responses", () => {
 	});
 
 	it("should include CORS headers when handler returns null", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.get("/null", () => null);
 

@@ -1,11 +1,11 @@
 import { describe, it, expect } from "bun:test";
-import { App } from "../src/app";
+import { Buntok } from "../src/buntok";
 import { zValidator, z } from "../src/middlewares/validator";
 
 describe("zValidator", () => {
 	describe("body validation", () => {
 		it("should validate JSON body with zod schema", async () => {
-			const app = new App();
+			const app = new Buntok();
 			app.post(
 				"/users",
 				zValidator("body", z.object({ name: z.string(), age: z.number() })),
@@ -27,7 +27,7 @@ describe("zValidator", () => {
 		});
 
 		it("should return 422 for invalid body", async () => {
-			const app = new App();
+			const app = new Buntok();
 			app.post(
 				"/users",
 				zValidator("body", z.object({ name: z.string(), age: z.number() })),
@@ -46,7 +46,7 @@ describe("zValidator", () => {
 		});
 
 		it("should return 422 for invalid JSON", async () => {
-			const app = new App();
+			const app = new Buntok();
 			app.post(
 				"/data",
 				zValidator("body", z.object({ key: z.string() })),
@@ -62,7 +62,7 @@ describe("zValidator", () => {
 		});
 
 		it("should coerce types with z.coerce", async () => {
-			const app = new App();
+			const app = new Buntok();
 			app.post(
 				"/items",
 				zValidator(
@@ -89,7 +89,7 @@ describe("zValidator", () => {
 
 	describe("query validation", () => {
 		it("should validate query parameters", async () => {
-			const app = new App();
+			const app = new Buntok();
 			app.get(
 				"/search",
 				zValidator("query", z.object({ q: z.string(), page: z.coerce.number() })),
@@ -107,7 +107,7 @@ describe("zValidator", () => {
 		});
 
 		it("should return 422 for missing required query param", async () => {
-			const app = new App();
+			const app = new Buntok();
 			app.get(
 				"/search",
 				zValidator("query", z.object({ q: z.string() })),
@@ -119,7 +119,7 @@ describe("zValidator", () => {
 		});
 
 		it("should handle empty query string", async () => {
-			const app = new App();
+			const app = new Buntok();
 			app.get(
 				"/items",
 				zValidator("query", z.object({ search: z.string().optional() })),
@@ -138,7 +138,7 @@ describe("zValidator", () => {
 
 	describe("params validation", () => {
 		it("should validate route params", async () => {
-			const app = new App();
+			const app = new Buntok();
 			app.get(
 				"/users/:id",
 				zValidator("params", z.object({ id: z.coerce.number() })),
@@ -155,7 +155,7 @@ describe("zValidator", () => {
 		});
 
 		it("should return 422 for invalid params", async () => {
-			const app = new App();
+			const app = new Buntok();
 			app.get(
 				"/users/:id",
 				zValidator("params", z.object({ id: z.coerce.number().int().positive() })),
@@ -169,7 +169,7 @@ describe("zValidator", () => {
 
 	describe("content types", () => {
 		it("should validate text/plain body", async () => {
-			const app = new App();
+			const app = new Buntok();
 			app.post(
 				"/text",
 				zValidator("body", z.string().min(1), { contentType: "text/plain" }),
@@ -190,7 +190,7 @@ describe("zValidator", () => {
 		});
 
 		it("should return 422 for wrong content-type", async () => {
-			const app = new App();
+			const app = new Buntok();
 			app.post(
 				"/text",
 				zValidator("body", z.string(), { contentType: "text/plain" }),
@@ -206,7 +206,7 @@ describe("zValidator", () => {
 		});
 
 		it("should validate x-www-form-urlencoded body", async () => {
-			const app = new App();
+			const app = new Buntok();
 			app.post(
 				"/form",
 				zValidator(
@@ -250,7 +250,7 @@ describe("zValidator", () => {
 
 	describe("ctx.valid()", () => {
 		it("should throw when no validator ran for target", async () => {
-			const app = new App();
+			const app = new Buntok();
 			app.get("/no-validator", (ctx) => {
 				return ctx.valid("body");
 			});

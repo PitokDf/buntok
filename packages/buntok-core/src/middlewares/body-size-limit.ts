@@ -1,4 +1,4 @@
-import type { Middleware } from "../app";
+import type { Middleware } from "../buntok";
 import { BadRequestError } from "../helpers/async-handler";
 
 export interface BodySizeLimitOptions {

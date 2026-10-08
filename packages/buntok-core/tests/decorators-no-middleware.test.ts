@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { App } from "../src/app";
+import { Buntok } from "../src/buntok";
 import {
 	Controller,
 	Get,
@@ -16,7 +16,7 @@ function respond(ctx: any, data: unknown) {
 
 describe("Decorator routes without middleware (full Context)", () => {
 	it("app.registerController: ctx.success works with zero middleware", async () => {
-		const app = new App();
+		const app = new Buntok();
 
 		@Controller("/items")
 		class ItemController {
@@ -36,7 +36,7 @@ describe("Decorator routes without middleware (full Context)", () => {
 	});
 
 	it("group.registerController: ctx.success works with zero middleware", async () => {
-		const app = new App();
+		const app = new Buntok();
 
 		@Controller("/gitems")
 		class GroupItemController {
@@ -57,7 +57,7 @@ describe("Decorator routes without middleware (full Context)", () => {
 	});
 
 	it("group.registerController: ctx.params + ctx.success with zero middleware", async () => {
-		const app = new App();
+		const app = new Buntok();
 
 		@Controller("/gitems")
 		class GroupItemController {
@@ -77,7 +77,7 @@ describe("Decorator routes without middleware (full Context)", () => {
 	});
 
 	it("delegated ctx (passed to helper function) works with zero middleware", async () => {
-		const app = new App();
+		const app = new Buntok();
 
 		@Controller("/delegated")
 		class DelegatedController {
@@ -98,7 +98,7 @@ describe("Decorator routes without middleware (full Context)", () => {
 	});
 
 	it("group.registerController: delegated ctx works with zero middleware", async () => {
-		const app = new App();
+		const app = new Buntok();
 
 		@Controller("/delegated")
 		class DelegatedController {
@@ -119,7 +119,7 @@ describe("Decorator routes without middleware (full Context)", () => {
 	});
 
 	it("ctx.cursorPaginate works with zero middleware", async () => {
-		const app = new App();
+		const app = new Buntok();
 
 		@Controller("/feeds")
 		class FeedController {
@@ -142,7 +142,7 @@ describe("Decorator routes without middleware (full Context)", () => {
 	});
 
 	it("ctx.paginate works with zero middleware", async () => {
-		const app = new App();
+		const app = new Buntok();
 
 		@Controller("/paged")
 		class PagedController {
@@ -162,7 +162,7 @@ describe("Decorator routes without middleware (full Context)", () => {
 		expect(body.meta.total).toBe(25);
 	});
 
-	it("BaseController subclass via group: inherited ctx.success routes work", async () => {		const app = new App();
+	it("BaseController subclass via group: inherited ctx.success routes work", async () => {		const app = new Buntok();
 
 		const fakeService = {
 			getAll: () => Promise.resolve([{ id: 1, name: "satu" }]),
@@ -194,7 +194,7 @@ describe("Decorator routes without middleware (full Context)", () => {
 
 describe("Response decorators via RouterGroup.registerController", () => {
 	it("applies @HttpCode", async () => {
-		const app = new App();
+		const app = new Buntok();
 
 		@Controller("/gcreated")
 		class GroupCreateController {
@@ -215,7 +215,7 @@ describe("Response decorators via RouterGroup.registerController", () => {
 	});
 
 	it("applies @SetHeader", async () => {
-		const app = new App();
+		const app = new Buntok();
 
 		@Controller("/gcached")
 		class GroupCachedController {
@@ -235,7 +235,7 @@ describe("Response decorators via RouterGroup.registerController", () => {
 	});
 
 	it("applies @Redirect", async () => {
-		const app = new App();
+		const app = new Buntok();
 
 		@Controller("/gold")
 		class GroupOldController {

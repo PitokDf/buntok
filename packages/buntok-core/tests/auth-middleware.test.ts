@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { App } from "../src/app";
+import { Buntok } from "../src/buntok";
 import { requireAuth, JwtService } from "../src/auth";
 import { z } from "zod";
 
@@ -22,7 +22,7 @@ describe("requireAuth middleware", () => {
 	});
 
 	it("should allow request with valid Bearer token in header", async () => {
-		const app = new App();
+		const app = new Buntok();
 		const token = await makeToken({ userId: 1 });
 		app.get("/protected", requireAuth(SECRET), (ctx) => {
 			return ctx.json({ user: ctx.user });
@@ -37,7 +37,7 @@ describe("requireAuth middleware", () => {
 	});
 
 	it("should return 401 when no token provided", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.get("/protected", requireAuth(SECRET), (ctx) => {
 			return ctx.json({ ok: true });
 		});
@@ -49,7 +49,7 @@ describe("requireAuth middleware", () => {
 	});
 
 	it("should return 401 for expired token", async () => {
-		const app = new App();
+		const app = new Buntok();
 		const token = await makeToken({ userId: 1 }, -10);
 		app.get("/protected", requireAuth(SECRET), (ctx) => {
 			return ctx.json({ ok: true });
@@ -62,7 +62,7 @@ describe("requireAuth middleware", () => {
 	});
 
 	it("should return 401 for invalid token", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.get("/protected", requireAuth(SECRET), (ctx) => {
 			return ctx.json({ ok: true });
 		});
@@ -74,7 +74,7 @@ describe("requireAuth middleware", () => {
 	});
 
 	it("should inject user into ctx.user", async () => {
-		const app = new App();
+		const app = new Buntok();
 		const token = await makeToken({ userId: 42, role: "admin" });
 		app.get("/me", requireAuth(SECRET), (ctx) => {
 			return ctx.json({ userId: ctx.user?.userId, role: ctx.user?.role });
@@ -93,7 +93,7 @@ describe("requireAuth middleware", () => {
 		process.env.AUTH_STORE = "cookie";
 		process.env.AUTH_COOKIE = "session_token";
 
-		const app = new App();
+		const app = new Buntok();
 		const token = await makeToken({ userId: 7 });
 		app.get("/protected", requireAuth(SECRET), (ctx) => {
 			return ctx.json({ user: ctx.user });
@@ -111,7 +111,7 @@ describe("requireAuth middleware", () => {
 		process.env.AUTH_STORE = "cookie";
 		process.env.AUTH_COOKIE = "session_token";
 
-		const app = new App();
+		const app = new Buntok();
 		const token = await makeToken({ userId: 8 });
 		app.get("/protected", requireAuth(SECRET), (ctx) => {
 			return ctx.json({ user: ctx.user });
@@ -129,7 +129,7 @@ describe("requireAuth middleware", () => {
 	});
 
 	it("should return 401 when Authorization header has wrong format", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.get("/protected", requireAuth(SECRET), (ctx) => {
 			return ctx.json({ ok: true });
 		});
@@ -141,7 +141,7 @@ describe("requireAuth middleware", () => {
 	});
 
 	it("should work with middleware chain (next() called)", async () => {
-		const app = new App();
+		const app = new Buntok();
 		const token = await makeToken({ userId: 1 });
 		let nextCalled = false;
 

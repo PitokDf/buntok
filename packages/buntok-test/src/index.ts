@@ -1,6 +1,6 @@
 import "./env";
 import { TestController } from "./controllers/test.controller";
-import { Container, App } from "@buntok/core";
+import { Container, Buntok } from "@buntok/core";
 import { MailerController } from "./controllers/mailer.controller";
 import { PaymentController } from "./controllers/payment.controller";
 import { SchemaDemoController } from "./controllers/schema-demo.controller";
@@ -9,7 +9,7 @@ import { getQuarter, addDays, getYear, getTime } from "@buntok/core/date";
 import { differenceInCalendarDays } from "@buntok/core/date";
 import { DateController } from "./controllers/date.controller";
 
-export const app = new App({ handleSignals: true });
+export const app = new Buntok({ handleSignals: true });
 
 const metric = new Metrics()
 app.use(metricsMiddleware(metric));

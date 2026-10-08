@@ -64,6 +64,12 @@ export class Router {
 	public staticRoutes: Map<string, Map<string, (...args: any[]) => any>> =
 		new Map();
 
+	// Registry of dynamic (param/catchall) routes, mirroring staticRoutes:
+	// path → method → handler. The native promotion pass iterates this to
+	// build Bun.serve route values for `:param` paths.
+	public dynamicRoutes: Map<string, Map<string, (...args: any[]) => any>> =
+		new Map();
+
 	// LRU cache for dynamic (param/catchall) route lookups
 	private readonly lookupCache = new LookupCache();
 
@@ -105,9 +111,26 @@ export class Router {
 		this.handlerRegistry.set(handlerId, handler);
 		const compositeKey = `${upperMethod}:${path}`;
 		this.nativeTrie.insert(compositeKey, handlerId);
+		let dynMethodMap = this.dynamicRoutes.get(path);
+		if (!dynMethodMap) {
+			dynMethodMap = new Map();
+			this.dynamicRoutes.set(path, dynMethodMap);
+		}
+		dynMethodMap.set(upperMethod, handler);
 	}
 
 	public find(method: string, path: string): LookupResult {
+		const result = this.findOnce(method, path);
+		// Standards-track behavior (Elysia/Hono/Express): a HEAD request is
+		// answered by the GET route when no HEAD route is registered - Bun.serve
+		// does the same for native route values, so the JS path mirrors it.
+		if (result.handler === null && method === "HEAD") {
+			return this.findOnce("GET", path);
+		}
+		return result;
+	}
+
+	private findOnce(method: string, path: string): LookupResult {
 		// Fast path: try flat static route cache first (O(1))
 		const methodMap = this.staticRoutes.get(path);
 		if (methodMap) {

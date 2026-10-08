@@ -1,4 +1,4 @@
-import type { Middleware } from "../app";
+import type { Middleware } from "../buntok";
 import {
 	CircuitBreaker,
 	CircuitOpenError,
@@ -37,7 +37,7 @@ export interface CircuitBreakerMiddlewareOptions extends CircuitBreakerOptions {
 }
 
 /**
- * Circuit breaker middleware — protects routes from cascading failures.
+ * Circuit breaker middleware - protects routes from cascading failures.
  *
  * @example
  * ```ts
@@ -64,9 +64,9 @@ export function circuitBreaker(
 			// Check if we should allow half-open probe
 			if (currentState === "half-open") {
 				const metrics = breaker.getMetrics();
-				// Allow through — fire() handles half-open concurrency
+				// Allow through - fire() handles half-open concurrency
 			} else {
-				// Circuit is open — reject fast
+				// Circuit is open - reject fast
 				if (options?.onOpen) {
 					const result = options.onOpen(ctx);
 					if (result !== undefined) return result;

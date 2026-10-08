@@ -1,14 +1,20 @@
-import { join, sep, dirname } from "node:path";
-import { mkdirSync, writeFileSync } from "node:fs";
-import type { Server, ServerWebSocket } from "bun";
+import { join, sep, dirname, resolve } from "node:path";
+import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import type { Server, ServerWebSocket, BunFile } from "bun";
 import type { z } from "zod";
 import { Container } from "./container";
 import { Context } from "./context";
 import { getControllerMeta, type RouteMeta } from "./decorators";
 import { HttpError } from "./helpers/async-handler";
+import { BuntokFile } from "./helpers/file";
 import { toResponse } from "./helpers/response";
-import { analyzeHandler } from "./aot/sucrose";
+import {
+	analyzeHandler,
+	extractConstResponseOp,
+	type ConstResponseOp,
+} from "./aot/sucrose";
 import { logger } from "./logger";
+import { getModel, registerModel } from "./models";
 import { Router } from "./router";
 import { VERSION } from "./version";
 import type { Plugin } from "./plugin";
@@ -22,11 +28,11 @@ export interface WSData<DI = Record<string, unknown>> {
 }
 
 export interface WSOptions {
-	/** Per-message deflate — Bun native, default false */
+	/** Per-message deflate - Bun native, default false */
 	perMessageDeflate?: boolean | object;
-	/** Max payload length bytes — default 16MB */
+	/** Max payload length bytes - default 16MB */
 	maxPayloadLength?: number;
-	/** Idle timeout seconds before close — default 120, 30 untuk heartbeat */
+	/** Idle timeout seconds before close - default 120, 30 for heartbeat */
 	idleTimeout?: number;
 	/** Backpressure highWaterMark */
 	maxBackpressure?: number;
@@ -88,7 +94,7 @@ export type RouteContext<
 /**
  * Helper to infer Context types from Zod schemas automatically.
  *
- * Just pass your Zod schemas — no need to remember generic parameter order.
+ * Just pass your Zod schemas - no need to remember generic parameter order.
  *
  * @example
  * const paginationSchema = z.object({ page: z.coerce.number(), limit: z.coerce.number() });
@@ -133,6 +139,7 @@ export type ZodCtx<
 
 export type HandlerReturn =
 	| Response
+	| BuntokFile
 	| Blob
 	| ArrayBuffer
 	| Uint8Array
@@ -147,6 +154,7 @@ export type HandlerReturn =
 	| void
 	| Promise<
 		| Response
+		| BuntokFile
 		| Blob
 		| ArrayBuffer
 		| Uint8Array
@@ -182,6 +190,29 @@ export type NotFoundHandler<DI = Record<string, unknown>> = (
 	ctx: Context<DI, any>,
 ) => HandlerReturn;
 
+export type LifecycleHookResult =
+	| Response
+	| void
+	| Promise<Response | void>;
+export type RequestHook<DI = Record<string, unknown>> = (
+	// biome-ignore lint/suspicious/noExplicitAny: generic
+	ctx: Context<DI, any>,
+) => LifecycleHookResult;
+export type BeforeHandleHook<DI = Record<string, unknown>> = (
+	// biome-ignore lint/suspicious/noExplicitAny: generic
+	ctx: Context<DI, any>,
+) => LifecycleHookResult;
+export type AfterHandleHook<DI = Record<string, unknown>> = (
+	// biome-ignore lint/suspicious/noExplicitAny: generic
+	ctx: Context<DI, any>,
+	response: Response,
+) => Response | void | Promise<Response | void>;
+export type DeriveHook<DI = Record<string, unknown>> = (
+	// biome-ignore lint/suspicious/noExplicitAny: generic
+	ctx: Context<DI, any>,
+) => Record<string, unknown> | Promise<Record<string, unknown>>;
+export type AppHook = () => void | Promise<void>;
+
 export interface EnvValidationOptions {
 	/**
 	 * Custom error handler called when env validation fails.
@@ -210,6 +241,48 @@ export interface StaticOptions {
 	cacheControl?: string;
 	/** Enable ETag generation and conditional requests (default: true) */
 	etag?: boolean;
+	/**
+	 * Serve the directory through Bun's native `{ dir }` route - zero JS per
+	 * request (kernel-clamped path traversal, native mime/etag/range/index.html).
+	 * Falls back to the JS handler when the native gates are off (request
+	 * logging on, X-Powered-By enabled, global middleware). When active, Bun
+	 * controls the response: `maxAge`/`cacheControl`/`etag` options are not
+	 * applied and missing files return an empty-body 404 instead of the JSON
+	 * error body.
+	 */
+	native?: boolean;
+}
+
+/** Bun native `{ dir }` route value for `app.static({ native: true })`. */
+interface DirRouteOptions {
+	dir: string;
+	statCache?: boolean;
+}
+
+/** Values that can be handed to Bun.serve `routes` directly (baked at boot). */
+type NativeRouteValue = Response | BunFile | DirRouteOptions;
+
+/**
+ * Native Bun.serve route handler for `:param` paths - Bun's C++ router matches
+ * the pattern, the closure runs the same JS as the fallback dispatch (params
+ * re-extracted raw from the pathname for byte parity with the FFI trie).
+ */
+type NativeDynamicHandler = (request: Request) => Response | Promise<Response>;
+
+/** Everything collectNativeStaticRoutes can put into Bun.serve `routes`. */
+type NativeRouteEntry = NativeRouteValue | NativeDynamicHandler;
+
+function isDirRouteValue(
+	value: unknown,
+): value is DirRouteOptions {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		!(value instanceof Response) &&
+		!(value instanceof Blob) &&
+		"dir" in value &&
+		typeof (value as DirRouteOptions).dir === "string"
+	);
 }
 
 export interface ApiDocsOptions {
@@ -235,7 +308,7 @@ export interface RouteDebugInfo {
 	group?: string;
 }
 
-export interface AppOptions {
+export interface BuntokOptions {
 	/** Register SIGINT and SIGTERM handlers when the app starts listening. */
 	handleSignals?: boolean;
 	/** Maximum time allowed for graceful shutdown. */
@@ -250,11 +323,11 @@ export interface DisposableResource {
 
 /**
  * Wrap a controller handler with the zero-cost response decorators
- * (@HttpCode / @SetHeader / @Redirect). Applied at boot time — no
+ * (@HttpCode / @SetHeader / @Redirect). Applied at boot time - no
  * per-request alloc beyond the wrapper closure. Returns the handler
  * unchanged when none of those decorators are present.
  *
- * Shared by `App.registerController()` and `RouterGroup.registerController()`
+ * Shared by `Buntok.registerController()` and `RouterGroup.registerController()`
  * so decorator behavior is identical on both registration paths.
  */
 function applyRouteResponseDecorators<DI extends Record<string, unknown>>(
@@ -315,7 +388,7 @@ function applyRouteResponseDecorators<DI extends Record<string, unknown>>(
 				});
 			}
 			if (result instanceof Response) {
-				// Handler returned a Response — apply redirect status + Location header
+				// Handler returned a Response - apply redirect status + Location header
 				return new Response(result.body, {
 					status: routeMeta.redirect!.statusCode,
 					headers: { Location: routeMeta.redirect!.url, ...Object.fromEntries(result.headers) },
@@ -339,21 +412,30 @@ function applyRouteResponseDecorators<DI extends Record<string, unknown>>(
 			return raw.then((v: any) =>
 				typeof v === "string"
 					? apply(new Response(v))
-					: apply(v instanceof Response ? v : toResponse(v)),
+					: apply(v instanceof Response ? v : toResponse(v, ctx?.request)),
 			);
 		}
 		return typeof raw === "string"
 			? apply(new Response(raw))
-			: apply(raw instanceof Response ? raw : toResponse(raw));
+			: apply(raw instanceof Response ? raw : toResponse(raw, ctx?.request));
 	}) as Handler<DI>;
 	// Preserve sucrose target from original handler for AST analysis
 	(wrapped as any)._sucroseTarget = (original as any)._sucroseTarget ?? original;
+	// Mark: the wrapper adds status/headers/redirect - it must be executed,
+	// never promote to native even when its _sucroseTarget is a constant literal.
+	(wrapped as any)._buntokResponseDecorated = true;
 	return wrapped;
 }
 
-export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
+export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>> {
 	private router: Router;
 	private middlewares: Middleware<DI>[] = [];
+	private requestHooks: RequestHook<DI>[] = [];
+	private deriveHooks: DeriveHook<DI>[] = [];
+	private beforeHandleHooks: BeforeHandleHook<DI>[] = [];
+	private afterHandleHooks: AfterHandleHook<DI>[] = [];
+	private startHooks: AppHook[] = [];
+	private stopHooks: AppHook[] = [];
 	private compiledGlobalPipeline?: (
 		ctx: Context<DI>,
 		finalHandler: Handler<DI>,
@@ -369,10 +451,16 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 	private _handlerNeedsFullContext = new WeakMap<Function, boolean>();
 	// Track routes that have per-route middlewares (need full Context)
 	private _routesWithMiddleware = new Set<string>();
-	// Precomputed client IP resolver — avoid closure alloc per request
+	// Precomputed client IP resolver - avoid closure alloc per request
 	private _clientIPResolver: (request: Request) => string = (req) => getClientIP(req);
 	// Cache full needsFullContext per handler for AOT codegen (includes ctx.json detection)
-	private _handlerFullContextCache = new WeakMap<Function, { needsFullContext: boolean; needsParams: boolean }>();
+	private _handlerFullContextCache = new WeakMap<Function, { needsFullContext: boolean; needsParams: boolean; needsSetHeaders: boolean }>();
+	// Static handler values (string/Response/ConstResponseOp) per `METHOD:path`,
+	// captured at registration for listen-time promotion to native Bun.serve routes.
+	private _staticRouteValues = new Map<
+		string,
+		string | NativeRouteValue | ConstResponseOp
+	>();
 	// Map compiled pipeline → original handler for AOT sucrose analysis
 	private _pipelineToHandler = new WeakMap<Function, Function>();
 	public _apiDocsConfig: ApiDocsOptions | null = null;
@@ -380,7 +468,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 	public openApiDocs: any[] = [];
 	private container: Container | null = null;
 	private installedPlugins = new Set<string>();
-	private pluginDisposers = new Map<string, (app: App<DI>) => void | Promise<void>>();
+	private pluginDisposers = new Map<string, (app: Buntok<DI>) => void | Promise<void>>();
 	private trustedProxy?: TrustedProxyOptions;
 	private readonly handleSignals: boolean;
 	private readonly shutdownTimeout: number;
@@ -428,7 +516,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			{
 				success: false,
 				error: errorName,
-				// App-thrown 4xx HttpErrors keep their message (also in
+				// Buntok-thrown 4xx HttpErrors keep their message (also in
 				// production); 5xx and unexpected errors are masked in production.
 				message:
 					err instanceof HttpError && err.status < 500
@@ -454,7 +542,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 
 	private iconPath: string = "./public/favicon.ico";
 
-	constructor(options: AppOptions = {}) {
+	constructor(options: BuntokOptions = {}) {
 		this.handleSignals = options.handleSignals ?? true;
 		this.shutdownTimeout = options.shutdownTimeout ?? 30_000;
 		this.router = new Router();
@@ -463,7 +551,86 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 
 	public use(middleware: Middleware<DI>): this {
 		this.middlewares.push(middleware);
+		this._invalidateAOT(true);
 		return this;
+	}
+
+	private get hasPipelineHooks(): boolean {
+		return (
+			this.middlewares.length > 0 ||
+			this.requestHooks.length > 0 ||
+			this.deriveHooks.length > 0 ||
+			this.beforeHandleHooks.length > 0 ||
+			this.afterHandleHooks.length > 0
+		);
+	}
+
+	public onRequest(hook: RequestHook<DI>): this {
+		this.requestHooks.push(hook);
+		this._invalidateAOT(true);
+		return this;
+	}
+
+	public onBeforeHandle(hook: BeforeHandleHook<DI>): this {
+		this.beforeHandleHooks.push(hook);
+		this._invalidateAOT(true);
+		return this;
+	}
+
+	public onAfterHandle(hook: AfterHandleHook<DI>): this {
+		this.afterHandleHooks.push(hook);
+		this._invalidateAOT(true);
+		return this;
+	}
+
+	public derive(hook: DeriveHook<DI>): this {
+		this.deriveHooks.push(hook);
+		this._invalidateAOT(true);
+		return this;
+	}
+
+	public onStart(hook: AppHook): this {
+		this.startHooks.push(hook);
+		return this;
+	}
+
+	public onStop(hook: AppHook): this {
+		this.stopHooks.push(hook);
+		return this;
+	}
+
+	public model(name: string, schema: unknown): this;
+	public model(models: Record<string, unknown>): this;
+	public model(
+		nameOrModels: string | Record<string, unknown>,
+		schema?: unknown,
+	): this {
+		if (typeof nameOrModels === "string") {
+			registerModel(nameOrModels, schema);
+			return this;
+		}
+		for (const [name, model] of Object.entries(nameOrModels)) {
+			registerModel(name, model);
+		}
+		return this;
+	}
+
+	public getModel<T = unknown>(name: string): T | undefined {
+		return getModel(name) as T | undefined;
+	}
+
+	public decorate<T extends Record<string, unknown>>(values: T): Buntok<DI & T>;
+	public decorate<K extends string, V>(name: K, value: V): Buntok<DI & Record<K, V>>;
+	public decorate(
+		nameOrValues: string | Record<string, unknown>,
+		value?: unknown,
+	): Buntok<DI & Record<string, unknown>> {
+		if (typeof nameOrValues === "string") {
+			(this.di as Record<string, unknown>)[nameOrValues] = value;
+		} else {
+			Object.assign(this.di, nameOrValues);
+		}
+		return this as unknown as Buntok<DI & Record<string, unknown>>;
 	}
 
 	/** Configure which proxy peers may supply forwarding headers. */
@@ -472,7 +639,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		this._clientIPResolver = options
 			? (req) => getClientIP(req, options)
 			: (req) => getClientIP(req);
-		this._aotReady = false;
+		this._invalidateAOT();
 		return this;
 	}
 
@@ -494,7 +661,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 	}
 
 	/**
-	 * Install a plugin. Plugins are deduplicated by name —
+	 * Install a plugin. Plugins are deduplicated by name -
 	 * installing the same plugin twice is a no-op.
 	 */
 	public async plugin(plugin: Plugin<DI>): Promise<this> {
@@ -540,7 +707,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 
 	/**
 	 * Register a WebSocket endpoint at an exact path (no params/wildcards).
-	 * Backed directly by Bun's native WebSocket server — no polyfill or
+	 * Backed directly by Bun's native WebSocket server - no polyfill or
 	 * extra abstraction layer between your handler and `Bun.serve`.
 	 *
 	 * ```ts
@@ -555,7 +722,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		return this;
 	}
 
-	/** Configure Bun WebSocket options — Bun-only, zero-deps */
+	/** Configure Bun WebSocket options - Bun-only, zero-deps */
 	public wsOptions(opts: WSOptions): this {
 		this.wsOpts = { ...this.wsOpts, ...opts };
 		return this;
@@ -567,15 +734,15 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 	 * If validation fails, it prints a beautiful error to the console and exits the process (stops booting).
 	 *
 	 * @example
-	 * // Static — no App instance needed (ideal for src/env.ts)
-	 * const env = App.validateEnv({
+	 * // Static - no Buntok instance needed (ideal for src/env.ts)
+	 * const env = Buntok.validateEnv({
 	 *   DATABASE_URL: z.string().url(),
 	 *   PORT: z.coerce.number().default(3000),
 	 * });
 	 *
 	 * @example
 	 * // Custom error handler - send to monitoring before exiting
-	 * const env = App.validateEnv({
+	 * const env = Buntok.validateEnv({
 	 *   DATABASE_URL: z.string().url(),
 	 * }, {
 	 *   onError: (errors) => {
@@ -634,7 +801,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 	 * Delegates to the static method. Kept for backward compatibility.
 	 *
 	 * @example
-	 * const app = new App();
+	 * const app = new Buntok();
 	 * const env = app.validateEnv({
 	 *   DATABASE_URL: z.string().url(),
 	 *   PORT: z.coerce.number().default(3000),
@@ -644,12 +811,12 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		schema: T,
 		options?: EnvValidationOptions,
 	): z.infer<z.ZodObject<T>> {
-		return App.validateEnv(schema, options);
+		return Buntok.validateEnv(schema, options);
 	}
 
 	/**
 	 * Register all `@Get`/`@Post`/etc. routes declared on a `@Controller`
-	 * class. This is sugar over `registerRoute()` — it instantiates the
+	 * class. This is sugar over `registerRoute()` - it instantiates the
 	 * class once (at boot time, not per request) and wires each decorated
 	 * method up exactly like a manual `app.get(path, handler)` call would.
 	 *
@@ -693,7 +860,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		const meta = getControllerMeta(ControllerClass);
 		if (!meta) {
 			throw new Error(
-				`${ControllerClass.name} is not decorated with @Controller — did you forget to add it?`,
+				`${ControllerClass.name} is not decorated with @Controller - did you forget to add it?`,
 			);
 		}
 
@@ -707,7 +874,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			const resolved = this.container.resolve<T>(ControllerClass);
 			instance = resolved;
 		} else {
-			// No container registration — create directly (no DI)
+			// No container registration - create directly (no DI)
 			instance = new ControllerClass();
 		}
 
@@ -747,25 +914,44 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 	}
 
 	/**
-	 * Disable a built-in feature. Currently only `"x-powered-by"` is
-	 * supported, which turns off the `X-Powered-By: buntok` response header.
-	 * The header's value itself is not configurable — this only controls
-	 * whether it's sent.
+	 * Disable a built-in feature:
+	 *
+	 * - `"x-powered-by"` - turns off the `X-Powered-By: buntok` response
+	 *   header. The header's value itself is not configurable - this only
+	 *   controls whether it's sent.
+	 * - `"logger"` - silences the terminal logger entirely: request logs,
+	 *   error/warn logs, graceful-shutdown messages, and the startup banner
+	 *   (`Buntok vX ready in ...`). Also flags request logging as off so the
+	 *   AOT router compiles its log-free fast path. Useful when you don't
+	 *   want log noise during development.
+	 *
+	 * Both flags are read by the AOT codegen at compile time - toggling after
+	 * compile triggers a lazy recompile on the next request.
 	 */
-	public disable(feature: "x-powered-by"): this {
+	public disable(feature: "x-powered-by" | "logger"): this {
 		if (feature === "x-powered-by") {
 			this.poweredByHeaderEnabled = false;
 		}
+		if (feature === "logger") {
+			logger.enabled = false;
+			logger.logRequests = false;
+		}
+		this._invalidateAOT();
 		return this;
 	}
 
 	/**
 	 * Re-enable a feature previously turned off with `disable()`.
 	 */
-	public enable(feature: "x-powered-by"): this {
+	public enable(feature: "x-powered-by" | "logger"): this {
 		if (feature === "x-powered-by") {
 			this.poweredByHeaderEnabled = true;
 		}
+		if (feature === "logger") {
+			logger.enabled = true;
+			logger.logRequests = true;
+		}
+		this._invalidateAOT();
 		return this;
 	}
 
@@ -813,30 +999,40 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			// No favicon found
 			return new Response(null, { status: 404 });
 		});
+		// Promote to a native Bun route value when the icon exists at boot -
+		// registered after this.get() so registerRoute's static-value cleanup
+		// doesn't wipe it. The async handler above stays as the JS fallback
+		// (native gates off, or the file appears after registration).
+		const resolved = existsSync(this.iconPath)
+			? this.iconPath
+			: this.getBuiltInIconPath();
+		if (existsSync(resolved)) {
+			this._staticRouteValues.set("GET:/favicon.ico", Bun.file(resolved));
+		}
 	}
 
 	private getBuiltInIconPath(): string {
 		return join(__dirname, "..", "public", "favicon.ico");
 	}
 
-	public get<Path extends string>(path: Path, handler: Handler<DI, Path>): this;
+	public get<Path extends string>(path: Path, handler: Handler<DI, Path> | string | Response): this;
 	public get<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public get<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public get<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public get<Path extends string>(
 		path: Path,
@@ -844,7 +1040,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public get<Path extends string>(
 		path: Path,
@@ -853,11 +1049,11 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public get<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.registerRoute("GET", path, handlers, { source: "route" });
 		return this;
@@ -865,25 +1061,25 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 
 	public post<Path extends string>(
 		path: Path,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public post<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public post<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public post<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public post<Path extends string>(
 		path: Path,
@@ -891,7 +1087,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public post<Path extends string>(
 		path: Path,
@@ -900,34 +1096,34 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public post<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.registerRoute("POST", path, handlers, { source: "route" });
 		return this;
 	}
 
-	public put<Path extends string>(path: Path, handler: Handler<DI, Path>): this;
+	public put<Path extends string>(path: Path, handler: Handler<DI, Path> | string | Response): this;
 	public put<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public put<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public put<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public put<Path extends string>(
 		path: Path,
@@ -935,7 +1131,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public put<Path extends string>(
 		path: Path,
@@ -944,11 +1140,11 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public put<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.registerRoute("PUT", path, handlers, { source: "route" });
 		return this;
@@ -956,25 +1152,25 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 
 	public delete<Path extends string>(
 		path: Path,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public delete<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public delete<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public delete<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public delete<Path extends string>(
 		path: Path,
@@ -982,7 +1178,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public delete<Path extends string>(
 		path: Path,
@@ -991,11 +1187,11 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public delete<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.registerRoute("DELETE", path, handlers, { source: "route" });
 		return this;
@@ -1003,25 +1199,25 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 
 	public options<Path extends string>(
 		path: Path,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public options<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public options<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public options<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public options<Path extends string>(
 		path: Path,
@@ -1029,7 +1225,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public options<Path extends string>(
 		path: Path,
@@ -1038,11 +1234,11 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public options<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.registerRoute("OPTIONS", path, handlers, { source: "route" });
 		return this;
@@ -1094,25 +1290,25 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 
 	public patch<Path extends string>(
 		path: Path,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public patch<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public patch<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public patch<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public patch<Path extends string>(
 		path: Path,
@@ -1120,7 +1316,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public patch<Path extends string>(
 		path: Path,
@@ -1129,11 +1325,11 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public patch<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.registerRoute("PATCH", path, handlers, { source: "route" });
 		return this;
@@ -1141,25 +1337,25 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 
 	public head<Path extends string>(
 		path: Path,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public head<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public head<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public head<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public head<Path extends string>(
 		path: Path,
@@ -1167,7 +1363,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public head<Path extends string>(
 		path: Path,
@@ -1176,11 +1372,11 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public head<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.registerRoute("HEAD", path, handlers, { source: "route" });
 		return this;
@@ -1189,24 +1385,24 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 	/**
 	 * Register a handler for all standard HTTP methods (GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS).
 	 */
-	public all<Path extends string>(path: Path, handler: Handler<DI, Path>): this;
+	public all<Path extends string>(path: Path, handler: Handler<DI, Path> | string | Response): this;
 	public all<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public all<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public all<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public all<Path extends string>(
 		path: Path,
@@ -1214,7 +1410,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public all<Path extends string>(
 		path: Path,
@@ -1223,11 +1419,11 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public all<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		const methods = [
 			"GET",
@@ -1248,7 +1444,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 	 * Serve static files from `directory` under `routePath`.
 	 *
 	 * Rejects any request whose resolved path escapes `directory` (e.g.
-	 * `/files/../../etc/passwd`) — without this check, static serving is a
+	 * `/files/../../etc/passwd`) - without this check, static serving is a
 	 * directory-traversal vulnerability.
 	 *
 	 * Supports ETag-based conditional requests (If-None-Match → 304).
@@ -1256,7 +1452,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 	 * efficient caching on subsequent requests.
 	 */
 	public static(routePath: string, directory: string, options?: StaticOptions): this {
-		const baseDir = join(process.cwd(), directory);
+		const baseDir = resolve(directory);
 		const maxAge = options?.maxAge ?? 3600;
 		const cacheControl = options?.cacheControl ?? `public, max-age=${maxAge}`;
 		const enableEtag = options?.etag !== false;
@@ -1310,6 +1506,19 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			? `${routePath}*`
 			: `${routePath}/*`;
 		this.get(wildcardPath, handler);
+		// Opt-in native directory serving - Bun answers the route with its
+		// `{ dir }` implementation (zero JS). Registered after this.get() for
+		// the same reason as the favicon: registerRoute clears static values.
+		// Gates (logger / X-Powered-By / global mw) still apply at listen();
+		// when off, the JS handler above keeps serving with full options.
+		if (
+			options?.native &&
+			wildcardPath.startsWith("/") &&
+			wildcardPath.endsWith("/*") &&
+			!wildcardPath.includes("{")
+		) {
+			this._staticRouteValues.set(`GET:${wildcardPath}`, { dir: baseDir });
+		}
 		return this;
 	}
 
@@ -1339,15 +1548,40 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 	public registerRoute(
 		method: string,
 		path: string,
-		handlers: Array<Middleware<DI> | Handler<DI>>,
+		handlers: Array<Middleware<DI> | Handler<DI> | string | Response>,
 		options?: { source?: "route" | "controller" | "group"; controller?: string; group?: string },
 	): void {
-		const mainHandler = handlers[handlers.length - 1] as Handler<DI>;
 		const routeMiddlewares = handlers.slice(0, -1) as Middleware<DI>[];
+		const routeKey = `${method}:${path}`;
+		let mainHandler = handlers[handlers.length - 1] as Handler<DI>;
+
+		// Static handler value (Elysia style: `app.get('/', 'Hi')`) - wrap it
+		// in a function so every execution path (pipeline, AOT codegen,
+		// fallback) keeps working, and keep the raw value so listen() can
+		// promote the route to native Bun.serve `routes` (hot path without JS).
+		this._staticRouteValues.delete(routeKey);
+		const rawMain = handlers[handlers.length - 1];
+		if (typeof rawMain === "string" || rawMain instanceof Response) {
+			const staticValue = rawMain;
+			mainHandler = () => staticValue;
+			if (routeMiddlewares.length === 0) {
+				this._staticRouteValues.set(routeKey, staticValue);
+			}
+		} else if (routeMiddlewares.length === 0) {
+			// Handler with a provably constant expression - a pure literal
+			// (`() => "Hi"`), `ctx.text("Hi"[, 201])`, `ctx.html(...)` or
+			// `ctx.json(<JSON-literal>[, 201])` - also promoted to native.
+			// The original function stays on the JS path as a fallback when
+			// a native gate is off (logging/global mw/etc.).
+			const constOp = extractConstResponseOp(rawMain);
+			if (constOp !== undefined) {
+				this._staticRouteValues.set(routeKey, constOp);
+			}
+		}
 
 		// Track routes with per-route middlewares for AOT Context optimization
 		if (routeMiddlewares.length > 0) {
-			this._routesWithMiddleware.add(`${method}:${path}`);
+			this._routesWithMiddleware.add(routeKey);
 		}
 
 		// Pre-compute sucrose analysis for fallback path and AOT codegen
@@ -1362,6 +1596,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			this._handlerFullContextCache.set(mainHandler, {
 				needsFullContext: !!a.needsFullContext,
 				needsParams: !!a.needsParams,
+				needsSetHeaders: !!a.needsSetHeaders,
 			});
 		}
 
@@ -1423,13 +1658,21 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		if (middlewares.length === 0) return finalHandler;
 
 		const fns = [...middlewares, finalHandler];
-		let code = `return fns[${fns.length - 1}](ctx);`;
+		// Normalize the innermost handler result BEFORE it flows back through
+		// the middleware chain: built-ins (requestId, responseTime, rateLimiter,
+		// compress, auditLog) guard mutations with `result instanceof Response`
+		// and would silently skip raw string/object returns (e. `() => "ok"`).
+		let code = `const r = fns[${fns.length - 1}](ctx); return r instanceof Promise ? r.then((v) => normalize(v, ctx.request)) : normalize(r, ctx.request);`;
 		for (let i = fns.length - 2; i >= 0; i--) {
 			code = `return fns[${i}](ctx, () => { ${code} });`;
 		}
 
-		const factory = new Function("fns", `return function(ctx) { ${code} }`);
-		return factory(fns) as Handler<DI>;
+		const factory = new Function(
+			"fns",
+			"normalize",
+			`return function(ctx) { ${code} }`,
+		);
+		return factory(fns, this.normalizeReturn.bind(this)) as Handler<DI>;
 	}
 
 	/**
@@ -1444,7 +1687,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		// Resolve template paths relative to this package's dist directory
 		const templatesDir = join(import.meta.dir, "cli", "templates");
 
-		// Handler for serving the HTML docs UI — safe injection via app.apiDocs()
+		// Handler for serving the HTML docs UI - safe injection via app.apiDocs()
 		const uiHandler: Handler<DI> = async () => {
 			const htmlPath = join(templatesDir, "index.html");
 			const file = Bun.file(htmlPath);
@@ -1459,7 +1702,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 					.replace(/"/g, "&quot;");
 				html = html.replace(
 					/<title>.*?<\/title>/,
-					`<title>${escTitleHtml} — API Reference</title>`,
+					`<title>${escTitleHtml} - API Reference</title>`,
 				);
 				// Safe JSON injection via JSON.stringify (handles quotes, newlines, unicode)
 				html = html.replace(
@@ -1482,7 +1725,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 					/const swaggerJsonPath = '.*?'/,
 					`const swaggerJsonPath = ${JSON.stringify(swaggerPath)}`,
 				);
-				// Fix relative asset paths — browser resolves ./ against URL
+				// Fix relative asset paths - browser resolves ./ against URL
 				// which breaks when page is at /docs (no trailing slash)
 				html = html.replace(/"\.\//g, `"${basePath}/`);
 				return new Response(html, {
@@ -1492,7 +1735,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			return new Response("Docs UI not found. Run 'buntok make:docs' first.", { status: 404 });
 		};
 
-		// Handler for serving swagger.json — memory first (instant), disk fallback
+		// Handler for serving swagger.json - memory first (instant), disk fallback
 		const swaggerHandler: Handler<DI> = async () => {
 			// Serve from in-memory cache (generated at startup)
 			if (this._swaggerDocument) {
@@ -1553,24 +1796,76 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 	}
 
 	private compileGlobalPipeline(): void {
-		if (this.middlewares.length === 0) {
+		if (!this.hasPipelineHooks) {
 			this.compiledGlobalPipeline = (ctx, finalHandler) =>
 				// biome-ignore lint/suspicious/noExplicitAny: compiled
 				finalHandler(ctx as any);
 			return;
 		}
 
-		const fns = [...this.middlewares];
-		let code = `return finalHandler(ctx);`;
+		type Next = () => Promise<Response> | Response;
+		const preAdapter =
+			(hook: RequestHook<DI> | BeforeHandleHook<DI>) =>
+			(ctx: Context<DI>, next: Next): HandlerReturn => {
+				const result = hook(ctx);
+				if (result instanceof Promise) {
+					return result.then((v) => (v instanceof Response ? v : next()));
+				}
+				if (result instanceof Response) return result;
+				return next();
+			};
+		const deriveAdapter =
+			(hook: DeriveHook<DI>) =>
+			(ctx: Context<DI>, next: Next): HandlerReturn => {
+				const result = hook(ctx);
+				if (result instanceof Promise) {
+					return result.then((v) => {
+						if (v) Object.assign(ctx.store, v);
+						return next();
+					});
+				}
+				if (result) Object.assign(ctx.store, result);
+				return next();
+			};
+		const afterAdapter =
+			(hook: AfterHandleHook<DI>) =>
+			(ctx: Context<DI>, next: Next): HandlerReturn => {
+				const finish = (res: Response) => {
+					const out = hook(ctx, res);
+					return out instanceof Promise
+						? out.then((v) => v ?? res)
+						: (out ?? res);
+				};
+				const result = next();
+				return result instanceof Promise ? result.then(finish) : finish(result);
+			};
+
+		// biome-ignore lint/suspicious/noExplicitAny: pipeline ctx params are normalized by codegen
+		const fns: Array<(ctx: Context<DI, any>, next: Next) => HandlerReturn> = [
+			...this.requestHooks.map(preAdapter),
+			...this.middlewares,
+			...this.deriveHooks.map(deriveAdapter),
+			...this.beforeHandleHooks.map(preAdapter),
+			...this.afterHandleHooks.map(afterAdapter),
+		];
+		// Same contract as compilePipeline: the final handler result is
+		// normalized to a Response before it reaches any middleware, so
+		// `result instanceof Response` mutations work regardless of the
+		// handler's return type and of the logging flag.
+		let code = `const r = finalHandler(ctx); return r instanceof Promise ? r.then((v) => normalize(v, ctx.request)) : normalize(r, ctx.request);`;
 		for (let i = fns.length - 1; i >= 0; i--) {
 			code = `return fns[${i}](ctx, () => { ${code} });`;
 		}
 
 		const factory = new Function(
 			"fns",
+			"normalize",
 			`return function(ctx, finalHandler) { ${code} }`,
 		);
-		this.compiledGlobalPipeline = factory(fns) as (
+		this.compiledGlobalPipeline = factory(
+			fns,
+			this.normalizeReturn.bind(this),
+		) as (
 			ctx: Context<DI>,
 			finalHandler: Handler<DI>,
 		) => HandlerReturn;
@@ -1580,7 +1875,10 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		request: Request,
 		server?: Server<WSData<DI>>,
 	) => Response | Promise<Response> {
-		const hasGlobalMiddleware = this.middlewares.length > 0;
+		// Snapshotted at compile time (not just at listen) - fetch/serverless
+		// paths without listen() still get codegen without logResponse().
+		this._skipLogResponse = !logger.logRequests;
+		const hasGlobalMiddleware = this.hasPipelineHooks;
 		let code =
 			"return function(request, server) {\n" +
 			"  const url = request.url;\n" +
@@ -1594,8 +1892,8 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			code +=
 				"  if (server && wsRoutes.has(pathname)) {\n" +
 				"    const wsHandler = wsRoutes.get(pathname);\n" +
-				"    ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver);\n" +
-				"    const data = { ctx, handler: wsHandler };\n" +
+				"    const wsCtx = new Context(request, EMPTY_PARAMS, di, clientIPResolver);\n" +
+				"    const data = { ctx: wsCtx, handler: wsHandler };\n" +
 				"    const upgraded = server.upgrade(request, { data });\n" +
 				"    if (upgraded) return undefined;\n" +
 				"    return new Response('Upgrade Required', { status: 426, headers: { Connection: 'Upgrade', Upgrade: 'websocket' } });\n" +
@@ -1636,12 +1934,19 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 				// Resolve original handler from pipeline for sucrose analysis
 				const originalHandler = this._pipelineToHandler.get(route.handler) ?? route.handler;
 				// Sucrose analysis via cached full-context check (detects ctx.json, ctx.error, etc.)
-				const cached = this._handlerFullContextCache.get(originalHandler) ?? { needsFullContext: true, needsParams: false };
+				const cached = this._handlerFullContextCache.get(originalHandler) ?? { needsFullContext: true, needsParams: false, needsSetHeaders: true };
 				// Global middleware or per-route middleware (e.g. requireAuth, zValidator)
-				// may use ctx.error, ctx.json, etc. — must provide full Context
+				// may use ctx.error, ctx.json, etc. - must provide full Context
 				const routeKey = `${method}:${route.path}`;
 				const needsFullContext = hasGlobalMiddleware || this._routesWithMiddleware.has(routeKey) || cached.needsFullContext;
-				// Static-route codegen has no routeParams binding — and the
+				// Sucrose-proven: when nothing can write ctx.set.headers (route
+				// middleware and global middleware both can - forced true above),
+				// the response tail skips the applyCtxHeaders merge entirely.
+				const needsSetHeaders =
+					hasGlobalMiddleware ||
+					this._routesWithMiddleware.has(routeKey) ||
+					cached.needsSetHeaders;
+				// Static-route codegen has no routeParams binding - and the
 				// needsParams-only case is unreachable anyway (sucrose sets
 				// needsFullContext whenever needsParams is true). Passing a
 				// plain { request } here previously risked a ReferenceError.
@@ -1657,41 +1962,75 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 					? `      const raw = compiledGlobalPipeline(${ctxArg}, ${handlerRef});\n`
 					: `      const raw = ${handlerRef}(${ctxArg});\n`;
 				if (this._skipLogResponse) {
+					// Normalization expressions - promise branch (v) and sync branch
+					// (raw) - shared by the set-headers and no-set variants below.
+					const normV =
+						'typeof v === "string" ? new Response(v) : v instanceof Response ? v : typeof v === "object" && v !== null ? (v instanceof BuntokFile ? v.toResponse(request) : Response.json(v)) : toResponse(v)';
+					const normRaw =
+						'typeof raw === "string" ? new Response(raw) : raw instanceof Response ? raw : typeof raw === "object" && raw !== null ? (raw instanceof BuntokFile ? raw.toResponse(request) : Response.json(raw)) : toResponse(raw)';
+					const tailCatch =
+						'.catch((e) => { if (!ctx) ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver); return handleError(request, pathname, ctx, e); });\n';
 					if (!this.poweredByHeaderEnabled) {
-						// Fastest path: no logging, no powered-by — skip setPoweredBy entirely
+						if (needsSetHeaders) {
+							// Fastest path: no logging, no powered-by - skip setPoweredBy entirely
+							code += "      if (raw instanceof Promise) {\n";
+							code +=
+								'        return raw.then((v) => applyCtxHeaders(ctx, ' + normV + '))' + tailCatch;
+							code += "      }\n";
+							code +=
+								'      if (typeof raw === "string") return applyCtxHeaders(ctx, new Response(raw));\n';
+							code +=
+								"      if (raw instanceof Response) return applyCtxHeaders(ctx, raw);\n" +
+								'      if (typeof raw === "object" && raw !== null) return applyCtxHeaders(ctx, raw instanceof BuntokFile ? raw.toResponse(request) : Response.json(raw));\n' +
+								"      return applyCtxHeaders(ctx, toResponse(raw));\n";
+						} else {
+							// sucrose: handler can never write ctx.set.headers →
+							// return the normalized response untouched.
+							code += "      if (raw instanceof Promise) {\n";
+							code +=
+								'        return raw.then((v) => ' + normV + ')' + tailCatch;
+							code += "      }\n";
+							code +=
+								'      if (typeof raw === "string") return new Response(raw);\n';
+							code +=
+								"      if (raw instanceof Response) return raw;\n" +
+								'      if (typeof raw === "object" && raw !== null) return raw instanceof BuntokFile ? raw.toResponse(request) : Response.json(raw);\n' +
+								"      return toResponse(raw);\n";
+						}
+					} else if (needsSetHeaders) {
 						code += "      if (raw instanceof Promise) {\n";
 						code +=
-							'        return raw.then((v) => typeof v === "string" ? new Response(v, plainTextHeaders) : v instanceof Response ? v : typeof v === "object" ? Response.json(v) : toResponse(v)).catch((e) => { if (!ctx) ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver); return handleError(request, pathname, ctx, e); });\n';
+							'        return raw.then((v) => setPoweredBy(ctx, ' + normV + '))' + tailCatch;
 						code += "      }\n";
 						code +=
-							'      if (typeof raw === "string") return new Response(raw, plainTextHeaders);\n';
+							'      if (typeof raw === "string") return setPoweredBy(ctx, new Response(raw));\n';
 						code +=
-							"      if (raw instanceof Response) return raw;\n" +
-							"      if (typeof raw === \"object\") return Response.json(raw);\n" +
-							"      return toResponse(raw);\n";
+							"      if (raw instanceof Response) return setPoweredBy(ctx, raw);\n" +
+							'      if (typeof raw === "object" && raw !== null) return setPoweredBy(ctx, raw instanceof BuntokFile ? raw.toResponse(request) : Response.json(raw));\n' +
+							"      return setPoweredBy(ctx, toResponse(raw));\n";
 					} else {
+						// powered-by without the ctx.set merge (baked at compile -
+						// flag toggles trigger _recompileAOT()).
 						code += "      if (raw instanceof Promise) {\n";
 						code +=
-							'        return raw.then((v) => setPoweredBy(typeof v === "string" ? new Response(v, plainTextHeaders) : v instanceof Response ? v : typeof v === "object" ? Response.json(v) : toResponse(v))).catch((e) => { if (!ctx) ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver); return handleError(request, pathname, ctx, e); });\n';
+							'        return raw.then((v) => { const r = ' + normV + '; r.headers.set("X-Powered-By", "buntok"); return r; })' + tailCatch;
 						code += "      }\n";
 						code +=
-							'      if (typeof raw === "string") return setPoweredBy(new Response(raw, plainTextHeaders));\n';
-						code +=
-							"      if (raw instanceof Response) return setPoweredBy(raw);\n" +
-							"      if (typeof raw === \"object\") return setPoweredBy(Response.json(raw));\n" +
-							"      return setPoweredBy(toResponse(raw));\n";
+							'      const r = ' + normRaw + ';\n' +
+							'      r.headers.set("X-Powered-By", "buntok");\n' +
+							"      return r;\n";
 					}
 				} else {
 					code += "      if (raw instanceof Promise) {\n";
 					code +=
-						'        return raw.then((v) => typeof v === "string" ? logResponse(request, pathname, new Response(v, plainTextHeaders)) : logResponse(request, pathname, v instanceof Response ? v : typeof v === "object" ? Response.json(v) : toResponse(v))).catch((e) => { if (!ctx) ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver); return handleError(request, pathname, ctx, e); });\n';
+						'        return raw.then((v) => typeof v === "string" ? logResponse(request, pathname, ctx, new Response(v)) : logResponse(request, pathname, ctx, v instanceof Response ? v : typeof v === "object" && v !== null ? (v instanceof BuntokFile ? v.toResponse(request) : Response.json(v)) : toResponse(v))).catch((e) => { if (!ctx) ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver); return handleError(request, pathname, ctx, e); });\n';
 					code += "      }\n";
 					code +=
-						'      if (typeof raw === "string") return logResponse(request, pathname, new Response(raw, plainTextHeaders));\n';
+						'      if (typeof raw === "string") return logResponse(request, pathname, ctx, new Response(raw));\n';
 					code +=
-						"      if (raw instanceof Response) return logResponse(request, pathname, raw);\n" +
-						"      if (typeof raw === \"object\") return logResponse(request, pathname, Response.json(raw));\n" +
-						"      return logResponse(request, pathname, toResponse(raw));\n";
+						"      if (raw instanceof Response) return logResponse(request, pathname, ctx, raw);\n" +
+						'      if (typeof raw === "object" && raw !== null) return logResponse(request, pathname, ctx, raw instanceof BuntokFile ? raw.toResponse(request) : Response.json(raw));\n' +
+						"      return logResponse(request, pathname, ctx, toResponse(raw));\n";
 				}
 				code += "    }\n";
 			}
@@ -1714,8 +2053,9 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			"wsRoutes",
 			"clientIPResolver",
 			"toResponse",
+			"BuntokFile",
 			"setPoweredBy",
-			"plainTextHeaders",
+			"applyCtxHeaders",
 			code,
 		);
 
@@ -1732,8 +2072,9 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			this.wsRoutes,
 			this._clientIPResolver,
 			toResponse,
+			BuntokFile,
 			this.setPoweredBy,
-			this._plainTextHeaders,
+			this.applyCtxHeaders,
 		);
 	}
 
@@ -1746,10 +2087,11 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		return url.substring(start, end);
 	}
 
-	// Bound once per App instance instead of allocating a new closure per request
+	// Bound once per Buntok instance instead of allocating a new closure per request
 	private readonly logResponse = (
 		request: Request,
 		pathname: string,
+		ctx: Context<DI> | undefined,
 		response: Response,
 	): Response => {
 		// Guard against undefined response from middleware chain
@@ -1773,36 +2115,74 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			response.headers.set("X-Powered-By", "buntok");
 		}
 		if (requestId) response.headers.set("x-request-id", requestId);
-		return response;
+		// ctx.set.headers applied last - user-set headers win over built-ins
+		return this.applyCtxHeaders(ctx, response);
+	};
+
+	/**
+	 * Merge `ctx.set.headers` (Elysia-style mutable response headers) into the
+	 * final response. Called from every response exit point - success, error,
+	 * not-found - with a cheap guard so routes that never touch `ctx.set`
+	 * pay only a property check.
+	 */
+	private readonly applyCtxHeaders = (
+		ctx: Context<DI> | undefined,
+		response: Response,
+	): Response => {
+		const headers = ctx?._set?.headers;
+		let result = response;
+		if (headers) {
+			for (const key in headers) {
+				const value = headers[key];
+				if (value === undefined || value === null) continue;
+				if (key.toLowerCase() === "set-cookie" && Array.isArray(value)) {
+					for (const cookie of value) {
+						result.headers.append(key, cookie);
+					}
+					continue;
+				}
+				result.headers.set(key, String(value));
+			}
+		}
+		if (ctx?._afterHooks) {
+			for (const hook of ctx._afterHooks) {
+				const out = hook(result);
+				if (out) result = out;
+			}
+		}
+		return result;
 	};
 
 	// Lightweight X-Powered-By setter for AOT skip-log path (no logging overhead)
-	private readonly setPoweredBy = (response: Response): Response => {
+	private readonly setPoweredBy = (
+		ctx: Context<DI> | undefined,
+		response: Response,
+	): Response => {
 		if (this.poweredByHeaderEnabled) {
 			response.headers.set("X-Powered-By", "buntok");
 		}
-		return response;
+		return this.applyCtxHeaders(ctx, response);
 	};
-
-	// Pre-allocated headers for hot paths — avoid alloc per request
-	private _plainTextHeaders = Object.freeze({ "Content-Type": "text/plain; charset=utf-8" });
 
 	/**
 	 * Normalize flexible handler return (string | object | null etc.) to Response.
 	 * Used by both AOT and fallback paths.
 	 */
-	private normalizeReturn(value: unknown): Response | Promise<Response> {
+	private normalizeReturn(
+		value: unknown,
+		request?: Request,
+	): Response | Promise<Response> {
 		if (value instanceof Promise) {
 			return value.then((v) =>
 				typeof v === "string"
 					? new Response(v)
 					: v instanceof Response
 						? v
-						: toResponse(v),
+						: toResponse(v, request),
 			);
 		}
 		if (typeof value === "string") return new Response(value);
-		return value instanceof Response ? value : toResponse(value);
+		return value instanceof Response ? value : toResponse(value, request);
 	}
 
 	/**
@@ -1813,12 +2193,15 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		request: Request,
 		pathname: string,
 		value: unknown,
+		ctx?: Context<DI> | null,
 	): Response | Promise<Response> => {
-		const normalized = this.normalizeReturn(value);
+		const normalized = this.normalizeReturn(value, request);
 		if (normalized instanceof Promise) {
-			return normalized.then((res) => this.logResponse(request, pathname, res));
+			return normalized.then((res) =>
+				this.logResponse(request, pathname, ctx ?? undefined, res),
+			);
 		}
-		return this.logResponse(request, pathname, normalized);
+		return this.logResponse(request, pathname, ctx ?? undefined, normalized);
 	};
 
 	private readonly handleError = (
@@ -1833,7 +2216,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		});
 		const result = this.customErrorHandler(errorObj, ctx);
 		// Normalize ErrorHandler flexible return as well
-		const normalized = this.normalizeReturn(result);
+		const normalized = this.normalizeReturn(result, request);
 		if (normalized instanceof Promise) {
 			return normalized.then((response) => {
 				if (this.corsConfig) {
@@ -1844,7 +2227,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 				if (this.poweredByHeaderEnabled) {
 					response.headers.set("X-Powered-By", "buntok");
 				}
-				return response;
+				return this.applyCtxHeaders(ctx, response);
 			});
 		}
 		if (this.corsConfig) {
@@ -1854,7 +2237,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		if (this.poweredByHeaderEnabled) {
 			normalized.headers.set("X-Powered-By", "buntok");
 		}
-		return normalized;
+		return this.applyCtxHeaders(ctx, normalized);
 	};
 
 	/**
@@ -1868,12 +2251,6 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		input: string | Request | URL,
 		init?: RequestInit,
 	): Promise<Response> {
-		if (!this.compiledGlobalPipeline) this.compileGlobalPipeline();
-		// Lazy AOT — compile sekali saja (fix speed murah: sebelumnya compile tiap request)
-		if (!this._aotReady) {
-			this._compiledAOTRouter = this.compileAOTRouter();
-			this._aotReady = true;
-		}
 		const request =
 			input instanceof Request && !init
 				? input
@@ -1884,24 +2261,77 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 						(input as any),
 					init,
 				);
-		return this.handleRequest(request);
+		return this._dispatch(request);
 	}
 
 	/**
 	 * Standard fetch handler for serverless platforms (Vercel, Cloudflare Workers, etc.).
-	 * Delegates to {@link request} which handles lazy AOT compilation.
+	 * Compiles AOT once, then dispatches straight to the router - no
+	 * `request()` indirection (input normalization + `handleRequest`).
 	 *
 	 * Usage:
 	 * ```ts
-	 * const app = new App();
+	 * const app = new Buntok();
 	 * export default app;
 	 * ```
 	 */
-	public fetch(request: Request): Promise<Response> {
-		return this.request(request);
+	public fetch(request: Request): Response | Promise<Response> {
+		return this._dispatch(request);
+	}
+
+	/**
+	 * Recompile the AOT router (+ global pipeline if empty) and refresh the
+	 * native static routes on the running server.
+	 */
+	private _recompileAOT(): void {
+		if (!this.compiledGlobalPipeline) this.compileGlobalPipeline();
+		this._compiledAOTRouter = this.compileAOTRouter();
+		this._aotReady = true;
+		if (this.server && this._serveOptions && this.isListening) {
+			this._serveOptions.routes = this.collectNativeStaticRoutes() ?? {};
+			this.server.reload({
+				fetch: this._serveOptions.fetch,
+				routes: this._serveOptions.routes,
+				...(this._serveOptions.websocket
+					? { websocket: this._serveOptions.websocket }
+					: {}),
+			});
+		}
+	}
+
+	/**
+	 * Invalidate the AOT after configuration changes (disable/enable logger|
+	 * powered-by, setTrustedProxy, use()). When the server is already running,
+	 * recompile + reload happen IMMEDIATELY - native static routes never touch
+	 * fetch(), so lazy invalidation would never be triggered by a request.
+	 * Without a server, marking is enough; the next dispatch/listen compiles.
+	 *
+	 * @param rebuildPipeline Force a recompile of the global pipeline
+	 * (middlewares changed - `use()`).
+	 */
+	private _invalidateAOT(rebuildPipeline = false): void {
+		if (rebuildPipeline) this.compiledGlobalPipeline = undefined;
+		if (this.server && this._serveOptions && this.isListening) {
+			this._recompileAOT();
+		} else {
+			this._aotReady = false;
+		}
+	}
+
+	private _dispatch(
+		request: Request,
+		server?: Server<WSData<DI>>,
+	): Response | Promise<Response> {
+		if (!this.compiledGlobalPipeline) this.compileGlobalPipeline();
+		// Lazy AOT - compile once; recompile when a codegen flag changes
+		// (disable/enable logger|powered-by, setTrustedProxy, use()).
+		if (!this._aotReady) this._recompileAOT();
+		return this._compiledAOTRouter(request, server);
 	}
 
 	private _aotReady = false;
+	// biome-ignore lint/suspicious/noExplicitAny: mirror opsi bag Bun.serve
+	private _serveOptions: any;
 	private _compiledAOTRouter: (
 		request: Request,
 		server?: Server<WSData<DI>>,
@@ -1947,9 +2377,12 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			finalHandler = this.customNotFoundHandler;
 		}
 
-		// Sucrose: use cached analysis from compile time (includes ctx.json detection)
+		// Sucrose: use cached analysis from compile time (includes ctx.json detection).
+		// Global middleware must also get a full Context - mirrors the
+		// hasGlobalMiddleware guard on the AOT codegen path.
 		const cached = this._handlerFullContextCache.get(finalHandler);
-		const needsFullContext = cached ? cached.needsFullContext : true;
+		const needsFullContext =
+			this.hasPipelineHooks || (cached ? cached.needsFullContext : true);
 		const needsParams = cached ? cached.needsParams : false;
 		const fullCtx = needsFullContext
 			? new Context(request, routeParams, this.di, this._clientIPResolver)
@@ -1962,32 +2395,445 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 
 			if (result instanceof Promise) {
 				return result
-					.then((value) => this.logNormalized(request, pathname, value))
+					.then((value) => this.logNormalized(request, pathname, value, fullCtx))
 					.catch((err) => {
 						// Ensure full Context for error handler
 						const errCtx = fullCtx ?? new Context(request, routeParams, this.di, this._clientIPResolver);
 						return this.handleError(request, pathname, errCtx, err);
 					});
 			}
-			return this.logNormalized(request, pathname, result);
+			return this.logNormalized(request, pathname, result, fullCtx);
 		} catch (err) {
 			const errCtx = fullCtx ?? new Context(request, routeParams, this.di, this._clientIPResolver);
 			return this.handleError(request, pathname, errCtx, err);
 		}
 	}
 
+	/**
+	 * Promote static-value route handlers (Elysia style: `app.get('/', 'Hi')`)
+	 * to native Bun.serve `routes` responses - Bun answers them without
+	 * entering JS (no Context, no codegen, no per-request allocation).
+	 * Returns undefined if any gate disqualifies the promotion (global
+	 * middleware, request logging, dynamic/duplicate paths, etc.).
+	 */
+	private collectNativeStaticRoutes():
+		| Record<string, Record<string, NativeRouteEntry>>
+		| undefined {
+		if (
+			this.router.staticRoutes.size === 0 &&
+			this.router.dynamicRoutes.size === 0
+		) {
+			return undefined;
+		}
+		// Global middleware / CORS must still run per request - run them in JS.
+		if (this.hasPipelineHooks) return undefined;
+		// Native responses bypass logResponse - don't silently drop request logs.
+		if (logger.logRequests) return undefined;
+
+		const methods = new Set(["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]);
+		const ready: Record<string, Record<string, NativeRouteEntry>> = Object.create(null);
+		for (const [routeKey, value] of this._staticRouteValues) {
+			const sep = routeKey.indexOf(":");
+			const method = routeKey.slice(0, sep);
+			const path = routeKey.slice(sep + 1);
+			if (!methods.has(method)) continue;
+			// Bun.serve rejects route paths without a leading `/` (boot crash).
+			if (!path.startsWith("/")) continue;
+			// Bun directory routes require a trailing `/*` splat - exempt them
+			// from the splat skip below (the JS fallback handles `:`/`{` cases).
+			const isDir = isDirRouteValue(value);
+			if (isDir) {
+				if (!path.endsWith("/*") || path.includes(":") || path.includes("{")) continue;
+			} else if (path.includes("*") || path.includes("{")) {
+				// Splat & `{}` patterns stay on fetch() - Bun's match semantics
+				// for them can differ segment-for-segment from the FFI trie.
+				// `:param` paths ARE promoted for constant values: the response
+				// never reads the param, so raw-vs-decoded can't diverge.
+				continue;
+			}
+			if (this.wsRoutes.has(path)) continue;
+			// BunFile / directory values can't carry X-Powered-By - keep the JS
+			// handler so the wire stays identical when the flag is enabled.
+			if (this.poweredByHeaderEnabled && (isDir || value instanceof Blob)) continue;
+			const response = this.materializeStatic(value);
+			// Bake failed (e. status outside the Response range) → don't drop
+			// the route: the JS path stays registered and handles the request.
+			if (!response) continue;
+			(ready[path] ??= Object.create(null))[method] = response;
+		}
+		// Param-dependent handlers: Bun matches `:segments` in C++, the closure
+		// below runs the identical JS the fallback dispatch would run.
+		for (const [path, methodMap] of this.router.dynamicRoutes) {
+			if (!path.startsWith("/")) continue;
+			// Splat/`{}` match semantics stay on fetch() (see above); ws paths
+			// must reach the upgrade handshake in fetch().
+			if (path.includes("*") || path.includes("{")) continue;
+			if (this.wsRoutes.has(path)) continue;
+			for (const [method, handler] of methodMap) {
+				if (!methods.has(method)) continue;
+				const key = `${method}:${path}`;
+				// A constant value on this pattern (registered above) is cheaper
+				// - zero JS. Also covers failed bakes: they stay on the JS path.
+				if (this._staticRouteValues.has(key)) continue;
+				(ready[path] ??= Object.create(null))[method] =
+					this.makeNativeDynamicHandler(path, handler);
+			}
+		}
+		// Static function handlers (e.g. `app.post("/json", async (c) => …)`):
+		// Bun matches the exact path in C++ and the closure runs the same JS
+		// the AOT codegen would run - minus the pathname parse and the
+		// method/path switch. Constant values were handled by the first loop
+		// (`_staticRouteValues` keys are skipped); `{}` patterns and splats
+		// keep their fetch() semantics (see the static-value loop above).
+		for (const [path, methodMap] of this.router.staticRoutes) {
+			if (!path.startsWith("/")) continue;
+			if (path.includes("*") || path.includes("{")) continue;
+			if (this.wsRoutes.has(path)) continue;
+			for (const [method, handler] of methodMap) {
+				if (!methods.has(method)) continue;
+				const key = `${method}:${path}`;
+				// A constant value on this route (registered above) is cheaper -
+				// zero JS. Also covers skipped bakes (BunFile + x-powered-by…).
+				if (this._staticRouteValues.has(key)) continue;
+				(ready[path] ??= Object.create(null))[method] =
+					this.makeNativeStaticHandler(handler);
+			}
+		}
+		return Object.keys(ready).length > 0 ? ready : undefined;
+	}
+
+	/**
+	 * Build the native route handler for a `:param` path. The response tail is
+	 * an inline mirror of `normalizeReturn` + `logResponse` with request
+	 * logging off (a collect gate), so the wire is byte-identical to the JS
+	 * fallback while skipping three call layers per request:
+	 *
+	 * - no `compiledGlobalPipeline` indirection (gates guarantee zero global
+	 *   middleware → the pipeline is identity; `use()` recompiles + reloads,
+	 *   which drops this route);
+	 * - no pathname parsing on the success path - Bun already split the path
+	 *   into `request.params`, and `decodeURIComponent` is the identity on
+	 *   percent-free URLs, so raw === decoded there. URLs containing `%` take
+	 *   the slow path (parse + split + raw capture - FFI-trie parity);
+	 * - inline normalize+tail instead of `normalizeReturn` → `logResponse` →
+	 *   `applyCtxHeaders` calls (same branches, same order, same output).
+	 *
+	 * Unmatched methods/paths fall through to `fetch()` → `_dispatch()`.
+	 */
+	private makeNativeDynamicHandler(
+		path: string,
+		// biome-ignore lint/suspicious/noExplicitAny: same shape the router stores
+		handler: (...args: any[]) => any,
+	): NativeDynamicHandler {
+		// Precompute raw-capture segments for percent-encoded URLs
+		// (`/u/:uid/p/:pid` → [{2,"uid"},{4,"pid"}]; split indices align with
+		// pathname.split("/") because both include the leading "" element).
+		const patternSegments = path.split("/");
+		const paramSpec: Array<{ seg: number; name: string }> = [];
+		for (let i = 0; i < patternSegments.length; i++) {
+			const seg = patternSegments[i];
+			if (seg && seg.length > 1 && seg.charCodeAt(0) === 58 /* ':' */) {
+				paramSpec.push({ seg: i, name: seg.slice(1) });
+			}
+		}
+		// Sucrose decision - mirrors the fallback (`_dispatch`) exactly: cache
+		// keyed by the object the router stores (mw chain or raw handler).
+		const cached = this._handlerFullContextCache.get(handler);
+		const needsFullContext = cached ? cached.needsFullContext : true;
+		const needsSetHeaders = cached ? cached.needsSetHeaders : true;
+		// Baked like static values: flag toggles trigger _recompileAOT() →
+		// collect() re-runs → this closure is rebuilt with the new flag.
+		const xpb = this.poweredByHeaderEnabled;
+
+		// Raw pathname (error path only - success never logs when the gate is
+		// off, so it does not need `pathname`).
+		const parsePathname = (request: Request): string => {
+			const url = request.url;
+			let start = url.indexOf("/", url.indexOf("//") + 2);
+			if (start === -1) start = url.length;
+			let end = url.indexOf("?", start);
+			if (end === -1) end = url.length;
+			return start === url.length ? "/" : url.substring(start, end);
+		};
+
+		const rawParams = (request: Request): Record<string, string> => {
+			// Percent-free URLs: Bun's split == raw split (decode is identity).
+			const url = request.url;
+			if (!url.includes("%")) {
+				// Bun attaches decoded params to the Request in route handlers.
+				const bunParams = (request as Request & {
+					params?: Record<string, string>;
+				}).params;
+				return bunParams ? { ...bunParams } : {};
+			}
+			// Percent-encoded: re-split the raw pathname - the FFI trie
+			// captures without decoding (unlike Bun's req.params).
+			const pathname = parsePathname(request);
+			const parts = pathname.split("/");
+			const params: Record<string, string> = {};
+			for (let i = 0; i < paramSpec.length; i++) {
+				const spec = paramSpec[i];
+				if (spec) params[spec.name] = parts[spec.seg] ?? "";
+			}
+			return params;
+		};
+
+		// Inline mirror of normalizeReturn(v) + logResponse(...) with
+		// logRequests=false: same string/Response/toResponse branches, then
+		// X-Powered-By, then ctx.set.headers - nothing else runs with the
+		// logging gate off (requestId reads and log lines are logRequests-only).
+		const finish = (
+			v: unknown,
+			request: Request,
+			fullCtx: Context<DI> | null,
+		): Response => {
+			const res =
+				typeof v === "string"
+					? new Response(v)
+					: v instanceof Response
+						? v
+						: toResponse(v, request);
+			if (xpb) res.headers.set("X-Powered-By", "buntok");
+			// logResponse calls applyCtxHeaders(ctx ?? undefined) unconditionally;
+			// with no full Context the guard is a property check → equivalent to
+			// skipping it. Sucrose-proven no-ctx.set writers skip the merge
+			// entirely - needsFullContext handlers may have set ctx.set.headers.
+			if (needsSetHeaders && needsFullContext && fullCtx) {
+				return this.applyCtxHeaders(fullCtx, res);
+			}
+			return res;
+		};
+
+		return (request: Request): Response | Promise<Response> => {
+			const fullCtx = needsFullContext
+				? new Context(request, rawParams(request), this.di, this._clientIPResolver)
+				: null;
+			const params = fullCtx ? fullCtx.params : rawParams(request);
+			const ctxArg = fullCtx ?? { request, params };
+			try {
+				// No global middleware (collect gate) → pipeline is identity.
+				const raw = handler(ctxArg);
+				if (raw instanceof Promise) {
+					return raw
+						.then((v: unknown) => finish(v, request, fullCtx))
+						.catch((err: unknown) => {
+							const errCtx =
+								fullCtx ??
+								new Context(
+									request,
+									rawParams(request),
+									this.di,
+									this._clientIPResolver,
+								);
+							return this.handleError(request, parsePathname(request), errCtx, err);
+						});
+				}
+				return finish(raw, request, fullCtx);
+			} catch (err) {
+				const errCtx =
+					fullCtx ??
+					new Context(
+						request,
+						rawParams(request),
+						this.di,
+						this._clientIPResolver,
+					);
+				return this.handleError(request, parsePathname(request), errCtx, err);
+			}
+		};
+	}
+
+	/**
+	 * Build the native route handler for a static (parameter-free) path - the
+	 * function-handler sibling of constant-value promotion. Same gates and
+	 * the same response tail as `makeNativeDynamicHandler`, minus all param
+	 * handling: the FFI trie yields `{}` params on static paths, so the
+	 * closure shares one frozen empty object (AOT codegen parity - see
+	 * `EMPTY_PARAMS` in `compileAOTRouter`).
+	 *
+	 * This is what keeps function routes like
+	 * `app.post("/json", async (ctx) => ctx.json(await ctx.body()))` off the
+	 * `fetch()` → `_dispatch()` path: Bun matches the exact path in C++ and
+	 * the closure runs the same JS the AOT codegen would run - minus the
+	 * pathname parse and the method/path switch.
+	 *
+	 * Unmatched methods fall through to `fetch()` → `_dispatch()`.
+	 */
+	private makeNativeStaticHandler(
+		// biome-ignore lint/suspicious/noExplicitAny: same shape the router stores
+		handler: (...args: any[]) => any,
+	): NativeDynamicHandler {
+		// Sucrose decision - same cache as the fallback/AOT paths (unknown or
+		// middleware-chain handlers default to the conservative true).
+		const cached = this._handlerFullContextCache.get(handler);
+		const needsFullContext = cached ? cached.needsFullContext : true;
+		const needsSetHeaders = cached ? cached.needsSetHeaders : true;
+		// Baked like static values: flag toggles trigger _recompileAOT() →
+		// collect() re-runs → this closure is rebuilt with the new flag.
+		const xpb = this.poweredByHeaderEnabled;
+		// Shared per closure - params are always `{}` on a static path;
+		// frozen mirrors the AOT codegen's EMPTY_PARAMS.
+		const EMPTY_PARAMS: Record<string, string> = Object.freeze({});
+
+		// Raw pathname (error path only - the success path never needs it:
+		// logging is off by the collect gate and static paths have no params).
+		const parsePathname = (request: Request): string => {
+			const url = request.url;
+			let start = url.indexOf("/", url.indexOf("//") + 2);
+			if (start === -1) start = url.length;
+			let end = url.indexOf("?", start);
+			if (end === -1) end = url.length;
+			return start === url.length ? "/" : url.substring(start, end);
+		};
+
+		// Inline mirror of normalizeReturn(v) + logResponse(...) with
+		// logRequests=false: same string/Response/toResponse branches, then
+		// X-Powered-By, then (only when sucrose allows) ctx.set.headers.
+		const finish = (
+			v: unknown,
+			request: Request,
+			fullCtx: Context<DI> | null,
+		): Response => {
+			const res =
+				typeof v === "string"
+					? new Response(v)
+					: v instanceof Response
+						? v
+						: toResponse(v, request);
+			if (xpb) res.headers.set("X-Powered-By", "buntok");
+			if (needsSetHeaders && fullCtx) {
+				return this.applyCtxHeaders(fullCtx, res);
+			}
+			return res;
+		};
+
+		return (request: Request): Response | Promise<Response> => {
+			const fullCtx = needsFullContext
+				? new Context(request, EMPTY_PARAMS, this.di, this._clientIPResolver)
+				: null;
+			const ctxArg = fullCtx ?? { request, params: EMPTY_PARAMS };
+			try {
+				// No global middleware (collect gate) → pipeline is identity.
+				const raw = handler(ctxArg);
+				if (raw instanceof Promise) {
+					return raw
+						.then((v: unknown) => finish(v, request, fullCtx))
+						.catch((err: unknown) => {
+							const errCtx =
+								fullCtx ??
+								new Context(
+									request,
+									EMPTY_PARAMS,
+									this.di,
+									this._clientIPResolver,
+								);
+							return this.handleError(request, parsePathname(request), errCtx, err);
+						});
+				}
+				return finish(raw, request, fullCtx);
+			} catch (err) {
+				const errCtx =
+					fullCtx ??
+					new Context(request, EMPTY_PARAMS, this.di, this._clientIPResolver);
+				return this.handleError(request, parsePathname(request), errCtx, err);
+			}
+		};
+	}
+
+	/**
+	 * Materialize a static value into a native route value - exactly mirroring
+	 * the branches the original handler runs per request:
+	 *
+	 * - string handler       → ct `text/plain;charset=utf-8` (Elysia parity)
+	 * - `ctx.text`           → 200 without explicit ct / non-200 `text/plain; charset=utf-8`
+	 * - `ctx.html`           → `text/html` + status always
+	 * - `ctx.json` / bare `{…}`/`[…]` → `Response.json(data[, { status }])`
+	 * - bare `42` / `true`   → `text/plain; charset=utf-8` (toResponse parity)
+	 * - bare `null`          → 204 No Content
+	 * - `BunFile` / `{ dir }` → passed through untouched (opaque to X-Powered-By;
+	 *   collect() skips them while the flag is enabled)
+	 *
+	 * Returns undefined if the bake fails → caller skips (the JS path handles
+	 * it). X-Powered-By reads the `poweredByHeaderEnabled` flag (the only flag
+	 * that can change after registration; always re-read at collect time).
+	 */
+	private materializeStatic(
+		value: string | NativeRouteValue | ConstResponseOp,
+	): NativeRouteValue | undefined {
+		const xpb = this.poweredByHeaderEnabled;
+		try {
+			if (value instanceof Response) return value;
+			// BunFile (opaque native value) - no per-response headers possible.
+			if (value instanceof Blob) return value;
+			if (isDirRouteValue(value)) return value;
+			if (typeof value === "string") {
+				return new Response(value, {
+					headers: {
+						"Content-Type": "text/plain;charset=utf-8",
+						...(xpb ? { "X-Powered-By": "buntok" } : {}),
+					},
+				});
+			}
+			let response: Response;
+			switch (value.kind) {
+				case "string":
+					response = new Response(value.body, {
+						headers: {
+							"Content-Type": "text/plain;charset=utf-8",
+							...(xpb ? { "X-Powered-By": "buntok" } : {}),
+						},
+					});
+					break;
+				case "scalar":
+					// mirrors toResponse (src/helpers/response.ts:18) - spaced charset
+					response = new Response(value.body, {
+						headers: {
+							"Content-Type": "text/plain; charset=utf-8",
+							...(xpb ? { "X-Powered-By": "buntok" } : {}),
+						},
+					});
+					break;
+				case "empty":
+					// mirrors toResponse(null) → 204 without body/content-type
+					response = new Response(null, { status: 204 });
+					break;
+				case "text":
+					// mirrors Context.text (src/context.ts:301): 200 without explicit ct
+					response = value.status === 200
+						? new Response(value.body)
+						: new Response(value.body, {
+							status: value.status,
+							headers: { "Content-Type": "text/plain; charset=utf-8" },
+						});
+					break;
+				case "html":
+					response = new Response(value.body, {
+						status: value.status,
+						headers: { "Content-Type": "text/html" },
+					});
+					break;
+				case "json":
+					response = value.status === 200
+						? Response.json(value.data)
+						: Response.json(value.data, { status: value.status });
+					break;
+			}
+			if (xpb) response.headers.set("X-Powered-By", "buntok");
+			return response;
+		} catch {
+			return undefined;
+		}
+	}
+
 	public listen(port?: number, callback?: () => void): void {
-		// Skip server startup when running under make:docs
+		// Skip server startup when running under make:docs or when a CLI
+		// command imports the entry point just to inspect it (debug:routes)
 		if (process.env.BUNTOK_DOCS_BUILD === "1") return;
+		if (process.env.BUNTOK_CLI_NO_LISTEN === "1") return;
 		if (this.isListening) return;
 		this.isListening = true;
 
 		const startTime = performance.now();
-
-		// Pre-compute whether logResponse can be skipped entirely
-		// When logging is off, the AOT template skips logResponse() entirely —
-		// X-Powered-By is inlined in the AOT codegen below.
-		this._skipLogResponse = !logger.logRequests;
 
 		// Register API docs routes directly on router (bypasses openApiDocs)
 		if (this._apiDocsConfig) {
@@ -2038,7 +2884,11 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 		// biome-ignore lint/suspicious/noExplicitAny: Required for bun serve signature compatibility
 		const serveOptions: any = {
 			port: finalPort,
-			fetch: this._compiledAOTRouter,
+			// Stable trampoline: Bun.serve captures the fetch reference at start,
+			// so dispatch reads the latest `_compiledAOTRouter` field per request
+			// - recompiles (flag toggles, setTrustedProxy) still apply post-listen.
+			fetch: (request: Request, server: Server<WSData<DI>>) =>
+				this._dispatch(request, server),
 		};
 
 		if (this._reusePort) {
@@ -2047,7 +2897,7 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 
 		if (this.wsRoutes.size > 0) {
 			serveOptions.websocket = {
-				// Bun-only native options — pluggable, zero-deps
+				// Bun-only native options - pluggable, zero-deps
 				perMessageDeflate: this.wsOpts.perMessageDeflate ?? false,
 				maxPayloadLength: this.wsOpts.maxPayloadLength ?? 16 * 1024 * 1024,
 				idleTimeout: this.wsOpts.idleTimeout ?? 120,
@@ -2093,15 +2943,21 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 				},
 				pong: (ws: ServerWebSocket<WSData<DI>>) => {
 					try {
-						// heartbeat pong — reset alive (fix: pong bukan message)
+						// heartbeat pong - reset alive (fix: pong is not a message)
 						(ws.data.handler as unknown as { pong?: (ws: ServerWebSocket<WSData<DI>>) => void }).pong?.(ws);
-						// juga fallback untuk wsHeartbeat yang attach di ws.data
+						// also a fallback for wsHeartbeat attached on ws.data
 						const hb = (ws.data as unknown as { heartbeat?: { alive: boolean } }).heartbeat;
 						if (hb) hb.alive = true;
 					} catch { }
 				},
 			} as unknown as Record<string, unknown>;
 		}
+
+		// Promote static-value handlers to native Bun.serve routes - computed
+		// once here, recomputed on AOT recompile (see _dispatch).
+		this._serveOptions = serveOptions;
+		const nativeStaticRoutes = this.collectNativeStaticRoutes();
+		if (nativeStaticRoutes) serveOptions.routes = nativeStaticRoutes;
 
 		// Auto-increment port if already in use
 		let currentPort = finalPort;
@@ -2129,16 +2985,37 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 
 		const startupTime = Math.round(performance.now() - startTime);
 		const env = process.env.NODE_ENV || "development";
-		console.log(
-			`\n  \x1b[36mBuntok v${VERSION}\x1b[0m ready in \x1b[32m${startupTime}ms\x1b[0m\n`,
-		);
-		console.log(`  Environment: \x1b[33m${env}\x1b[0m`);
-		console.log(`  Listening on: \x1b[36mhttp://localhost:${currentPort}\x1b[0m`);
-		if (this._apiDocsConfig) {
-			const docsPath = (this._apiDocsConfig.path ?? "/docs").replace(/\/+$/, "");
-			console.log(`  Docs:         \x1b[36mhttp://localhost:${currentPort}${docsPath}/\x1b[0m`);
+		// Startup banner mengikuti toggle logger - app.disable("logger")
+		// membuat terminal sunyi total selama development.
+		if (logger.enabled) {
+			console.log(
+				`\n  \x1b[36mBuntok v${VERSION}\x1b[0m ready in \x1b[32m${startupTime}ms\x1b[0m\n`,
+			);
+			console.log(`  Environment: \x1b[33m${env}\x1b[0m`);
+			console.log(`  Listening on: \x1b[36mhttp://localhost:${currentPort}\x1b[0m`);
+			if (this._apiDocsConfig) {
+				const docsPath = (this._apiDocsConfig.path ?? "/docs").replace(/\/+$/, "");
+				console.log(`  Docs:         \x1b[36mhttp://localhost:${currentPort}${docsPath}/\x1b[0m`);
+			}
+			console.log();
 		}
-		console.log();
+
+		for (const hook of this.startHooks) {
+			try {
+				const out = hook();
+				if (out instanceof Promise) {
+					out.catch((error) =>
+						logger.error("onStart hook failed", {
+							error: (error as Error).message,
+						}),
+					);
+				}
+			} catch (error) {
+				logger.error("onStart hook failed", {
+					error: (error as Error).message,
+				});
+			}
+		}
 
 		if (callback) callback();
 	}
@@ -2200,6 +3077,15 @@ export class App<DI extends Record<string, unknown> = Record<string, unknown>> {
 			]);
 		}
 		this.pluginDisposers.clear();
+		for (const hook of this.stopHooks) {
+			try {
+				await hook();
+			} catch (error) {
+				logger.error("onStop hook failed", {
+					error: (error as Error).message,
+				});
+			}
+		}
 	}
 
 	/** Alias for close(), kept for hosts that use shutdown terminology. */
@@ -2242,10 +3128,10 @@ export class RouterGroup<
 	DI extends Record<string, unknown> = Record<string, unknown>,
 > {
 	private prefix: string;
-	private app: App<DI>;
+	private app: Buntok<DI>;
 	private groupMiddlewares: Middleware<DI>[] = [];
 
-	constructor(prefix: string, app: App<DI>) {
+	constructor(prefix: string, app: Buntok<DI>) {
 		this.prefix = prefix.endsWith("/") ? prefix.slice(0, -1) : prefix;
 		this.app = app;
 	}
@@ -2266,24 +3152,24 @@ export class RouterGroup<
 		return `${this.prefix}${cleanPath}`;
 	}
 
-	public get<Path extends string>(path: Path, handler: Handler<DI, Path>): this;
+	public get<Path extends string>(path: Path, handler: Handler<DI, Path> | string | Response): this;
 	public get<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public get<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public get<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public get<Path extends string>(
 		path: Path,
@@ -2291,7 +3177,7 @@ export class RouterGroup<
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public get<Path extends string>(
 		path: Path,
@@ -2300,11 +3186,11 @@ export class RouterGroup<
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public get<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.app.registerRoute("GET", this.normalizePath(path), [
 			...this.groupMiddlewares,
@@ -2315,25 +3201,25 @@ export class RouterGroup<
 
 	public post<Path extends string>(
 		path: Path,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public post<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public post<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public post<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public post<Path extends string>(
 		path: Path,
@@ -2341,7 +3227,7 @@ export class RouterGroup<
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public post<Path extends string>(
 		path: Path,
@@ -2350,11 +3236,11 @@ export class RouterGroup<
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public post<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.app.registerRoute("POST", this.normalizePath(path), [
 			...this.groupMiddlewares,
@@ -2363,24 +3249,24 @@ export class RouterGroup<
 		return this;
 	}
 
-	public put<Path extends string>(path: Path, handler: Handler<DI, Path>): this;
+	public put<Path extends string>(path: Path, handler: Handler<DI, Path> | string | Response): this;
 	public put<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public put<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public put<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public put<Path extends string>(
 		path: Path,
@@ -2388,7 +3274,7 @@ export class RouterGroup<
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public put<Path extends string>(
 		path: Path,
@@ -2397,11 +3283,11 @@ export class RouterGroup<
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public put<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.app.registerRoute("PUT", this.normalizePath(path), [
 			...this.groupMiddlewares,
@@ -2412,25 +3298,25 @@ export class RouterGroup<
 
 	public delete<Path extends string>(
 		path: Path,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public delete<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public delete<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public delete<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public delete<Path extends string>(
 		path: Path,
@@ -2438,7 +3324,7 @@ export class RouterGroup<
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public delete<Path extends string>(
 		path: Path,
@@ -2447,11 +3333,11 @@ export class RouterGroup<
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public delete<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.app.registerRoute("DELETE", this.normalizePath(path), [
 			...this.groupMiddlewares,
@@ -2510,25 +3396,25 @@ export class RouterGroup<
 
 	public options<Path extends string>(
 		path: Path,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public options<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public options<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public options<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public options<Path extends string>(
 		path: Path,
@@ -2536,7 +3422,7 @@ export class RouterGroup<
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public options<Path extends string>(
 		path: Path,
@@ -2545,11 +3431,11 @@ export class RouterGroup<
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public options<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.app.registerRoute("OPTIONS", this.normalizePath(path), [
 			...this.groupMiddlewares,
@@ -2560,25 +3446,25 @@ export class RouterGroup<
 
 	public patch<Path extends string>(
 		path: Path,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public patch<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public patch<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public patch<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public patch<Path extends string>(
 		path: Path,
@@ -2586,7 +3472,7 @@ export class RouterGroup<
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public patch<Path extends string>(
 		path: Path,
@@ -2595,11 +3481,11 @@ export class RouterGroup<
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public patch<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.app.registerRoute("PATCH", this.normalizePath(path), [
 			...this.groupMiddlewares,
@@ -2610,25 +3496,25 @@ export class RouterGroup<
 
 	public head<Path extends string>(
 		path: Path,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public head<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public head<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public head<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public head<Path extends string>(
 		path: Path,
@@ -2636,7 +3522,7 @@ export class RouterGroup<
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public head<Path extends string>(
 		path: Path,
@@ -2645,11 +3531,11 @@ export class RouterGroup<
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public head<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		this.app.registerRoute("HEAD", this.normalizePath(path), [
 			...this.groupMiddlewares,
@@ -2661,24 +3547,24 @@ export class RouterGroup<
 	/**
 	 * Register a handler for all standard HTTP methods (GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS).
 	 */
-	public all<Path extends string>(path: Path, handler: Handler<DI, Path>): this;
+	public all<Path extends string>(path: Path, handler: Handler<DI, Path> | string | Response): this;
 	public all<Path extends string>(
 		path: Path,
 		middleware: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public all<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public all<Path extends string>(
 		path: Path,
 		m1: Middleware<DI, Path>,
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public all<Path extends string>(
 		path: Path,
@@ -2686,7 +3572,7 @@ export class RouterGroup<
 		m2: Middleware<DI, Path>,
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public all<Path extends string>(
 		path: Path,
@@ -2695,11 +3581,11 @@ export class RouterGroup<
 		m3: Middleware<DI, Path>,
 		m4: Middleware<DI, Path>,
 		m5: Middleware<DI, Path>,
-		handler: Handler<DI, Path>,
+		handler: Handler<DI, Path> | string | Response,
 	): this;
 	public all<Path extends string>(
 		path: Path,
-		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path>>
+		...handlers: Array<Middleware<DI, Path> | Handler<DI, Path> | string | Response>
 	): this {
 		const methods = [
 			"GET",
@@ -2777,7 +3663,7 @@ export class RouterGroup<
 		const meta = getControllerMeta(ControllerClass);
 		if (!meta) {
 			throw new Error(
-				`${ControllerClass.name} is not decorated with @Controller — did you forget to add it?`,
+				`${ControllerClass.name} is not decorated with @Controller - did you forget to add it?`,
 			);
 		}
 
@@ -2807,7 +3693,7 @@ export class RouterGroup<
 			let handler = ((...args: any[]) => originalMethod.apply(instance, args)) as Handler<DI>;
 			// Attach original for sucrose analysis (bound/closure wrappers hide toString)
 			(handler as any)._sucroseTarget = originalMethod;
-			// Apply @HttpCode/@SetHeader/@Redirect wrappers (same as App.registerController)
+			// Apply @HttpCode/@SetHeader/@Redirect wrappers (same as Buntok.registerController)
 			handler = applyRouteResponseDecorators(handler, route);
 
 			this.app.registerRoute(route.method, fullPath, [

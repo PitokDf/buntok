@@ -1,6 +1,100 @@
 import { createSSE, type SSE, type SSEOptions } from "./sse";
 import { getClientIP } from "./helpers/network";
 
+export type HTTPHeaders = Record<string, string | number> & {
+	'www-authenticate'?: string;
+	authorization?: string;
+	'proxy-authenticate'?: string;
+	'proxy-authorization'?: string;
+	age?: string;
+	'cache-control'?: string;
+	'clear-site-data'?: string;
+	expires?: string;
+	'no-vary-search'?: string;
+	pragma?: string;
+	'last-modified'?: string;
+	etag?: string;
+	'if-match'?: string;
+	'if-none-match'?: string;
+	'if-modified-since'?: string;
+	'if-unmodified-since'?: string;
+	vary?: string;
+	connection?: string;
+	'keep-alive'?: string;
+	accept?: string;
+	'accept-encoding'?: string;
+	'accept-language'?: string;
+	expect?: string;
+	'max-forwards'?: number | string;
+	cookie?: string;
+	'set-cookie'?: string | string[];
+	'access-control-allow-origin'?: string;
+	'access-control-allow-credentials'?: string;
+	'access-control-allow-headers'?: string;
+	'access-control-allow-methods'?: string;
+	'access-control-expose-headers'?: string;
+	'access-control-max-age'?: number | string;
+	'access-control-request-headers'?: string;
+	'access-control-request-method'?: string;
+	origin?: string;
+	'timing-allow-origin'?: string;
+	'content-disposition'?: string;
+	'content-length'?: number | string;
+	'content-type'?: string;
+	'content-encoding'?: string;
+	'content-language'?: string;
+	'content-location'?: string;
+	forwarded?: string;
+	via?: string;
+	location?: string;
+	refresh?: string;
+	allow?: string;
+	server?: string;
+	'accept-ranges'?: string;
+	range?: string;
+	'if-range'?: string;
+	'content-range'?: string;
+	'content-security-policy'?: string;
+	'content-security-policy-report-only'?: string;
+	'cross-origin-embedder-policy'?: string;
+	'cross-origin-opener-policy'?: string;
+	'cross-origin-resource-policy'?: string;
+	'expect-ct'?: string;
+	'permission-policy'?: string;
+	'strict-transport-security'?: string;
+	'upgrade-insecure-requests'?: string;
+	'x-content-type-options'?: string;
+	'x-frame-options'?: string;
+	'x-xss-protection'?: string;
+	'last-event-id'?: string;
+	'ping-from'?: string;
+	'ping-to'?: string;
+	'report-to'?: string;
+	te?: string;
+	trailer?: string;
+	'transfer-encoding'?: string;
+	'alt-svc'?: string;
+	'alt-used'?: string;
+	date?: string;
+	dnt?: string;
+	'early-data'?: string;
+	'large-allocation'?: number | string;
+	link?: string;
+	'retry-after'?: number | string;
+	'service-worker-allowed'?: string;
+	'source-map'?: string;
+	upgrade?: string;
+	'x-dns-prefetch-control'?: string;
+	'x-forwarded-for'?: string;
+	'x-forwarded-host'?: string;
+	'x-forwarded-proto'?: string;
+	'x-powered-by'?: 'buntok' | (string & {});
+	'x-request-id'?: string;
+	'x-requested-with'?: string;
+	'x-robots-tag'?: string;
+	'x-ua-compatible'?: string;
+};
+
 export class Context<
 	DI = Record<string, unknown>,
 	Params = Record<string, string>,
@@ -15,6 +109,11 @@ export class Context<
 	private _validated: Record<string, unknown> | undefined;
 	public readonly di: DI;
 	public _afterHooks?: Array<(res: Response) => Response | undefined>;
+	/**
+	 * Mutable response header bag - merged into the final response by Buntok.
+	 * Access via `ctx.set.headers[...]`; do not touch this field directly.
+	 */
+	public _set?: { headers: HTTPHeaders };
 	private readonly clientIPResolver: (request: Request) => string;
 
 	constructor(request: Request, params: Record<string, string>, di: DI, clientIPResolver: (request: Request) => string = getClientIP) {
@@ -33,6 +132,24 @@ export class Context<
 
 	public set store(value: Record<string, unknown>) {
 		this._store = value;
+	}
+
+	/**
+	 * Elysia-style mutable response scope (`c.set.headers`).
+	 *
+	 * Headers assigned here are merged into the final response - including
+	 * error responses - and win over built-in headers (`X-Powered-By`,
+	 * `x-request-id`).
+	 *
+	 * @example
+	 * ctx.set.headers["x-powered-by"] = "benchmark";
+	 * return ctx.text("Hi");
+	 */
+	public get set(): { headers: HTTPHeaders } {
+		if (!this._set) {
+			this._set = { headers: {} };
+		}
+		return this._set;
 	}
 
 	public get ip(): string {
@@ -372,7 +489,7 @@ export class Context<
 	): Response {
 		const stream = createSSE(this.request, options);
 
-		// queueMicrotask lebih cepat dari setTimeout(0) - tanpa macrotask latency
+		// queueMicrotask is faster than setTimeout(0) - no macrotask latency
 		queueMicrotask(async () => {
 			try {
 				await callback(stream);

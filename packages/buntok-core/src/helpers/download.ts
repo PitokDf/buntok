@@ -1,34 +1,9 @@
 import type { Context } from "../context";
+import { detectMimeType } from "./file";
 
 export interface DownloadOptions {
 	contentType?: string;
 	cacheControl?: string;
-}
-
-/**
- * Detect MIME type from file extension.
- */
-function detectMimeType(filePath: string): string {
-	const ext = filePath.split(".").pop()?.toLowerCase();
-	const mimeTypes: Record<string, string> = {
-		png: "image/png",
-		jpg: "image/jpeg",
-		jpeg: "image/jpeg",
-		webp: "image/webp",
-		gif: "image/gif",
-		svg: "image/svg+xml",
-		pdf: "application/pdf",
-		json: "application/json",
-		txt: "text/plain",
-		html: "text/html",
-		css: "text/css",
-		js: "application/javascript",
-		csv: "text/csv",
-		zip: "application/zip",
-		xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-		docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-	};
-	return mimeTypes[ext || ""] || "application/octet-stream";
 }
 
 /**

@@ -15,7 +15,7 @@ describe("Package exports", () => {
 		expect(PKG.exports["."].require).toBeDefined();
 		expect(PKG.exports["."].default).toBeDefined();
 		expect(PKG.exports["./all"]).toBeDefined();
-		expect(PKG.exports["./app"]).toBeDefined();
+		expect(PKG.exports["./buntok"]).toBeDefined();
 		expect(PKG.exports["./helpers"]).toBeDefined();
 		expect(PKG.exports["./middlewares"]).toBeDefined();
 		expect(PKG.exports["./queue"]).toBeDefined();
@@ -103,16 +103,16 @@ describe("Package exports", () => {
 		expect(existsSync(dctsPath)).toBe(true);
 	});
 
-	it("ESM import resolves App class", async () => {
+	it("ESM import resolves Buntok class", async () => {
 		const mod = await import(join(DIST, "core-exports.js"));
-		expect(mod.App).toBeDefined();
-		expect(typeof mod.App).toBe("function");
+		expect(mod.Buntok).toBeDefined();
+		expect(typeof mod.Buntok).toBe("function");
 	});
 
-	it("CJS require resolves App class", () => {
+	it("CJS require resolves Buntok class", () => {
 		const mod = require(join(DIST, "core-exports.cjs"));
-		expect(mod.App).toBeDefined();
-		expect(typeof mod.App).toBe("function");
+		expect(mod.Buntok).toBeDefined();
+		expect(typeof mod.Buntok).toBe("function");
 	});
 
 	it("exports VERSION string", async () => {
@@ -163,7 +163,7 @@ describe("Package exports", () => {
 		expect(mod.Scheduler).toBeDefined();
 		expect(mod.SSE).toBeDefined();
 		expect(mod.Mailer).toBeDefined();
-		expect(mod.App).toBeDefined();
+		expect(mod.Buntok).toBeDefined();
 	});
 
 	it("exports helpers from core", async () => {
@@ -189,9 +189,9 @@ describe("Package exports", () => {
 		expect(typeof mod.timeout).toBe("function");
 	});
 
-	it("app subpath export resolves", async () => {
-		const mod = await import(join(DIST, "app.js"));
-		expect(typeof mod.App).toBe("function");
+	it("buntok subpath export resolves", async () => {
+		const mod = await import(join(DIST, "buntok.js"));
+		expect(typeof mod.Buntok).toBe("function");
 	});
 
 	it("client subpath export resolves", async () => {

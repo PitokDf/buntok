@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { Middleware } from "../app";
+import type { Middleware } from "../buntok";
+import { resolveModel } from "../models";
 
 export { z } from "zod";
 
@@ -8,28 +9,30 @@ export interface ValidatorSchema {
 }
 
 export interface ValidateOptions {
-	body?: ValidatorSchema;
-	params?: ValidatorSchema;
+	body?: ValidatorSchema | string;
+	params?: ValidatorSchema | string;
 }
 
 /** @deprecated Prefer `zValidator()`, which gives you `ctx.valid()` with full type inference. */
 export const validate = (schemas: ValidateOptions): Middleware => {
+	const bodySchema = typeof schemas.body === "string" ? resolveModel<ValidatorSchema>(schemas.body) : schemas.body;
+	const paramsSchema = typeof schemas.params === "string" ? resolveModel<ValidatorSchema>(schemas.params) : schemas.params;
 	return async (ctx, next) => {
 		const errors: string[] = [];
 
-		if (schemas.body) {
+		if (bodySchema) {
 			try {
 				const bodyData = await ctx.body();
-				ctx.store.validatedBody = schemas.body.parse(bodyData);
+				ctx.store.validatedBody = bodySchema.parse(bodyData);
 			} catch (err: unknown) {
 				const message = err instanceof Error ? err.message : "Invalid body";
 				errors.push(`body: ${message}`);
 			}
 		}
 
-		if (schemas.params) {
+		if (paramsSchema) {
 			try {
-				ctx.store.validatedParams = schemas.params.parse(ctx.params);
+				ctx.store.validatedParams = paramsSchema.parse(ctx.params);
 			} catch (err: unknown) {
 				const message = err instanceof Error ? err.message : "Invalid params";
 				errors.push(`params: ${message}`);
@@ -51,12 +54,12 @@ export const validate = (schemas: ValidateOptions): Middleware => {
 };
 
 /** @deprecated Prefer `zValidator("body", schema)`. */
-export const validateBody = (schema: ValidatorSchema): Middleware => {
+export const validateBody = (schema: ValidatorSchema | string): Middleware => {
 	return validate({ body: schema });
 };
 
 /** @deprecated Prefer `zValidator("params", schema)`. */
-export const validateParams = (schema: ValidatorSchema): Middleware => {
+export const validateParams = (schema: ValidatorSchema | string): Middleware => {
 	return validate({ params: schema });
 };
 
@@ -159,7 +162,7 @@ function wrapSchema(schema: SchemaType): z.ZodType {
  * Validate request body/query/params against a Zod schema and expose the
  * parsed, typed result via `ctx.valid(target)` - no manual casting needed.
  *
- * Uses Zod v4's `z.compile()` for pre-compiled validation — 2-5x faster
+ * Uses Zod v4's `z.compile()` for pre-compiled validation - 2-5x faster
  * than raw `safeParse` for repeated validation on the same schema.
  *
  * ```ts
@@ -182,10 +185,10 @@ function wrapSchema(schema: SchemaType): z.ZodType {
  */
 export function zValidator(
 	target: ValidationTarget,
-	schema: SchemaType | (new () => unknown),
+	schema: SchemaType | (new () => unknown) | string,
 	options?: ZValidatorOptions,
 ): Middleware {
-	const rawSchema = wrapSchema(schema as SchemaType);
+	const rawSchema = wrapSchema(resolveModel(schema) as SchemaType);
 	// Pre-compile schema for faster repeated validation (2-5x speedup)
 	const compiledSchema = z.compile(rawSchema);
 	const resolvedContentType: BodyContentType =
@@ -344,10 +347,10 @@ export function zValidator(
  */
 export function zResponse(
 	status: number,
-	schema: SchemaType | (new () => unknown) | [new () => unknown],
+	schema: SchemaType | (new () => unknown) | [new () => unknown] | string,
 	description: string = "Success",
 ): Middleware {
-	const finalSchema = wrapSchema(schema as SchemaType);
+	const finalSchema = wrapSchema(resolveModel(schema) as SchemaType);
 
 	// Wrap in standard Buntok response envelope
 	const envelopedSchema = z.object({

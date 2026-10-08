@@ -1,4 +1,4 @@
-import type { Middleware } from "./app";
+import type { Middleware } from "./buntok";
 import type { Context } from "./context";
 
 /**
@@ -56,6 +56,20 @@ export interface ControllerMeta {
 
 let pendingRoutes: RouteMeta[] = [];
 
+/**
+ * Guard: every decorator in this file requires a TC39 decorator context
+ * (native in Bun / TS 5+, without `experimentalDecorators`). Legacy mode
+ * passes the property key string as the second argument, so `context.kind`
+ * is missing and the resulting error would be confusing.
+ */
+function assertTC39Context(context: unknown): void {
+	if (typeof context !== "object" || context === null || !("kind" in context)) {
+		throw new Error(
+			'Buntok decorators require TC39 decorator mode (native in Bun/TS 5+). Legacy decorator mode detected - remove "experimentalDecorators": true from your tsconfig.json.',
+		);
+	}
+}
+
 // Generic metadata registry for SetMetadata / Roles / Version
 const metadataRegistry = new WeakMap<Function, Map<string, Map<string, unknown>>>();
 function getOrCreateMethodMetadata(
@@ -87,6 +101,7 @@ type MethodDecoratorFn = (
 function createRouteDecorator(method: string) {
 	return (path: string = ""): MethodDecoratorFn => {
 		return (_originalMethod, context) => {
+			assertTC39Context(context);
 			if (context.kind !== "method") {
 				throw new Error(`@${method} can only decorate methods`);
 			}
@@ -133,6 +148,7 @@ export function Use(
 	middleware: (ctx: any, next: any) => any,
 ): MethodDecoratorFn {
 	return (_originalMethod, context) => {
+		assertTC39Context(context);
 		if (context.kind !== "method") {
 			throw new Error("@Use can only decorate methods");
 		}
@@ -185,6 +201,7 @@ export const UseGuards = UseGuard;
  */
 export function SetMetadata(key: string, value: unknown): MethodDecoratorFn {
 	return (_originalMethod, context) => {
+		assertTC39Context(context);
 		if (context.kind !== "method") {
 			throw new Error("@SetMetadata can only decorate methods");
 		}
@@ -215,6 +232,7 @@ export function Public(): MethodDecoratorFn {
  */
 export function HttpCode(statusCode: number): MethodDecoratorFn {
 	return (_originalMethod, context) => {
+		assertTC39Context(context);
 		if (context.kind !== "method") {
 			throw new Error("@HttpCode can only decorate methods");
 		}
@@ -234,6 +252,7 @@ export function HttpCode(statusCode: number): MethodDecoratorFn {
  */
 export function SetHeader(name: string, value: string): MethodDecoratorFn {
 	return (_originalMethod, context) => {
+		assertTC39Context(context);
 		if (context.kind !== "method") {
 			throw new Error("@SetHeader can only decorate methods");
 		}
@@ -252,11 +271,14 @@ export function SetHeader(name: string, value: string): MethodDecoratorFn {
 export const Header = SetHeader;
 
 /**
- * Redirect to URL with status (default 302). Static redirect - handler not executed.
- * If handler returns `{url, statusCode}`, it overrides decorator value (Nest behavior).
+ * Redirect to URL with status (default 302). The handler still executes
+ * (side effects still run); its return value is ignored for a static
+ * redirect, unless the handler returns `{url, statusCode}` or a URL string
+ * (Nest behavior).
  */
 export function Redirect(url: string, statusCode = 302): MethodDecoratorFn {
 	return (_originalMethod, context) => {
+		assertTC39Context(context);
 		if (context.kind !== "method") {
 			throw new Error("@Redirect can only decorate methods");
 		}
@@ -275,6 +297,7 @@ export function Redirect(url: string, statusCode = 302): MethodDecoratorFn {
  */
 export function Version(version: string | string[]): MethodDecoratorFn {
 	return (_originalMethod, context) => {
+		assertTC39Context(context);
 		if (context.kind !== "method") {
 			throw new Error("@Version can only decorate methods");
 		}
@@ -326,6 +349,7 @@ export function getMetadata(
 export function Controller(prefix = "") {
 	// biome-ignore lint/complexity/noBannedTypes: Native Decorator API uses Function
 	return (target: Function, context: ClassDecoratorContext): void => {
+		assertTC39Context(context);
 		if (context.kind !== "class") {
 			throw new Error("@Controller can only decorate classes");
 		}
@@ -348,7 +372,7 @@ export function Controller(prefix = "") {
 
 /**
  * Reads the routes registered on a `@Controller`-decorated class. Used
- * internally by `App.registerController()`. Walks the prototype chain
+ * internally by `Buntok.registerController()`. Walks the prototype chain
  * to merge parent class routes with child class routes.
  */
 export function getControllerMeta(

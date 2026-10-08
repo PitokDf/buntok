@@ -4,6 +4,8 @@ import {
 	uuid,
 	shortId,
 } from "../../src/middlewares/request-id";
+import { Buntok } from "../../src/buntok";
+import { logger } from "../../src/logger";
 
 function createMockContext(existingId?: string): any {
 	const headers: Record<string, string> = {};
@@ -81,6 +83,78 @@ describe("requestId", () => {
 
 		await middleware(ctx, async () => new Response("ok"));
 		expect(ctx.store.requestId).toBeUndefined();
+	});
+});
+
+describe("requestId integration (full app)", () => {
+	// Regression: pipelines normalize the handler result before the
+	// middleware chain sees it - `result instanceof Response` mutations used
+	// to be skipped for raw string/object returns when request logging was
+	// off (the response-header echo only exists on the logging path).
+	const withLoggingOff = async (run: () => Promise<void>) => {
+		const prev = (logger as unknown as { _logRequests?: boolean })
+			._logRequests;
+		(logger as unknown as { _logRequests?: boolean })._logRequests = false;
+		try {
+			await run();
+		} finally {
+			(
+				logger as unknown as { _logRequests?: boolean }
+			)._logRequests = prev;
+		}
+	};
+
+	it("sets the response header for raw string/object handlers when logging is off", async () => {
+		await withLoggingOff(async () => {
+			const app = new Buntok({ handleSignals: false });
+			app.use(requestId());
+			app.get("/text", () => "ok");
+			app.get("/json", (ctx) => ctx.json({ a: 1 }));
+			app.listen(0);
+			const port = app.server?.port;
+
+			const text = await fetch(`http://localhost:${port}/text`);
+			expect(text.status).toBe(200);
+			expect(text.headers.get("x-request-id")).toBeTruthy();
+			expect(await text.text()).toBe("ok");
+
+			const json = await fetch(`http://localhost:${port}/json`);
+			expect(json.status).toBe(200);
+			expect(json.headers.get("x-request-id")).toBeTruthy();
+
+			await app.close();
+		});
+	});
+
+	it("sets the response header when used as route middleware", async () => {
+		await withLoggingOff(async () => {
+			const app = new Buntok({ handleSignals: false });
+			app.get("/x", requestId(), () => "ok");
+			app.listen(0);
+
+			const res = await fetch(`http://localhost:${app.server?.port}/x`);
+			expect(res.status).toBe(200);
+			expect(res.headers.get("x-request-id")).toBeTruthy();
+			expect(await res.text()).toBe("ok");
+
+			await app.close();
+		});
+	});
+
+	it("honors an inbound x-request-id end to end when logging is off", async () => {
+		await withLoggingOff(async () => {
+			const app = new Buntok({ handleSignals: false });
+			app.use(requestId());
+			app.get("/text", () => "ok");
+			app.listen(0);
+
+			const res = await fetch(`http://localhost:${app.server?.port}/text`, {
+				headers: { "x-request-id": "inbound-123" },
+			});
+			expect(res.headers.get("x-request-id")).toBe("inbound-123");
+
+			await app.close();
+		});
 	});
 });
 

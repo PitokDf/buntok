@@ -9,7 +9,7 @@ export default defineConfig({
 		"src/exports.ts", // Legacy alias (slim)
 
 		// Core modules
-		"src/app.ts",
+		"src/buntok.ts",
 		"src/auth.ts",
 		"src/base-controller.ts",
 		"src/base-service.ts",
@@ -57,6 +57,7 @@ export default defineConfig({
 
 		// CLI (dev-only tooling)
 		"src/cli/index.ts",
+		"src/cli/templates.ts",
 	],
 	format: ["esm", "cjs"],
 	dts: false,
@@ -67,10 +68,10 @@ export default defineConfig({
 	outDir: "dist",
 	external: [
 		/^bun:.*/,
-		// Node.js builtins — Bun resolves these natively at runtime
+		// Node.js builtins - Bun resolves these natively at runtime
 		// (tsup with es2022 target would otherwise treat them as browser polyfills)
 		/^(node:)?(fs|fs\/promises|path|crypto|os|child_process|readline|stream|http|https|net|tls|buffer|util|events|dns|zlib|assert|worker_threads|perf_hooks|tty|url)$/,
-		// Peer deps — users install these
+		// Peer deps - users install these
 		"@apollo/server",
 		"graphql",
 		"graphql-yoga",
@@ -86,7 +87,7 @@ export default defineConfig({
 		"amqplib",
 		// Mailer peer deps
 		"nodemailer",
-		// Heavy deps — kept in `dependencies` (auto-installed) but EXTERNAL so
+		// Heavy deps - kept in `dependencies` (auto-installed) but EXTERNAL so
 		// the consumer bundler tree-shakes & dedupes them. This keeps cold start
 		// light: zod/croner/zod-to-openapi are only loaded when actually used.
 		"zod",

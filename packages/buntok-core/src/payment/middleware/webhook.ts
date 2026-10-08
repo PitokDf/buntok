@@ -1,4 +1,4 @@
-import type { Middleware } from "../../app";
+import type { Middleware } from "../../buntok";
 import type { Context } from "../../context";
 import { PaymentVerificationError } from "../errors";
 import type { PaymentDriver } from "../driver";

@@ -1,6 +1,6 @@
 import { createPlugin } from "../plugin";
 import type { Plugin } from "../plugin";
-import type { Middleware } from "../app";
+import type { Middleware } from "../buntok";
 
 export interface OtelPluginConfig {
 	/** Service name for trace identification */
@@ -23,7 +23,7 @@ export interface OtelPluginConfig {
  * Sets up distributed tracing with per-request spans following
  * HTTP semantic conventions.
  *
- * Dependencies are lazily imported — no startup cost if the plugin is not used.
+ * Dependencies are lazily imported - no startup cost if the plugin is not used.
  *
  * @requires `@opentelemetry/api` as a dependency.
  *

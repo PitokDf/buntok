@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { App } from "../src/app";
+import { Buntok } from "../src/buntok";
 import { Controller, Get, Post } from "../src/decorators";
 import { cors } from "../src/middlewares/cors";
 import { existsSync, rmSync } from "node:fs";
@@ -77,7 +77,7 @@ class ProductController {
 // ─── Tests ──────────────────────────────────────────────────────
 describe("Combination: registerController array + cors", () => {
 	it("should work with array registration + cors on normal responses", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.registerController([UserController, PostController, CommentController]);
 
@@ -101,7 +101,7 @@ describe("Combination: registerController array + cors", () => {
 	});
 
 	it("should work with array registration + cors on plain string returns", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.get("/text", () => "hello");
 		app.registerController([UserController]);
@@ -115,7 +115,7 @@ describe("Combination: registerController array + cors", () => {
 	});
 
 	it("should work with array registration + cors on number returns", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.get("/num", () => 42);
 		app.registerController([UserController]);
@@ -129,7 +129,7 @@ describe("Combination: registerController array + cors", () => {
 	});
 
 	it("should work with array registration + cors on null returns", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.get("/null", () => null);
 		app.registerController([UserController]);
@@ -142,7 +142,7 @@ describe("Combination: registerController array + cors", () => {
 	});
 
 	it("should work with array registration + cors + preflight", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({
 			origin: "http://example.com",
 			methods: ["GET", "POST"],
@@ -158,7 +158,7 @@ describe("Combination: registerController array + cors", () => {
 	});
 
 	it("should work with array registration + cors + error handler", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.registerController([UserController]);
 		app.get("/error", () => {
@@ -175,7 +175,7 @@ describe("Combination: registerController array + cors", () => {
 
 describe("Combination: RouterGroup + array registerController + cors", () => {
 	it("should work with group prefix + array + cors", async () => {
-		const app = new App();
+		const app = new Buntok();
 		const api = app.group("/api/v1");
 		api.use(cors({ origin: "http://example.com" }));
 		api.registerController([UserController, PostController]);
@@ -194,7 +194,7 @@ describe("Combination: RouterGroup + array registerController + cors", () => {
 	});
 
 	it("should work with multiple groups + array", async () => {
-		const app = new App();
+		const app = new Buntok();
 		const api1 = app.group("/api/v1");
 		const api2 = app.group("/api/v2");
 
@@ -218,7 +218,7 @@ describe("Combination: RouterGroup + array registerController + cors", () => {
 	});
 
 	it("should work with group + array + plain string returns", async () => {
-		const app = new App();
+		const app = new Buntok();
 		const api = app.group("/api");
 		api.use(cors({ origin: "http://example.com" }));
 		api.get("/text", () => "plain text");
@@ -238,7 +238,7 @@ describe("Combination: apiDocs + array registerController", () => {
 	afterEach(cleanup);
 
 	it("should include routes from array-registered controllers in swagger.json", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Array Routes API", version: "1.0.0" });
 		app.registerController([UserController, PostController, AuthController]);
 
@@ -261,7 +261,7 @@ describe("Combination: apiDocs + array registerController", () => {
 	});
 
 	it("should include routes from array in group in swagger.json", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Group Array API", version: "1.0.0" });
 		const api = app.group("/api/v1");
 		api.registerController([UserController, PostController]);
@@ -280,7 +280,7 @@ describe("Combination: apiDocs + array registerController", () => {
 	});
 
 	it("should serve docs UI with assets when using array controllers", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Docs UI Array" });
 		app.registerController([UserController, PostController]);
 
@@ -301,7 +301,7 @@ describe("Combination: apiDocs + array registerController", () => {
 	});
 
 	it("should serve docs at trailing slash with array controllers", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.apiDocs({ title: "Trailing Array" });
 		app.registerController([UserController]);
 
@@ -322,7 +322,7 @@ describe("Combination: apiDocs + cors + array registerController", () => {
 	afterEach(cleanup);
 
 	it("should work with full stack: cors + array + apiDocs", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.apiDocs({ title: "Full Stack API", version: "1.0.0" });
 		app.registerController([UserController, PostController, CommentController]);
@@ -353,7 +353,7 @@ describe("Combination: apiDocs + cors + array registerController", () => {
 	});
 
 	it("should work with cors origin array + apiDocs + registerController array", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({
 			origin: ["http://allowed.com", "http://also-allowed.com"],
 		});
@@ -382,7 +382,7 @@ describe("Combination: apiDocs + cors + array registerController", () => {
 	});
 
 	it("should work with cors function origin + apiDocs + registerController array", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({
 			origin: (origin) => origin.startsWith("http://trusted."),
 		});
@@ -413,7 +413,7 @@ describe("Combination: apiDocs + cors + array registerController", () => {
 
 describe("Combination: mixed registration (single + array) + cors", () => {
 	it("should work with mixed single and array calls + cors", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.registerController(UserController);
 		app.registerController([PostController, CommentController]);
@@ -443,7 +443,7 @@ describe("Combination: mixed registration (single + array) + cors", () => {
 	});
 
 	it("should work with group + mixed single and array + cors", async () => {
-		const app = new App();
+		const app = new Buntok();
 		const api = app.group("/api");
 		api.use(cors({ origin: "http://example.com" }));
 
@@ -470,7 +470,7 @@ describe("Combination: mixed registration (single + array) + cors", () => {
 
 describe("Combination: error scenarios", () => {
 	it("should handle cors + array controllers + 404", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.registerController([UserController]);
 
@@ -482,7 +482,7 @@ describe("Combination: error scenarios", () => {
 	});
 
 	it("should handle cors + array controllers + BadRequestError", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.registerController([UserController]);
 		app.get("/bad", () => {
@@ -497,7 +497,7 @@ describe("Combination: error scenarios", () => {
 	});
 
 	it("should handle apiDocs + cors + array + 404", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.cors({ origin: "http://example.com" });
 		app.apiDocs({ title: "404 Test API" });
 		app.registerController([UserController]);
@@ -522,33 +522,33 @@ describe("Combination: error scenarios", () => {
 
 describe("Combination: chainability and return values", () => {
 	it("registerController array returns app instance", () => {
-		const app = new App();
+		const app = new Buntok();
 		const result = app.registerController([UserController, PostController]);
 		expect(result).toBe(app);
 	});
 
 	it("registerController single returns app instance", () => {
-		const app = new App();
+		const app = new Buntok();
 		const result = app.registerController(UserController);
 		expect(result).toBe(app);
 	});
 
 	it("group.registerController array returns group instance", () => {
-		const app = new App();
+		const app = new Buntok();
 		const group = app.group("/api");
 		const result = group.registerController([UserController, PostController]);
 		expect(result).toBe(group);
 	});
 
 	it("group.registerController single returns group instance", () => {
-		const app = new App();
+		const app = new Buntok();
 		const group = app.group("/api");
 		const result = group.registerController(UserController);
 		expect(result).toBe(group);
 	});
 
 	it("fluent chaining with cors + array + apiDocs", () => {
-		const app = new App();
+		const app = new Buntok();
 		const result = app
 			.cors({ origin: "http://example.com" })
 			.apiDocs({ title: "Chained API" })
@@ -560,7 +560,7 @@ describe("Combination: chainability and return values", () => {
 
 describe("Combination: response body verification", () => {
 	it("should return correct JSON from array-registered controllers", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.registerController([UserController, PostController]);
 
 		const res1 = await app.request("/users");
@@ -575,7 +575,7 @@ describe("Combination: response body verification", () => {
 	});
 
 	it("should return correct JSON from single controller in array", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.registerController([AuthController]);
 
 		const res = await app.request("/auth/login", { method: "POST" });
@@ -585,7 +585,7 @@ describe("Combination: response body verification", () => {
 	});
 
 	it("should return correct JSON from mixed registration", async () => {
-		const app = new App();
+		const app = new Buntok();
 		app.registerController(UserController);
 		app.registerController([PostController]);
 
@@ -599,7 +599,7 @@ describe("Combination: response body verification", () => {
 	});
 
 	it("should return correct JSON from group + array", async () => {
-		const app = new App();
+		const app = new Buntok();
 		const api = app.group("/api");
 		api.registerController([UserController, PostController]);
 

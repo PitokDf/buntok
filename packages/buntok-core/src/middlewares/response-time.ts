@@ -1,4 +1,4 @@
-import type { Middleware } from "../app";
+import type { Middleware } from "../buntok";
 
 export interface ResponseTimeOptions {
 	/** Header name (default: x-response-time) */

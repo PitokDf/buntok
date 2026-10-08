@@ -5,6 +5,7 @@
  * in addition to Response, and automatically serializes to correct Response.
  *
  * - Response -> passthrough
+ * - BuntokFile (lazy file()) -> toResponse(request) - Range processed if the request has one
  * - null/undefined/void -> 204 No Content
  * - string -> text/plain; charset=utf-8
  * - number/boolean/bigint -> text/plain via String(value)
@@ -12,10 +13,14 @@
  * - object/array -> application/json via Response.json
  */
 
+import { BuntokFile } from "./file";
+
 const TEXT_CT = { "Content-Type": "text/plain; charset=utf-8" };
 
-export function toResponse(value: unknown): Response {
+export function toResponse(value: unknown, request?: Request): Response {
 	if (value instanceof Response) return value;
+	// Lazy file (BuntokFile) - convert at response time so Range can be read
+	if (value instanceof BuntokFile) return value.toResponse(request);
 	if (value === null || value === undefined) {
 		return new Response(null, { status: 204 });
 	}
@@ -27,7 +32,7 @@ export function toResponse(value: unknown): Response {
 	if (t === "number" || t === "boolean" || t === "bigint") {
 		return new Response(String(value), { headers: TEXT_CT });
 	}
-	// Binary / stream — only reachable for objects
+	// Binary / stream - only reachable for objects
 	if (
 		t === "object" &&
 		(value instanceof Blob ||

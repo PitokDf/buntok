@@ -1,4 +1,4 @@
-import type { Middleware } from "../app";
+import type { Middleware } from "../buntok";
 import { toResponse } from "../helpers/response";
 
 export interface CorsOptions {

@@ -1,5 +1,5 @@
 // Aggregate helper exports. `openapi.ts` is intentionally excluded (lazy-loaded
-// and zod-dependent) — import it indirectly via App's docs generation or the CLI.
+// and zod-dependent) - import it indirectly via Buntok's docs generation or the CLI.
 
 export * from "./archive";
 export * from "./async";
