@@ -26,8 +26,9 @@ Throughput benchmark for **Buntok** vs **Express**, **Fastify**, **Hono**, and *
   runs on **bun**.
 - **Build**: every app is minified with `Bun.build` and the built artifact
   is what gets measured (bundle size column).
-- **Verification**: the four-route spec (plus dynamic-query edge cases) is
-  asserted before any load test - a mismatch aborts the run.
+- **Verification**: the four-route spec (dynamic-query edge cases and an
+  extra-route parity check too) is asserted before any load test - a
+  mismatch aborts the run.
 - **Pinning** (Linux): server processes on cores `0..N/2-1`, load generator
   on cores `N/2..N-1` (`taskset`).
 - **Scoring**: average = mean of per-route req/s; P50 = median across

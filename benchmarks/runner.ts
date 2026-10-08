@@ -213,6 +213,12 @@ async function verifySpec() {
 	if ((await edge.text()) !== "1 ")
 		throw new Error("Query edge: body mismatch");
 
+	const extra = await fetch(`${BASE}/health/details`);
+	if ((await extra.text()) !== "ok")
+		throw new Error("Extra route: body mismatch");
+	if (!extra.headers.get("content-type")?.includes("text/plain"))
+		throw new Error("Extra route: content-type mismatch");
+
 	const body = await fetch(`${BASE}/json`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },

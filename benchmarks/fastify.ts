@@ -1,8 +1,9 @@
 import fastify from "fastify";
-import { createReadStream } from "node:fs";
+import { createReadStream, statSync } from "node:fs";
 import { extraRoutes } from "./extra-routes.mjs";
 
 const VIDEO = "benchmarks/public/kyuukurarin.mp4";
+const VIDEO_SIZE = statSync(VIDEO).size;
 
 const server = fastify();
 for (const route of extraRoutes) {
@@ -13,6 +14,7 @@ server
 	.get("/", () => "Hi")
 	.get("/video", (_req, reply) => {
 		reply.header("content-type", "video/mp4");
+		reply.header("content-length", String(VIDEO_SIZE));
 		return createReadStream(VIDEO);
 	})
 	.get("/id/:id", (req, reply) => {
