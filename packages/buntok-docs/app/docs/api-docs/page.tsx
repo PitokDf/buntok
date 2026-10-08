@@ -37,9 +37,9 @@ export default function ApiDocsPage() {
         1. Enable docs in your app
       </Heading>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 
 app.apiDocs({
   path: "/docs",
@@ -224,10 +224,10 @@ app.get(
       </Heading>
       <CodeBlock
         code={`
-import { App } from "@buntok/core";
+import { Buntok } from "@buntok/core";
 import { z } from "@buntok/core/middlewares/validator";
 
-const app = new App();
+const app = new Buntok();
 
 // ─── Schemas ───────────────────────────────────────
 const CreateUserSchema = z.object({
@@ -347,7 +347,7 @@ app.listen(1212);
       <Callout type="info">
         <code>swagger.json</code> is auto-generated when you call{" "}
         <code>app.listen()</code>. For manual regeneration (e.g., CI/CD), run{" "}
-        <code>buntok make:docs</code> — it imports your{" "}
+        <code>buntok make:docs</code> - it imports your{" "}
         <code>src/index.ts</code> and generates the file.
       </Callout>
     </div>

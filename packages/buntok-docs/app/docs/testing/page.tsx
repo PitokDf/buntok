@@ -34,9 +34,9 @@ export default function TestingPage() {
         <code>Response</code> object.
       </p>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 
 app.get("/users", async (ctx) => {
   return ctx.json([{ id: 1, name: "Alice" }]);
@@ -100,11 +100,11 @@ console.log(res2.status); // 201`}
       </Heading>
       <CodeBlock
         code={`import { describe, it, expect } from "bun:test";
-import { App } from "@buntok/core";
+import { Buntok } from "@buntok/core";
 import { NotFoundError } from "@buntok/core";
 
 function createTestApp() {
-  const app = new App();
+  const app = new Buntok();
 
   app.get("/health", (ctx) => {
     return ctx.json({ status: "ok" });
@@ -163,7 +163,7 @@ describe("API Routes", () => {
         Testing with Middleware
       </Heading>
       <CodeBlock
-        code={`const app = new App();
+        code={`const app = new Buntok();
 
 app.use(requireAuth(process.env.JWT_SECRET!));
 

@@ -99,7 +99,7 @@ const queue = new Queue("email", redisDriver);`}
       <CodeBlock
         code={`import { Queue } from "@buntok/core/queue";
 
-// Memory driver (default — development)
+// Memory driver (default - development)
 const emailQueue = new Queue<{ to: string; subject: string }>("emails");
 
 // Add a job
@@ -380,7 +380,7 @@ const queue = new Queue("tasks", {
         Full Example
       </Heading>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { Queue } from "@buntok/core/queue";
 
 const emailQueue = new Queue<{

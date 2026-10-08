@@ -13,7 +13,7 @@ export default function GraphQLPage() {
       <Heading level={1}>GraphQL</Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         BunTok supports GraphQL via Apollo Server and Yoga plugins. Both lazy-import peer dependencies
-        — zero startup cost if not used.
+        - zero startup cost if not used.
       </p>
 
       <Heading level={2} className="text-xl font-semibold mt-8 mb-3 text-text-primary">
@@ -109,10 +109,10 @@ app.plugin(yogaPlugin({
       </Heading>
       <CodeBlock
         language="typescript"
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { yogaPlugin } from "@buntok/core/plugins/graphql/yoga";
 
-const app = new App();
+const app = new Buntok();
 
 app.plugin(yogaPlugin({
   typeDefs: \`

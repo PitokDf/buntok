@@ -1,6 +1,6 @@
 # @buntok/core
 
-> Core HTTP framework untuk Bun — minimalis, cepat, type-safe, dan fleksibel.
+> Core HTTP framework untuk Bun - minimalis, cepat, type-safe, dan fleksibel.
 
 [![npm](https://img.shields.io/npm/v/@buntok/core)](https://www.npmjs.com/package/@buntok/core)
 [![license](https://img.shields.io/npm/l/@buntok/core)](./LICENSE)
@@ -10,16 +10,16 @@
 
 ## Features
 
-- **AOT-compiled routing** — pipeline middleware di-compile sekali saat boot, zero overhead per-request
-- **Trie-based router** — static routes di-resolve O(1), dynamic routes lewat trie (optional native Zig via FFI)
-- **Type-safe** — full TypeScript support dari route handler sampai validator
-- **Stage 3 decorators** — `@Controller`, `@Get`, `@Post`, `@Use`, dll. tanpa `experimentalDecorators`
-- **IoC Container** — dependency injection dengan circular dependency detection
-- **Built-in middleware** — CORS, compress (gzip/brotli), rate limiter, request ID, response time, helmet (security headers), timeout
-- **File upload** — multipart/form-data parser, per-field validation, custom filename, storage drivers (disk, memory, custom S3/GCS/R2), file deletion
-- **Zod validation** — `zValidator` untuk body, query, dan params
-- **SSE & WebSocket** — native Bun WebSocket, built-in SSE stream
-- **Utility functions** — crypto, password, string, object, number, date, ID generators, network, async helpers
+- **AOT-compiled routing** - pipeline middleware di-compile sekali saat boot, zero overhead per-request
+- **Trie-based router** - static routes di-resolve O(1), dynamic routes lewat trie (optional native Zig via FFI)
+- **Type-safe** - full TypeScript support dari route handler sampai validator
+- **Stage 3 decorators** - `@Controller`, `@Get`, `@Post`, `@Use`, dll. tanpa `experimentalDecorators`
+- **IoC Container** - dependency injection dengan circular dependency detection
+- **Built-in middleware** - CORS, compress (gzip/brotli), rate limiter, request ID, response time, helmet (security headers), timeout
+- **File upload** - multipart/form-data parser, per-field validation, custom filename, storage drivers (disk, memory, custom S3/GCS/R2), file deletion
+- **Zod validation** - `zValidator` untuk body, query, dan params
+- **SSE & WebSocket** - native Bun WebSocket, built-in SSE stream
+- **Utility functions** - crypto, password, string, object, number, date, ID generators, network, async helpers
 
 ---
 
@@ -38,9 +38,9 @@ npm install @buntok/core
 ## Quick Start
 
 ```ts
-import { App } from "@buntok/core";
+import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 
 app.get("/", (ctx) => {
   return ctx.json({ message: "Hello, Buntok!" });
@@ -55,7 +55,7 @@ Port default: `3000`, atau dari `process.env.PORT`.
 
 ## Table of Contents
 
-- [App](#app)
+- [Buntok](#app)
 - [Context](#context)
 - [Routing](#routing)
 - [Group Routing](#group-routing)
@@ -88,14 +88,14 @@ Port default: `3000`, atau dari `process.env.PORT`.
 
 ---
 
-## App
+## Buntok
 
 ### Membuat Instance
 
 ```ts
-import { App } from "@buntok/core";
+import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 ```
 
 ### API
@@ -150,7 +150,7 @@ const env = app.validateEnv({
   PORT: z.coerce.number().default(3000),
 });
 
-// env.DATABASE_URL, env.JWT_SECRET — fully typed
+// env.DATABASE_URL, env.JWT_SECRET - fully typed
 // Gagal validasi = server tidak jalan + error detail ke console
 ```
 
@@ -167,7 +167,7 @@ const env = app.validateEnv({
 | `ctx.request` | `Request` | Raw Bun `Request` object |
 | `ctx.params` | `Record<string, string>` | Route parameters (`:id`, `*`) |
 | `ctx.query` | `Record<string, string>` | Parsed query string (lazy, cached) |
-| `ctx.ip` | `string` | Client IP — respects `x-forwarded-for` |
+| `ctx.ip` | `string` | Client IP - respects `x-forwarded-for` |
 | `ctx.store` | `Record<string, any>` | Key-value store antar middleware |
 | `await ctx.body<T>()` | `Promise<T>` | Parse JSON body (cached) |
 | `await ctx.formData()` | `Promise<FormData>` | Parse multipart form data (cached) |
@@ -298,7 +298,7 @@ app.delete("/users/:id", deleteUser); // DELETE
 app.patch("/users/:id", patchUser); // PATCH
 app.head("/users", headUsers);      // HEAD
 app.options("/users", optionsUser); // OPTIONS
-app.query("/users", queryUsers);    // QUERY (RFC 10008 — safe + idempotent + body)
+app.query("/users", queryUsers);    // QUERY (RFC 10008 - safe + idempotent + body)
 
 // Register handler for ALL standard methods at once
 app.all("/users", allHandler);      // GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS
@@ -308,7 +308,7 @@ app.all("/users", allHandler);      // GET, HEAD, POST, PUT, PATCH, DELETE, OPTI
 
 ## Group Routing
 
-`app.group()` mengembalikan `RouterGroup` yang punya method-method routing yang sama dengan `App`.
+`app.group()` mengembalikan `RouterGroup` yang punya method-method routing yang sama dengan `Buntok`.
 
 ### Dasar
 
@@ -354,7 +354,7 @@ ws.static("/assets", "./public");
 ### Controller Injection
 
 ```ts
-import { App, Controller, Get, Post } from "@buntok/core";
+import { Buntok, Controller, Get, Post } from "@buntok/core";
 
 @Controller("/users")
 class UserController {
@@ -376,7 +376,7 @@ api.registerController(UserController);
 Group prefix digabung dengan controller prefix. Jika controller prefix udah include group prefix (misalnya `/api/v1/users`), framework otomatis deduplicate.
 
 ```ts
-@Controller("/api/v1/users")  // prefix duplikat — otomatis di-handle
+@Controller("/api/v1/users")  // prefix duplikat - otomatis di-handle
 class UserController { ... }
 
 const api = app.group("/api/v1");
@@ -416,7 +416,7 @@ api.get("/users", listUsers);
 ### CORS
 
 ```ts
-// Recommended — ensures CORS headers on ALL responses including errors
+// Recommended - ensures CORS headers on ALL responses including errors
 app.cors({
   origin: ["http://localhost:3000", "https://myapp.com"],
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -475,7 +475,7 @@ app.use(slidingWindowRateLimiter({ max: 100, windowMs: 60_000 }));
 | `statusCode` | `number` | `429` |
 | `headers` | `boolean` | `true` |
 | `keyGenerator` | `(ctx) => string` | IP dari `x-forwarded-for` / `x-real-ip` |
-| `skip` | `(ctx) => boolean` | — |
+| `skip` | `(ctx) => boolean` | - |
 | `store` | `Map` | In-memory |
 
 ### Request ID
@@ -633,7 +633,7 @@ app.get("/users",
 
 ## Decorators
 
-Stage 3 TC39 decorators — **tidak perlu** `experimentalDecorators` di tsconfig.
+Stage 3 TC39 decorators - **tidak perlu** `experimentalDecorators` di tsconfig.
 
 ### Route Decorators
 
@@ -653,12 +653,12 @@ Stage 3 TC39 decorators — **tidak perlu** `experimentalDecorators` di tsconfig
 ```ts
 import { Use, UseGuard } from "@buntok/core";
 
-// @Use — attach middleware ke route method
+// @Use - attach middleware ke route method
 @Use(authMiddleware)
 @Get("/profile")
 async getProfile(ctx: Context) { ... }
 
-// @UseGuard — guard function yang return boolean; false = 403 Forbidden
+// @UseGuard - guard function yang return boolean; false = 403 Forbidden
 @UseGuard(async (ctx) => {
   return ctx.request.headers.has("x-api-key");
 })
@@ -731,7 +731,7 @@ app.registerController(UserController);
 
 ### Built-in Error Classes
 
-Throw langsung dari handler — framework auto-catch dan kirim response yang sesuai.
+Throw langsung dari handler - framework auto-catch dan kirim response yang sesuai.
 
 | Class | Status | Deskripsi |
 |-------|--------|-----------|
@@ -951,7 +951,7 @@ container.register(Database, {
 | `"singleton"` | Satu instance untuk seluruh app (default) |
 | `"transient"` | Instance baru setiap kali di-resolve |
 
-> Circular dependency detection built-in — throw `Error: Circular dependency detected: ClassName`.
+> Circular dependency detection built-in - throw `Error: Circular dependency detected: ClassName`.
 
 ---
 
@@ -1142,16 +1142,16 @@ export class UserController extends BaseController<User, CreateUserInput, Update
 }
 ```
 
-#### 5. Register ke App
+#### 5. Register ke Buntok
 
 ```ts
-import { App } from "@buntok/core";
+import { Buntok } from "@buntok/core";
 import { PrismaClient } from "@prisma/client";
 import { UserRepository } from "./repositories/user.repository";
 import { UserService } from "./services/user.service";
 import { UserController } from "./controllers/user.controller";
 
-const app = new App();
+const app = new Buntok();
 const prisma = new PrismaClient();
 
 const userRepo = new UserRepository(prisma);
@@ -1180,7 +1180,7 @@ app.listen(3000);
 ### Pattern: Manual Setup
 
 ```ts
-import { App } from "@buntok/core";
+import { Buntok } from "@buntok/core";
 import { PrismaClient } from "@prisma/client";
 import { UserRepository } from "./repositories/user.repository";
 import { UserService } from "./services/user.service";
@@ -1197,7 +1197,7 @@ const userService = new UserService(userRepo);
 const userController = new UserController(userService);
 
 // 4. Register
-const app = new App();
+const app = new Buntok();
 app.registerController(userController);
 app.listen(3000);
 ```
@@ -1216,7 +1216,7 @@ export function createRepositories() {
 
 // index.ts
 const { userRepo, postRepo } = createRepositories();
-const app = new App();
+const app = new Buntok();
 app.registerController(new UserController(new UserService(userRepo)));
 app.registerController(new PostController(new PostService(postRepo)));
 ```
@@ -1283,7 +1283,7 @@ app.get("/events", (ctx) => {
 | `heartbeatInterval` | `number` | `30000` | Interval heartbeat dalam ms |
 | `sendInitial` | `boolean` | `true` | Kirim event "connected" saat pertama |
 | `initialEvent` | `string` | `"connected"` | Nama event pertama |
-| `retry` | `number` | — | Reconnect interval yang dikirim ke client (ms) |
+| `retry` | `number` | - | Reconnect interval yang dikirim ke client (ms) |
 
 ### createSSE (Alternatif)
 
@@ -1312,7 +1312,7 @@ app.get("/events", (ctx) => {
 
 ## WebSocket
 
-Native Bun WebSocket — tanpa polyfill, tanpa abstraction layer.
+Native Bun WebSocket - tanpa polyfill, tanpa abstraction layer.
 
 ```ts
 app.ws("/chat", {
@@ -1348,7 +1348,7 @@ import { getCookie, getCookies, setCookie, deleteCookie, parseCookies, serialize
 const token = ctx.getCookie("token");
 const all = ctx.getCookies();
 
-// Set cookie — returns new Response dengan Set-Cookie header
+// Set cookie - returns new Response dengan Set-Cookie header
 const response = setCookie(ctx.json({ ok: true }), "token", "abc123", {
   httpOnly: true,
   secure: true,
@@ -1470,7 +1470,7 @@ healthCheck(app, {
 
 ## File Upload
 
-Buntok menyediakan upload handler untuk `multipart/form-data` — mendukung validasi per-field, custom filename, storage driver, dan file deletion.
+Buntok menyediakan upload handler untuk `multipart/form-data` - mendukung validasi per-field, custom filename, storage driver, dan file deletion.
 
 ```ts
 import {
@@ -1483,9 +1483,9 @@ import {
 
 | Option | Tipe | Default | Deskripsi |
 |--------|------|---------|-----------|
-| `storage` | `StorageDriver` | — | **wajib** — `LocalDiskStorage`, `MemoryStorage`, atau custom driver |
+| `storage` | `StorageDriver` | - | **wajib** - `LocalDiskStorage`, `MemoryStorage`, atau custom driver |
 | `filename` | `(original, file) => string` | `original-uuid.ext` | Global default filename generator |
-| `fields` | `Record<string, UploadFieldConfig>` | — | Whitelist & validasi per-field |
+| `fields` | `Record<string, UploadFieldConfig>` | - | Whitelist & validasi per-field |
 
 > **Note:** `maxFileSize` dan `allowedMimeTypes` sekarang di level per-field, bukan global.
 
@@ -1494,9 +1494,9 @@ import {
 | Option | Tipe | Default | Deskripsi |
 |--------|------|---------|-----------|
 | `required` | `boolean` | `false` | Wajib ada atau tidak |
-| `maxFileSize` | `number` | — | Maksimal ukuran file (bytes) |
-| `allowedMimeTypes` | `string[]` | — | MIME types yang diizinkan |
-| `filename` | `(original, file) => string` | — | Custom filename generator untuk field ini |
+| `maxFileSize` | `number` | - | Maksimal ukuran file (bytes) |
+| `allowedMimeTypes` | `string[]` | - | MIME types yang diizinkan |
+| `filename` | `(original, file) => string` | - | Custom filename generator untuk field ini |
 
 ### Built-in Storage Drivers
 
@@ -1555,7 +1555,7 @@ app.post("/upload", asyncHandler(async (ctx) => {
     },
   });
 
-  // result hanya berisi data sukses — error sudah throw di atas
+  // result hanya berisi data sukses - error sudah throw di atas
   return ctx.json({ files: result.files });
 }));
 ```
@@ -1744,7 +1744,7 @@ if (storage.deleteFile && avatar.path) {
 
 ## Crypto Helpers
 
-Hash, random, dan encryption — semua tanpa dependency, berbasis WebCrypto API.
+Hash, random, dan encryption - semua tanpa dependency, berbasis WebCrypto API.
 
 ```ts
 import {
@@ -1764,7 +1764,7 @@ const digest = await hash("password", "SHA-256");
 const d2 = await sha256("password");  // shorthand
 const d3 = await sha512("password");
 
-// MD5 — untuk legacy/cache keys, BUKAN untuk keamanan
+// MD5 - untuk legacy/cache keys, BUKAN untuk keamanan
 const m = await md5("hello");
 // => "5d41402abc4b2a76b9719d911017c592"
 
@@ -2010,7 +2010,7 @@ Menambahkan security headers standar ke semua response:
 | `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` |
 
 ```ts
-// Default — semua standard headers
+// Default - semua standard headers
 app.use(helmet());
 
 // Custom options
@@ -2067,9 +2067,9 @@ app.get("/data", timeout(5000), async (ctx) => {
 `app.request()` mendispatch request tanpa membuka port nyata:
 
 ```ts
-import { App } from "@buntok/core";
+import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 app.get("/ping", (ctx) => ctx.json({ pong: true }));
 
 // Test tanpa server
@@ -2091,9 +2091,9 @@ Kompatibel dengan Bun test runner:
 
 ```ts
 import { describe, test, expect, beforeAll } from "bun:test";
-import { App } from "@buntok/core";
+import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 app.get("/users", (ctx) => ctx.json([]));
 
 describe("Users API", () => {

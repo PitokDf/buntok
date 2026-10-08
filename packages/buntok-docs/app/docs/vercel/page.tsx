@@ -33,7 +33,7 @@ export default function VercelPage() {
         level={3}
         className="text-lg font-semibold mt-6 mb-2 text-text-primary"
       >
-        server.ts — local server entry point
+        server.ts - local server entry point
       </Heading>
       <CodeBlock
         language="typescript"
@@ -51,11 +51,11 @@ app.listen(env.PORT);`}
       </Heading>
       <ul className="my-3 text-text-secondary leading-relaxed list-disc list-inside space-y-1">
         <li>
-          <strong>Local dev</strong> — <code>app.listen()</code> calls{" "}
+          <strong>Local dev</strong> - <code>app.listen()</code> calls{" "}
           <code>Bun.serve()</code> and binds to a port
         </li>
         <li>
-          <strong>Serverless deployment</strong> — expose <code>app.fetch</code>{" "}
+          <strong>Serverless deployment</strong> - expose <code>app.fetch</code>{" "}
           through the deployment adapter instead of binding a local port
         </li>
         <li>
@@ -125,17 +125,29 @@ app.listen(env.PORT);`}
         code={`{
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "bun",
-  "bunVersion": "1.4.x"
+  "bunVersion": "1.4.x",
+  "outputDirectory": "buntok",
+  "regions": ["sin1"]
 }`}
       />
       <ul className="my-3 text-text-secondary leading-relaxed list-disc list-inside space-y-1">
         <li>
-          <code>framework: &quot;bun&quot;</code> — tells Vercel to use Bun
+          <code>framework: &quot;bun&quot;</code> - tells Vercel to use Bun
           runtime (required for GitHub-triggered deploys).
         </li>
         <li>
-          <code>bunVersion: &quot;1.4.x&quot;</code> — pins the Bun runtime
+          <code>bunVersion: &quot;1.4.x&quot;</code> - pins the Bun runtime
           version.
+        </li>
+        <li>
+          <code>outputDirectory: &quot;buntok&quot;</code> - build output
+          directory produced by <code>buntok build</code>; required for a
+          successful deploy (the build fails with{" "}
+          <code>UNRESOLVED_ENTRY</code> otherwise).
+        </li>
+        <li>
+          <code>regions: [&quot;sin1&quot;]</code> - deploy to the Singapore
+          region (closest to ID users; lower latency).
         </li>
       </ul>
 
@@ -182,12 +194,12 @@ vercel --prod`}
       <CodeBlock
         code={`my-app/
 ├── src/
-│   ├── index.ts              # export const app = new App()
-│   ├── env.ts                # App.validateEnv({ PORT, ... })
+│   ├── index.ts              # export const app = new Buntok()
+│   ├── env.ts                # Buntok.validateEnv({ PORT, ... })
 │   ├── controllers/
 │   ├── services/
 │   └── repositories/
-├── server.ts                 # app.listen(env.PORT) — local server entry point
+├── server.ts                 # app.listen(env.PORT) - local server entry point
 ├── vercel.json               # Vercel config (framework: "bun")
 ├── package.json
 └── ...`}

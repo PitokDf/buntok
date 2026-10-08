@@ -77,7 +77,7 @@ healthCheck(app);`}
                 "Custom health check function",
               ],
               ["includeUptime", "boolean", "true", "Include uptime in response"],
-              ["version", "string", "undefined", "App version in response"],
+              ["version", "string", "undefined", "Buntok version in response"],
             ].map(([opt, type, def, desc]) => (
               <tr
                 key={opt}
@@ -199,10 +199,10 @@ healthCheck(app, {
       <CodeBlock
         code={`import { livenessCheck, readinessCheck } from "@buntok/core/middlewares";
 
-// Liveness probe — is the process alive?
+// Liveness probe - is the process alive?
 livenessCheck(app, { path: "/health/live" });  // default: "/health/live"
 
-// Readiness probe — can it serve traffic?
+// Readiness probe - can it serve traffic?
 readinessCheck(app, {
   path: "/health/ready",
   checks: [
@@ -231,11 +231,11 @@ readinessCheck(app, {
           <tbody>
             <tr className="border-b border-border-primary/50 hover:bg-bg-tertiary/50 transition-colors">
               <td className="px-4 py-2 font-mono text-accent">livenessCheck(app, opts?)</td>
-              <td className="px-4 py-2">Register liveness endpoint — always returns <code>200 OK</code> if server is running</td>
+              <td className="px-4 py-2">Register liveness endpoint - always returns <code>200 OK</code> if server is running</td>
             </tr>
             <tr className="border-b border-border-primary/50 hover:bg-bg-tertiary/50 transition-colors">
               <td className="px-4 py-2 font-mono text-accent">readinessCheck(app, opts?)</td>
-              <td className="px-4 py-2">Register readiness endpoint — runs <code>checks</code> array, returns <code>200</code> if all healthy</td>
+              <td className="px-4 py-2">Register readiness endpoint - runs <code>checks</code> array, returns <code>200</code> if all healthy</td>
             </tr>
             <tr className="border-b border-border-primary/50 hover:bg-bg-tertiary/50 transition-colors">
               <td className="px-4 py-2 font-mono text-accent">runReadinessChecks(checks)</td>

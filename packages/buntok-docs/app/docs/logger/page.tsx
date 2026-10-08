@@ -106,6 +106,32 @@ custom.info("Hello", { user: "Alice" });
         <code>LOG_DIR</code> creates daily files <code>app-YYYY-MM-DD.log</code> via <code>appendFile</code>. Production defaults to JSON lines with <code>timestamp, level, message, ...meta</code>.
       </Callout>
 
+      {/* ──────────────── DISABLING THE LOGGER ──────────────── */}
+      <Heading level={2} className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2">
+        Disabling the Logger
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Silence all logger output in one call with{" "}
+        <code>app.disable(&quot;logger&quot;)</code> - request logs, error/warn
+        logs, and the startup banner (<code>Buntok vX ready in ...</code>).
+        <code>app.enable(&quot;logger&quot;)</code> turns everything back on:
+      </p>
+      <CodeBlock
+        code={`const app = new Buntok();
+
+app.disable("logger");   // sets logger.enabled = false, logger.logRequests = false
+app.listen(1212);        // compiled without the request-log path - silent startup
+
+app.enable("logger");    // restores logger.enabled = true, logger.logRequests = true
+`}
+      />
+      <Callout type="info">
+        Call <code>disable(&quot;logger&quot;)</code> <strong>before</strong>{" "}
+        <code>listen()</code> so the server compiles the request-log-free fast
+        path; after <code>listen()</code> it still silences runtime logging via
+        an eager AOT invalidation.
+      </Callout>
+
       {/* ──────────────── METHODS ──────────────── */}
       <Heading level={2} className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2">
         Methods

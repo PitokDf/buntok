@@ -210,7 +210,7 @@ export default function RepositoryPage() {
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         Automatically exclude or include specific fields from all CRUD
-        responses. Configure once in your repository — every{" "}
+        responses. Configure once in your repository - every{" "}
         <code>findAll()</code>, <code>findById()</code>, <code>create()</code>,
         etc. will apply the rules automatically.
       </p>
@@ -273,7 +273,7 @@ await userRepo.update(id, data);// same`}
       </p>
       <CodeBlock
         code={`class UserRepository extends BaseRepository<User, PrismaClient> {
-  // Only return id, name, email — everything else is excluded
+  // Only return id, name, email - everything else is excluded
   protected override $visible = ["id", "name", "email"] as const;
 
   constructor(prisma: PrismaClient) {
@@ -297,7 +297,7 @@ await userRepo.update(id, data);// same`}
         Type Safety
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        Both <code>$hidden</code> and <code>$visible</code> are type-safe —
+        Both <code>$hidden</code> and <code>$visible</code> are type-safe -
         TypeScript will catch typos and non-existent fields at compile time:
       </p>
       <CodeBlock
@@ -504,27 +504,27 @@ export class UserService extends BaseService<User> {
     super(userRepository);
   }
 
-  // Override getAll — add filtering, sorting, etc.
+  // Override getAll - add filtering, sorting, etc.
   async getAll(): Promise<User[]> {
     const users = await this.userRepository.findAll();
     return users.filter((u) => u.active);
   }
 
-  // Override getById — custom error message
+  // Override getById - custom error message
   async getById(id: string | number): Promise<User> {
     const user = await this.userRepository.findById(id);
     if (!user) throw new NotFoundError("User not found");
     return user;
   }
 
-  // Override create — add validation or side effects
+  // Override create - add validation or side effects
   async create(data: any): Promise<User> {
     const existing = await this.userRepository.findByEmail(data.email);
     if (existing) throw new Error("Email already taken");
     return super.create(data);
   }
 
-  // Override delete — soft delete instead of hard delete
+  // Override delete - soft delete instead of hard delete
   async delete(id: string | number): Promise<User> {
     return this.userRepository.update(id, { deletedAt: new Date() });
   }
@@ -563,7 +563,7 @@ class UserController extends BaseController<User> {
         Complete Example (Prisma)
       </Heading>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { BaseController, BaseService } from "@buntok/core";
 import { BaseRepository } from "@buntok/prisma";
 import { prisma } from "@/lib/prisma";
@@ -594,7 +594,7 @@ class UserController extends BaseController<User> {
 }
 
 // 4. Register
-const app = new App();
+const app = new Buntok();
 const userRepository = new UserRepository();
 const userService = new UserService(userRepository);
 app.registerController(new UserController(userService));

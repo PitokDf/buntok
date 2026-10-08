@@ -62,7 +62,12 @@ export default function CLIPage() {
 
 ✓ Created .agents/skills/buntok-skill/SKILL.md
 ✓ Updated package.json (added 6 scripts)
+• Installing @buntok/core...
+✓ Installed @buntok/core
+• Installing TypeScript toolchain (@types/bun, @types/node, typescript)...
+✓ Installed @types/bun, @types/node, typescript
 ✓ Created tsconfig.json
+• Installing @biomejs/biome...
 ✓ Installed @biomejs/biome
 ✓ Created biome.json
 ✓ Created .vscode/settings.json
@@ -94,10 +99,10 @@ export default function CLIPage() {
         and are validated at startup.
       </p>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { z } from "@buntok/core/middlewares/validator";
 
-export const env = App.validateEnv({
+export const env = Buntok.validateEnv({
   PORT: z.coerce.number().default(1212),
   AUTH_STORE: z.enum(["header", "cookie"]).default("header"),
   AUTH_COOKIE: z.string().default("session"),
@@ -119,7 +124,7 @@ export const env = App.validateEnv({
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         Build project for production. Compiles TypeScript to JavaScript and
-        outputs to <code>.buntok/</code>.
+        outputs to <code>buntok/</code>.
       </p>
       <CodeBlock code={`bunx buntok build`} />
 
@@ -140,7 +145,7 @@ export const env = App.validateEnv({
         </li>
         <li>Marks all packages as external (not bundled)</li>
         <li>
-          Outputs to <code>.buntok/server.js</code>
+          Outputs to <code>buntok/server.js</code>
         </li>
       </ul>
 
@@ -154,8 +159,8 @@ export const env = App.validateEnv({
         code={`$ bunx buntok build
 
 🔨 Building project...
-✅ Build successful → .buntok/server.js
-  Deploy: copy .buntok/ + node_modules/ + package.json to server`}
+✅ Build successful → buntok/server.js
+  Deploy: copy buntok/ + node_modules/ + package.json to server`}
       />
 
       <Heading
@@ -169,7 +174,7 @@ export const env = App.validateEnv({
       </p>
       <CodeBlock
         code={`# Files needed for production
-.buntok/server.js    # Compiled application
+buntok/server.js    # Compiled application
 node_modules/       # Dependencies
 package.json        # Package manifest`}
       />
@@ -460,7 +465,7 @@ bunx buntok create user --repo --service`}
         Custom Fields &amp; Base Classes
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        No Prisma schema? Pass fields explicitly with <code>--fields</code> —
+        No Prisma schema? Pass fields explicitly with <code>--fields</code> -
         the CLI generates the zod validation schema, faker sample data, and
         TypeScript types from them. Use <code>--base</code> to generate classes
         that extend the reusable <code>BaseRepository</code> /{" "}
@@ -483,10 +488,12 @@ bunx buntok create user --repo --service --base`}
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         By default, the CLI auto-detects your ORM from <code>package.json</code>{" "}
-        dependencies. You can also specify it explicitly:
+        dependencies. When no ORM is found it falls back to plain code - an
+        in-memory repository, ORM-free service and controller, no{" "}
+        <code>@prisma/client</code> imports. You can also specify it explicitly:
       </p>
       <CodeBlock
-        code={`# Auto-detect ORM (default)
+        code={`# Auto-detect ORM (default, plain fallback when none)
 bunx buntok create user
 
 # Force Prisma
@@ -507,9 +514,9 @@ bunx buntok create user --typeorm`}
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         The generated controller is registered automatically in the file that
-        declares your <code>App</code> (e.g. <code>src/index.ts</code>) — not
+        declares your <code>Buntok</code> (e.g. <code>src/index.ts</code>) - not
         the listener-only <code>server.ts</code>. Both{" "}
-        <code>const app = new App(...)</code> instances and group declarations
+        <code>const app = new Buntok(...)</code> instances and group declarations
         like <code>const apiv1 = app.group("/api/v1")</code> are detected. Use{" "}
         <code>--app</code> to pick the target explicitly:
       </p>
@@ -517,7 +524,7 @@ bunx buntok create user --typeorm`}
         code={`# Register into the apiV1 instance (or group)
 bunx buntok create user --app apiV1
 
-# Single App instance → registered automatically, no flag needed
+# Single Buntok instance → registered automatically, no flag needed
 bunx buntok create user`}
       />
       <Callout type="info">
@@ -822,8 +829,9 @@ export const UserFactory = Factory.define<User>(() => ({
         </table>
       </div>
       <Callout type="info">
-        Requires <code>@faker-js/faker</code> as a peer dependency. Install
-        with: <code>bun add -d @faker-js/faker</code>
+        Requires <code>@faker-js/faker</code> as a peer dependency.{" "}
+        <code>bunx buntok make:factory</code> installs it automatically with{" "}
+        <code>bun add -d @faker-js/faker</code> when it is missing.
       </Callout>
 
       {/* ──────────────── DEBUG:ROUTES ──────────────── */}
@@ -835,7 +843,13 @@ export const UserFactory = Factory.define<User>(() => ({
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         Show all registered routes with their middleware chains. Useful for
-        debugging route registration and middleware ordering.
+        debugging route registration and middleware ordering. The command tries
+        app entry candidates in order (<code>server.ts</code>,{" "}
+        <code>src/index.ts</code>, ...) and exits after printing - the server
+        never stays running. A listener-only <code>server.ts</code> without{" "}
+        <code>{"export { app };"}</code> simply falls through to the next
+        candidate; only when no candidate exports an app does it fail with exit
+        code 1.
       </p>
       <CodeBlock code={`bunx buntok debug:routes`} />
       <CodeBlock
@@ -843,7 +857,7 @@ export const UserFactory = Factory.define<User>(() => ({
 
 Method │ Path               │ Middlewares                    │ Handler
 ───────┼────────────────────┼────────────────────────────────┼──────────
-GET    │ /                  │ —                              │ (index)
+GET    │ /                  │ -                              │ (index)
 GET    │ /users             │ cors, compress                 │ getAll
 GET    │ /users/:id         │ cors, compress, auth           │ getById
 POST   │ /users             │ cors, compress, validation     │ create
@@ -981,7 +995,7 @@ $ bunx buntok make:middleware auth --dry-run`}
         make:docs
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        Manually regenerate OpenAPI documentation. <strong>Optional</strong> —{" "}
+        Manually regenerate OpenAPI documentation. <strong>Optional</strong> -{" "}
         <code>swagger.json</code> is auto-generated on <code>app.listen()</code>
         .
       </p>
@@ -1051,7 +1065,7 @@ bunx buntok generate user`}
       <Callout type="info">
         Each entity lives in its own module directory under{" "}
         <code>src/modules/</code>. The <code>@Dependencies</code> decorator
-        enables automatic dependency injection — just register your controllers
+        enables automatic dependency injection - just register your controllers
         with <code>app.registerController()</code> and the container resolves
         the entire dependency tree.
       </Callout>
@@ -1113,7 +1127,7 @@ bunx buntok generate user`}
                 <code>--prisma</code>
               </td>
               <td className="border border-border-primary px-4 py-2 text-text-secondary">
-                Use Prisma ORM (default: auto-detect)
+                Use Prisma ORM (default: auto-detect, falls back to plain code)
               </td>
             </tr>
             <tr>

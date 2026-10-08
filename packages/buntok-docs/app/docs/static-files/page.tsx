@@ -67,7 +67,16 @@ app.static("/files", "./assets");`}
               <td className="px-4 py-2 font-mono text-accent">directory</td>
               <td className="px-4 py-2 font-mono">string</td>
               <td className="px-4 py-2">
-                Filesystem path relative to <code>process.cwd()</code>
+                Filesystem path (relative to <code>process.cwd()</code> or
+                absolute)
+              </td>
+            </tr>
+            <tr>
+              <td className="px-4 py-2 font-mono text-accent">options</td>
+              <td className="px-4 py-2 font-mono">StaticOptions?</td>
+              <td className="px-4 py-2">
+                <code>maxAge</code>, <code>cacheControl</code>,{" "}
+                <code>etag</code>, <code>native</code>
               </td>
             </tr>
           </tbody>
@@ -140,6 +149,78 @@ app.static("/public", "./public");
 // GET /public/images/logo.png → serves logo.png
 // GET /public/missing.txt  → 404 Not Found`}
       />
+
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        Native Directory Serving (native: true)
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Pass <code>{"{ native: true }"}</code> to hand the directory to Bun's
+        built-in static file router: MIME type, <code>ETag</code>,{" "}
+        <code>Range</code>, and <code>index.html</code> resolution happen
+        inside Bun &mdash; requests never enter JavaScript.
+      </p>
+      <CodeBlock
+        code={`app.static("/public", "./public", { native: true });`}
+      />
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Bun owns the response, so there are three wire differences from the
+        default JS handler:
+      </p>
+      <ul className="my-3 ml-6 list-disc text-text-secondary space-y-1">
+        <li>
+          No <code>Cache-Control</code> header &mdash; set caching at your CDN
+          or proxy instead.
+        </li>
+        <li>
+          Unknown files get an empty-body <code>404</code> (not the JSON{" "}
+          <code>{"{ error: 'File Not Found' }"}</code>).
+        </li>
+        <li>
+          <code>ETag</code> / <code>If-None-Match</code> are handled by Bun.
+        </li>
+      </ul>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Promotion is automatic only when it cannot change the wire: with{" "}
+        <code>X-Powered-By</code> enabled, global middleware, or request
+        logging active, the JS handler keeps serving (byte-identical to{" "}
+        <code>native: false</code>).
+      </p>
+
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        Serving Individual Files (file())
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        For a file chosen per-request (download link, avatar, report), return{" "}
+        <code>file(path)</code> from a handler. It is lazy - no disk I/O at
+        registration; the framework converts it to a response at response time
+        so <code>Range</code> requests are honored (video/audio seeking):
+      </p>
+      <CodeBlock
+        code={`import { file } from "@buntok/core";
+
+app.get("/video", () => file("public/kyuukurarin.mp4"));
+
+app.get("/report", () =>
+  file("exports/report.pdf", {
+    type: "application/pdf",          // optional MIME override (auto-detected from extension)
+    headers: { "Cache-Control": "no-store" },
+  }),
+);`}
+      />
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Responses include <code>Accept-Ranges: bytes</code> and{" "}
+        <code>Content-Range</code>; a valid <code>Range</code> header returns{" "}
+        <code>206</code>, and an out-of-range request returns <code>416</code>.{" "}
+        <code>file()</code> has no fallback when the file is missing - use{" "}
+        <code>serveFileOrFallback()</code> from <code>@buntok/core</code> when
+        you need one.
+      </p>
 
       <Heading
         level={2}

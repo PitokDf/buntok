@@ -131,9 +131,9 @@ app.post("/users", async (ctx) => {
       <Callout type="info" title="Production message masking">
         In production (<code>NODE_ENV=production</code>), the default handler
         always shows the <code>message</code> of a <strong>4xx</strong>{" "}
-        <code>HttpError</code> — it was thrown on purpose (e.g.{" "}
+        <code>HttpError</code> - it was thrown on purpose (e.g.{" "}
         <code>NotFoundError(&quot;User not found&quot;)</code>). Everything else
-        — 5xx <code>HttpError</code> and unexpected (non-HttpError) errors — is
+        - 5xx <code>HttpError</code> and unexpected (non-HttpError) errors - is
         replaced with <code>&quot;An unexpected error occurred&quot;</code> so
         internal details never leak. Outside production, the original message is
         always shown.
@@ -150,7 +150,7 @@ app.post("/users", async (ctx) => {
         Override the default error handler to customize error responses:
       </p>
       <CodeBlock
-        code={`const app = new App();
+        code={`const app = new Buntok();
 
 app.onError((error, ctx) => {
   console.error(error);

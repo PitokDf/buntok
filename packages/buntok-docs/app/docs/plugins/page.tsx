@@ -32,18 +32,18 @@ import type { Plugin } from "@buntok/core";`}
         language="typescript"
         code={`interface Plugin<DI extends Record<string, unknown> = Record<string, unknown>> {
   name: string;
-  install: (app: App<DI>) => void | Promise<void>;
+  install: (app: Buntok<DI>) => void | Promise<void>;
 }`}
       />
       <ul className="my-3 text-text-secondary leading-relaxed list-disc list-inside space-y-1">
         <li>
-          <code>name</code> — unique identifier, used for dedup (same name = install once only)
+          <code>name</code> - unique identifier, used for dedup (same name = install once only)
         </li>
         <li>
-          <code>install(app)</code> — receives the app instance, can be async
+          <code>install(app)</code> - receives the app instance, can be async
         </li>
         <li>
-          <code>DI</code> generic — constrains the app's dependency injection type
+          <code>DI</code> generic - constrains the app's dependency injection type
         </li>
       </ul>
 
@@ -52,7 +52,7 @@ import type { Plugin } from "@buntok/core";`}
       </Heading>
 
       <Heading level={3} className="text-lg font-semibold mt-6 mb-2 text-text-primary">
-        Simple plugin — add middleware
+        Simple plugin - add middleware
       </Heading>
       <CodeBlock
         language="typescript"
@@ -91,7 +91,7 @@ import type { Plugin } from "@buntok/core";`}
         code={`const authPlugin = createPlugin({
   name: "@buntok/auth",
   install: async (app) => {
-    // Lazy import — zero startup cost if plugin not installed
+    // Lazy import - zero startup cost if plugin not installed
     const { JwtService } = await import("@buntok/core");
     const jwt = new JwtService(process.env.JWT_SECRET!);
     app.use(requireAuth(jwt));
@@ -111,13 +111,13 @@ app.plugin(healthPlugin);`}
       <Callout type="info">
         <ul className="list-disc list-inside space-y-1">
           <li>
-            Dedup by <code>name</code> — installing same plugin twice is a no-op
+            Dedup by <code>name</code> - installing same plugin twice is a no-op
           </li>
           <li>
             <code>install()</code> runs immediately when <code>app.plugin()</code> is called
           </li>
           <li>
-            Async <code>install()</code> is awaited — server won't start until all plugins finish
+            Async <code>install()</code> is awaited - server won't start until all plugins finish
           </li>
           <li>
             Installed names tracked in <code>app.installedPlugins</code> (Set)

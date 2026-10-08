@@ -105,7 +105,7 @@ export default async function Image() {
               fontFamily: "sans-serif",
             }}
           >
-            Decorator-powered, zero-config web framework for Bun
+            Decorator-first, zero-config web framework for Bun
           </div>
 
           {/* Tags */}

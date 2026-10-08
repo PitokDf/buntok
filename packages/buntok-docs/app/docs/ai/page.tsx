@@ -226,12 +226,12 @@ app.post("/chat", async (ctx) => {
         Full Example
       </Heading>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { streamAI, injectSystemPrompt, AICache } from "@buntok/core";
 import { Cache } from "@buntok/core/cache";
 import OpenAI from "openai";
 
-const app = new App();
+const app = new Buntok();
 const openai = new OpenAI();
 const aiCache = new AICache(new Cache());
 

@@ -30,6 +30,17 @@ export default function DecoratorsPage() {
         <code>app.get()</code>/<code>app.post()</code> registrations.
       </Callout>
 
+      <Callout type="warning">
+        <strong>Legacy decorator mode breaks decorators.</strong> If{" "}
+        <code>experimentalDecorators: true</code> is set in your{" "}
+        <code>tsconfig.json</code>, every Buntok decorator throws a guidance
+        error at class-definition time: <em>&quot;Buntok decorators require
+        TC39 decorator mode (native in Bun/TS 5+). Legacy decorator mode
+        detected - remove <code>experimentalDecorators: true</code> from your
+        tsconfig.json.&quot;</em> Remove the flag; Stage 3 decorators are the
+        native default in TypeScript 5+ and Bun.
+      </Callout>
+
       {/* ──────────────── CONTROLLER DECORATOR ──────────────── */}
       <Heading
         level={2}
@@ -178,7 +189,7 @@ class UserController {
         @Query
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        Bun-specific HTTP method — like GET but with a request body (RFC 9110).
+        Bun-specific HTTP method - like GET but with a request body (RFC 9110).
         Useful for complex search queries that don&apos;t fit in query params.
       </p>
       <CodeBlock
@@ -309,7 +320,7 @@ class UserController {
         Response Decorators
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        Zero-cost boot-time metadata — no per-request overhead. Configure status,
+        Zero-cost boot-time metadata - no per-request overhead. Configure status,
         headers and redirects without touching handler logic.
       </p>
       <CodeBlock
@@ -372,7 +383,7 @@ const roles = getMetadata(AdminController, "admin", "roles");`}
         applyDecorators
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        Compose multiple decorators (Nest <code>applyDecorators</code> alias) —
+        Compose multiple decorators (Nest <code>applyDecorators</code> alias) -
         boot-time helper.
       </p>
       <CodeBlock
@@ -401,7 +412,7 @@ secret() {}`}
         <code>Promise&lt;boolean&gt;</code>. If any guard returns{" "}
         <code>false</code>, the request is rejected with{" "}
         <code>403 Forbidden</code>. <code>UseGuards</code> is the recommended
-        plural alias — <code>UseGuard</code> remains deprecated but same
+        plural alias - <code>UseGuard</code> remains deprecated but same
         reference.
       </p>
       <CodeBlock
@@ -526,13 +537,13 @@ class UserController {
       </Heading>
       <CodeBlock
         code={`import {
-  App, Controller, Get, Post, Use, UseGuard, Dependencies,
+  Buntok, Controller, Get, Post, Use, UseGuard, Dependencies,
   Container,
 } from "@buntok/core";
 import { zValidator, z } from "@buntok/core/middlewares/validator";
 import type { Context, ZodCtx } from "@buntok/core";
 
-// Service — plain class, no decorator
+// Service - plain class, no decorator
 class UserService {
   async findAll() {
     return await db.user.findMany();
@@ -558,7 +569,7 @@ const createUserSchema = z.object({
   email: z.string().email(),
 });
 
-// Controller — @Dependencies declares constructor dependencies
+// Controller - @Dependencies declares constructor dependencies
 @Dependencies(UserService)
 @Controller("/users")
 class UserController {
@@ -581,8 +592,8 @@ class UserController {
   }
 }
 
-// Setup — container.scan() resolves the entire dependency tree
-const app = new App();
+// Setup - container.scan() resolves the entire dependency tree
+const app = new Buntok();
 const container = new Container();
 container.scan([UserController]);  // auto-resolves UserService → UserController
 app.setContainer(container);

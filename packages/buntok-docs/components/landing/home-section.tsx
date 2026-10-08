@@ -20,7 +20,7 @@ import Link from "next/link";
 const EMPTY_DATA = {
   frameworks: {
     buntok: {
-      "/plaintext": { reqPerSec: 0, latencyP50: 0 },
+      "/": { reqPerSec: 0, latencyP50: 0 },
     },
   },
 };
@@ -30,11 +30,11 @@ export function HomeSection() {
   const [npmVersion, setNpmVersion] = useState<string | null>(null);
 
   useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_BASE_URL || "";
+    const base = process.env.BASE_URL || "";
     fetch(`${base}/dashboard-data.json`)
       .then((res) => (res.ok ? res.json() : null))
       .then((d) => {
-        if (d?.frameworks?.buntok) setData(d);
+        if (d?.frameworks?.buntok?.["/"]) setData(d);
       })
       .catch(() => {});
   }, []);
@@ -74,7 +74,7 @@ export function HomeSection() {
 
   return (
     <div className="relative animate-fade-up overflow-x-hidden">
-      {/* Background effects — full-bleed beyond max-w-6xl parent */}
+      {/* Background effects - full-bleed beyond max-w-6xl parent */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-screen h-full pointer-events-none z-0"
         style={{ marginLeft: "calc(-50vw + 50%)" }}
@@ -90,7 +90,11 @@ export function HomeSection() {
             className="absolute inset-0 bg-[linear-gradient(to_right,#8080801a_1px,transparent_1px),linear-gradient(to_bottom,#8080801a_1px,transparent_1px)] bg-size-[4rem_4rem]"
             style={{ backgroundPosition: "center top" }}
           />
-          <svg className="hidden sm:block absolute top-0 left-0 w-full h-full pointer-events-none" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          <svg
+            className="hidden sm:block absolute top-0 left-0 w-full h-full pointer-events-none"
+            viewBox="0 0 1000 1000"
+            preserveAspectRatio="none"
+          >
             <defs>
               <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
                 <feGaussianBlur stdDeviation="3" result="coloredBlur" />
@@ -102,74 +106,388 @@ export function HomeSection() {
             </defs>
             <g filter="url(#glow)">
               {/* === Vertical lines === */}
-              <path d="M 120 0 V 1000" stroke="#f97316" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeDasharray="80 4000" opacity="0.4">
-                <animate attributeName="stroke-dashoffset" from="4080" to="-80" dur="12s" repeatCount="indefinite" />
+              <path
+                d="M 120 0 V 1000"
+                stroke="#f97316"
+                strokeWidth="1.2"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="80 4000"
+                opacity="0.4"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="4080"
+                  to="-80"
+                  dur="12s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 300 0 V 1000" stroke="#f97316" strokeWidth="0.8" fill="none" strokeLinecap="round" strokeDasharray="60 4000" opacity="0.25">
-                <animate attributeName="stroke-dashoffset" from="4060" to="-60" dur="15s" begin="2s" repeatCount="indefinite" />
+              <path
+                d="M 300 0 V 1000"
+                stroke="#f97316"
+                strokeWidth="0.8"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="60 4000"
+                opacity="0.25"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="4060"
+                  to="-60"
+                  dur="15s"
+                  begin="2s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 500 0 V 1000" stroke="#f97316" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeDasharray="100 4000" opacity="0.5">
-                <animate attributeName="stroke-dashoffset" from="4100" to="-100" dur="10s" begin="1s" repeatCount="indefinite" />
+              <path
+                d="M 500 0 V 1000"
+                stroke="#f97316"
+                strokeWidth="1.5"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="100 4000"
+                opacity="0.5"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="4100"
+                  to="-100"
+                  dur="10s"
+                  begin="1s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 700 0 V 1000" stroke="#f97316" strokeWidth="0.8" fill="none" strokeLinecap="round" strokeDasharray="60 4000" opacity="0.25">
-                <animate attributeName="stroke-dashoffset" from="4060" to="-60" dur="14s" begin="3s" repeatCount="indefinite" />
+              <path
+                d="M 700 0 V 1000"
+                stroke="#f97316"
+                strokeWidth="0.8"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="60 4000"
+                opacity="0.25"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="4060"
+                  to="-60"
+                  dur="14s"
+                  begin="3s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 880 0 V 1000" stroke="#f97316" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeDasharray="80 4000" opacity="0.35">
-                <animate attributeName="stroke-dashoffset" from="4080" to="-80" dur="11s" begin="4s" repeatCount="indefinite" />
+              <path
+                d="M 880 0 V 1000"
+                stroke="#f97316"
+                strokeWidth="1.2"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="80 4000"
+                opacity="0.35"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="4080"
+                  to="-80"
+                  dur="11s"
+                  begin="4s"
+                  repeatCount="indefinite"
+                />
               </path>
 
               {/* === Horizontal lines === */}
-              <path d="M 0 150 H 1000" stroke="#f97316" strokeWidth="1" fill="none" strokeLinecap="round" strokeDasharray="70 4000" opacity="0.3">
-                <animate attributeName="stroke-dashoffset" from="4070" to="-70" dur="13s" begin="1.5s" repeatCount="indefinite" />
+              <path
+                d="M 0 150 H 1000"
+                stroke="#f97316"
+                strokeWidth="1"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="70 4000"
+                opacity="0.3"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="4070"
+                  to="-70"
+                  dur="13s"
+                  begin="1.5s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 0 350 H 1000" stroke="#f97316" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeDasharray="90 4000" opacity="0.45">
-                <animate attributeName="stroke-dashoffset" from="4090" to="-90" dur="9s" begin="0.5s" repeatCount="indefinite" />
+              <path
+                d="M 0 350 H 1000"
+                stroke="#f97316"
+                strokeWidth="1.3"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="90 4000"
+                opacity="0.45"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="4090"
+                  to="-90"
+                  dur="9s"
+                  begin="0.5s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 0 550 H 1000" stroke="#f97316" strokeWidth="0.8" fill="none" strokeLinecap="round" strokeDasharray="50 4000" opacity="0.2">
-                <animate attributeName="stroke-dashoffset" from="4050" to="-50" dur="16s" begin="5s" repeatCount="indefinite" />
+              <path
+                d="M 0 550 H 1000"
+                stroke="#f97316"
+                strokeWidth="0.8"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="50 4000"
+                opacity="0.2"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="4050"
+                  to="-50"
+                  dur="16s"
+                  begin="5s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 0 750 H 1000" stroke="#f97316" strokeWidth="1.1" fill="none" strokeLinecap="round" strokeDasharray="75 4000" opacity="0.35">
-                <animate attributeName="stroke-dashoffset" from="4075" to="-75" dur="11s" begin="2.5s" repeatCount="indefinite" />
+              <path
+                d="M 0 750 H 1000"
+                stroke="#f97316"
+                strokeWidth="1.1"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="75 4000"
+                opacity="0.35"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="4075"
+                  to="-75"
+                  dur="11s"
+                  begin="2.5s"
+                  repeatCount="indefinite"
+                />
               </path>
 
               {/* === Diagonal lines === */}
-              <path d="M 0 0 L 1000 1000" stroke="#f97316" strokeWidth="0.8" fill="none" strokeLinecap="round" strokeDasharray="50 5000" opacity="0.2">
-                <animate attributeName="stroke-dashoffset" from="5050" to="-50" dur="18s" begin="3s" repeatCount="indefinite" />
+              <path
+                d="M 0 0 L 1000 1000"
+                stroke="#f97316"
+                strokeWidth="0.8"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="50 5000"
+                opacity="0.2"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="5050"
+                  to="-50"
+                  dur="18s"
+                  begin="3s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 1000 0 L 0 1000" stroke="#f97316" strokeWidth="0.8" fill="none" strokeLinecap="round" strokeDasharray="50 5000" opacity="0.2">
-                <animate attributeName="stroke-dashoffset" from="5050" to="-50" dur="20s" begin="6s" repeatCount="indefinite" />
+              <path
+                d="M 1000 0 L 0 1000"
+                stroke="#f97316"
+                strokeWidth="0.8"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="50 5000"
+                opacity="0.2"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="5050"
+                  to="-50"
+                  dur="20s"
+                  begin="6s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 200 0 L 1000 800" stroke="#f97316" strokeWidth="0.6" fill="none" strokeLinecap="round" strokeDasharray="40 4500" opacity="0.15">
-                <animate attributeName="stroke-dashoffset" from="4540" to="-40" dur="22s" begin="4s" repeatCount="indefinite" />
+              <path
+                d="M 200 0 L 1000 800"
+                stroke="#f97316"
+                strokeWidth="0.6"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="40 4500"
+                opacity="0.15"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="4540"
+                  to="-40"
+                  dur="22s"
+                  begin="4s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 800 0 L 0 800" stroke="#f97316" strokeWidth="0.6" fill="none" strokeLinecap="round" strokeDasharray="40 4500" opacity="0.15">
-                <animate attributeName="stroke-dashoffset" from="4540" to="-40" dur="19s" begin="7s" repeatCount="indefinite" />
+              <path
+                d="M 800 0 L 0 800"
+                stroke="#f97316"
+                strokeWidth="0.6"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="40 4500"
+                opacity="0.15"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="4540"
+                  to="-40"
+                  dur="19s"
+                  begin="7s"
+                  repeatCount="indefinite"
+                />
               </path>
 
               {/* === Random short lines === */}
-              <path d="M 100 200 L 250 180" stroke="#f97316" strokeWidth="1" fill="none" strokeLinecap="round" strokeDasharray="30 2000" opacity="0.3">
-                <animate attributeName="stroke-dashoffset" from="2030" to="-30" dur="8s" begin="1s" repeatCount="indefinite" />
+              <path
+                d="M 100 200 L 250 180"
+                stroke="#f97316"
+                strokeWidth="1"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="30 2000"
+                opacity="0.3"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="2030"
+                  to="-30"
+                  dur="8s"
+                  begin="1s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 600 100 L 750 130" stroke="#f97316" strokeWidth="0.8" fill="none" strokeLinecap="round" strokeDasharray="25 2000" opacity="0.25">
-                <animate attributeName="stroke-dashoffset" from="2025" to="-25" dur="10s" begin="3s" repeatCount="indefinite" />
+              <path
+                d="M 600 100 L 750 130"
+                stroke="#f97316"
+                strokeWidth="0.8"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="25 2000"
+                opacity="0.25"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="2025"
+                  to="-25"
+                  dur="10s"
+                  begin="3s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 300 400 L 420 380" stroke="#f97316" strokeWidth="0.7" fill="none" strokeLinecap="round" strokeDasharray="20 2000" opacity="0.2">
-                <animate attributeName="stroke-dashoffset" from="2020" to="-20" dur="9s" begin="5s" repeatCount="indefinite" />
+              <path
+                d="M 300 400 L 420 380"
+                stroke="#f97316"
+                strokeWidth="0.7"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="20 2000"
+                opacity="0.2"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="2020"
+                  to="-20"
+                  dur="9s"
+                  begin="5s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 700 500 L 850 520" stroke="#f97316" strokeWidth="0.9" fill="none" strokeLinecap="round" strokeDasharray="35 2000" opacity="0.28">
-                <animate attributeName="stroke-dashoffset" from="2035" to="-35" dur="11s" begin="2s" repeatCount="indefinite" />
+              <path
+                d="M 700 500 L 850 520"
+                stroke="#f97316"
+                strokeWidth="0.9"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="35 2000"
+                opacity="0.28"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="2035"
+                  to="-35"
+                  dur="11s"
+                  begin="2s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 150 650 L 300 630" stroke="#f97316" strokeWidth="0.7" fill="none" strokeLinecap="round" strokeDasharray="22 2000" opacity="0.22">
-                <animate attributeName="stroke-dashoffset" from="2022" to="-22" dur="7s" begin="4s" repeatCount="indefinite" />
+              <path
+                d="M 150 650 L 300 630"
+                stroke="#f97316"
+                strokeWidth="0.7"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="22 2000"
+                opacity="0.22"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="2022"
+                  to="-22"
+                  dur="7s"
+                  begin="4s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 500 700 L 650 720" stroke="#f97316" strokeWidth="0.8" fill="none" strokeLinecap="round" strokeDasharray="28 2000" opacity="0.24">
-                <animate attributeName="stroke-dashoffset" from="2028" to="-28" dur="12s" begin="6s" repeatCount="indefinite" />
+              <path
+                d="M 500 700 L 650 720"
+                stroke="#f97316"
+                strokeWidth="0.8"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="28 2000"
+                opacity="0.24"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="2028"
+                  to="-28"
+                  dur="12s"
+                  begin="6s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 800 300 L 920 280" stroke="#f97316" strokeWidth="0.6" fill="none" strokeLinecap="round" strokeDasharray="18 2000" opacity="0.18">
-                <animate attributeName="stroke-dashoffset" from="2018" to="-18" dur="10s" begin="8s" repeatCount="indefinite" />
+              <path
+                d="M 800 300 L 920 280"
+                stroke="#f97316"
+                strokeWidth="0.6"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="18 2000"
+                opacity="0.18"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="2018"
+                  to="-18"
+                  dur="10s"
+                  begin="8s"
+                  repeatCount="indefinite"
+                />
               </path>
-              <path d="M 400 850 L 550 870" stroke="#f97316" strokeWidth="0.7" fill="none" strokeLinecap="round" strokeDasharray="24 2000" opacity="0.2">
-                <animate attributeName="stroke-dashoffset" from="2024" to="-24" dur="9s" begin="7s" repeatCount="indefinite" />
+              <path
+                d="M 400 850 L 550 870"
+                stroke="#f97316"
+                strokeWidth="0.7"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="24 2000"
+                opacity="0.2"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="2024"
+                  to="-24"
+                  dur="9s"
+                  begin="7s"
+                  repeatCount="indefinite"
+                />
               </path>
             </g>
           </svg>
@@ -200,7 +518,7 @@ export function HomeSection() {
 
         {/* Headline */}
         <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tighter leading-[1.08] mb-6 max-w-4xl relative px-2 sm:px-0">
-          Decorator-Powered, Zero-Config <br className="hidden sm:block" />
+          Decorator-First, Zero-Config <br className="hidden sm:block" />
           <span className="relative inline-block bg-linear-to-r from-[#f97316] via-[#fb923c] to-[#f97316] bg-clip-text text-transparent hover:scale-105 transition-transform duration-300 cursor-default">
             API Framework
             <span className="absolute -bottom-2 left-0 w-full h-1 bg-linear-to-r from-[#f97316]/40 to-[#f97316]/10 rounded-full blur-sm" />
@@ -209,8 +527,8 @@ export function HomeSection() {
         </h1>
 
         <p className="text-sm sm:text-lg text-text-secondary max-w-xl mb-10 sm:mb-12 leading-relaxed px-2 sm:px-0">
-          Zero-config, zero overhead. Built for developers who want
-          decorator-powered architecture without the complexity.
+          Zero-config, no per-request routing overhead. Built for developers who
+          want decorator-first architecture without the complexity.
         </p>
 
         {/* CTAs */}
@@ -238,8 +556,8 @@ export function HomeSection() {
           {[
             {
               val: data?.frameworks?.buntok
-                ? `${Math.round(data.frameworks.buntok["/plaintext"].reqPerSec / 1000)}k+`
-                : "30k+",
+                ? `${Math.round(data.frameworks.buntok["/"].reqPerSec / 1000)}k+`
+                : "37k+",
               label: "req/s on Bun",
             },
             { val: "AOT", label: "Compiled Router" },
@@ -271,8 +589,9 @@ export function HomeSection() {
             </h2>
             <p className="text-text-secondary leading-relaxed mb-6 sm:mb-8 text-base sm:text-lg">
               Write your API the way it should be written - with classes,
-              decorators, and automatic type inference. Buntok compiles
-              everything ahead of time so the runtime has zero overhead.
+              decorators, and automatic type inference. Buntok compiles the
+              router and hot paths ahead of time at boot, so routing adds no
+              per-request overhead.
             </p>
             <ul className="space-y-3 text-xs sm:text-sm text-text-secondary">
               {[
@@ -315,9 +634,8 @@ export function HomeSection() {
                     lineHeight: "1.55",
                     minWidth: "300px",
                   }}
-                >{`import { Controller, Get, Post } from '@buntok/core';
-import { Use, zValidator, ZodCtx, z } from '@buntok/core/middlewares/validator';
-import type { Context } from '@buntok/core';
+                >{`import { Controller, Get, Post, Use, type ZodCtx } from '@buntok/core';
+import { zValidator, z } from '@buntok/core/middlewares/validator';
 
 const UserSchema = z.object({
   name: z.string().min(2),
@@ -354,14 +672,13 @@ export class UserController {
             <span className="w-8 h-px bg-[#f97316]/50" />
           </p>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mb-5">
-            Faster than Hono. <br className="sm:hidden" /> Neck-and-neck with
-            Elysia.
+            Beats Hono. <br className="sm:hidden" /> Trades blows with Elysia.
           </h2>
           <p className="text-text-secondary leading-relaxed mb-10 sm:mb-14 text-base sm:text-lg max-w-2xl mx-auto">
             Buntok wasn&apos;t just built for developer experience - it was
-            built for raw throughput. By compiling your decorators Ahead-of-Time
-            (AOT), Buntok bypasses the heavy runtime routing overhead found in
-            Express and NestJS.
+            built for raw throughput. By compiling the router and request
+            pipeline Ahead-of-Time (AOT) at boot, Buntok skips the heavy runtime
+            routing overhead of Node frameworks like Express and NestJS.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
@@ -369,8 +686,8 @@ export class UserController {
               <Zap className="w-5 h-5 text-[#f97316] mx-auto mb-3" />
               <h3 className="text-2xl font-black text-text-primary mb-1">
                 {data?.frameworks?.buntok
-                  ? `${Math.round(data.frameworks.buntok["/plaintext"].reqPerSec).toLocaleString()}`
-                  : "30k+"}
+                  ? `${Math.round(data.frameworks.buntok["/"].reqPerSec).toLocaleString()}`
+                  : "37k+"}
               </h3>
               <p className="text-xs text-text-secondary">Requests per second</p>
             </div>
@@ -378,8 +695,8 @@ export class UserController {
               <Clock className="w-5 h-5 text-[#27c93f] mx-auto mb-3" />
               <h3 className="text-2xl font-black text-text-primary mb-1">
                 {data?.frameworks?.buntok
-                  ? `< ${(data.frameworks.buntok["/plaintext"].latencyP50 / 1000).toFixed(1)}ms`
-                  : "< 0.1ms"}
+                  ? `< ${(data.frameworks.buntok["/"].latencyP50 / 1000).toFixed(1)}ms`
+                  : "< 3ms"}
               </h3>
               <p className="text-xs text-text-secondary">P50 Latency</p>
             </div>
@@ -394,11 +711,10 @@ export class UserController {
 
           <div className="mt-10 sm:mt-14 text-xs sm:text-sm text-text-secondary px-2 sm:px-0">
             <p>
-              In our independent benchmarks, Buntok consistently outperforms{" "}
-              <strong className="text-text-primary">Hono</strong> and stays
-              highly competitive with{" "}
-              <strong className="text-text-primary">Elysia</strong>, while
-              providing a clean decorator-powered API.
+              In our benchmarks, Buntok consistently outperforms{" "}
+              <strong className="text-text-primary">Hono</strong> and trades
+              blows with <strong className="text-text-primary">Elysia</strong>,
+              while providing a clean decorator-first API.
             </p>
           </div>
         </div>

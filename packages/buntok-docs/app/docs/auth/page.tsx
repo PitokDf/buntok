@@ -93,7 +93,7 @@ AUTH_COOKIE=session`}
 
       <Heading level={3} className="text-xl font-semibold mt-6 mb-2 text-text-primary">Login Flow</Heading>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { JwtService } from "@buntok/core";
 import { setCookie, deleteCookie } from "@buntok/core/helpers";
 
@@ -188,7 +188,7 @@ const response = await fetch("/api/profile", {
         Example: Login Flow
       </Heading>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { JwtService, requireAuth } from "@buntok/core";
 
 const jwt = new JwtService(process.env.JWT_SECRET!);

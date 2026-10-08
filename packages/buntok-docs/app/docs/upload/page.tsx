@@ -696,10 +696,10 @@ app.post("/upload",
         Full Example
       </Heading>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { handleUploads, LocalDiskStorage } from "@buntok/core/upload";
 
-const app = new App();
+const app = new Buntok();
 
 const storage = new LocalDiskStorage("./uploads");
 

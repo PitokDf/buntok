@@ -319,7 +319,7 @@ app.get("/search", zValidator("query", searchSchema), (ctx) => {
         Flexible Return (Elysia-style)
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        Handlers may return primitives/objects directly — the framework
+        Handlers may return primitives/objects directly - the framework
         auto-serializes via <code>toResponse()</code>. Both styles work
         side-by-side:
       </p>
@@ -361,7 +361,7 @@ app.get("/search", zValidator("query", searchSchema), (ctx) => {
                 "application/json",
                 "200",
               ],
-              ["null / undefined / void", "empty body", "—", "204"],
+              ["null / undefined / void", "empty body", "-", "204"],
               [
                 "Blob / ArrayBuffer / Uint8Array / ReadableStream",
                 "new Response(value)",
@@ -405,7 +405,7 @@ app.get("/search", ({ query }) => query.q);                  // ?q=...
 app.get("/profile", ({ store, request }) => store.user);`}
       />
       <Callout type="info">
-        Type <code>HandlerReturn</code> (<code>src/app.ts:112</code>, exported
+        Type <code>HandlerReturn</code> (<code>src/buntok.ts:139</code>, exported
         from <code>@buntok/core</code>) covers all cases.{" "}
         <code>toResponse()</code> and <code>toResponseMaybeAsync()</code> are
         also exported from <code>@buntok/core</code> for custom wrapping.
@@ -458,7 +458,7 @@ app.get("/profile", ({ store, request }) => store.user);`}
               ["ctx.status(code)", "Empty response with status code"],
               [
                 "ctx.htmlStream(generator, options?)",
-                "Streaming HTML via async generator — yields chunks progressively",
+                "Streaming HTML via async generator - yields chunks progressively",
               ],
               ["ctx.sse(handler, options?)", "Server-Sent Events stream"],
             ].map(([method, desc]) => (
@@ -568,8 +568,10 @@ return ctx.redirect("/new-url", 301);`}
         Post-Response Hooks
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        Register hooks that run after the response is sent — useful for logging,
-        metrics, or response transformation:
+        Register hooks that run after the response is finalized (once{" "}
+        <code>ctx.set.headers</code> are merged) - useful for logging, metrics,
+        or response transformation. Return a modified response, or{" "}
+        <code>undefined</code> to keep the original:
       </p>
       <CodeBlock
         code={`app.get("/api", (ctx) => {
@@ -582,6 +584,39 @@ return ctx.redirect("/new-url", 301);`}
   return ctx.json({ data: "hello" });
 });`}
       />
+
+      {/* ──────────────── RESPONSE HEADERS ──────────────── */}
+      <Heading
+        level={3}
+        className="text-xl font-semibold mt-6 mb-2 text-text-primary"
+      >
+        Custom Response Headers (ctx.set)
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Mutate response headers per-request with <code>ctx.set.headers</code>{" "}
+        (typed <code>HTTPHeaders</code>: well-known headers autocomplete,
+        values <code>string | number</code> with numbers stringified, and{" "}
+        <code>&quot;set-cookie&quot;</code> accepts{" "}
+        <code>string | string[]</code> and appends each cookie). The map is
+        merged into the final response <strong>after</strong> built-in headers,
+        so your values win (for example over <code>X-Powered-By</code> and{" "}
+        <code>x-request-id</code>):
+      </p>
+      <CodeBlock
+        code={`app.get("/custom-headers", (ctx) => {
+  ctx.set.headers["x-powered-by"] = "benchmark";
+  ctx.set.headers["x-a"] = 1; // number → "1"
+  ctx.set.headers["set-cookie"] = ["a=1; Path=/", "b=2; Path=/"];
+  return "ok";
+});`}
+      />
+      <Callout type="info">
+        Sucrose detects <code>ctx.set</code> / <code>set.headers</code> /{" "}
+        <code>onAfterResponse</code> usage (including a destructured{" "}
+        <code>set</code> param and the alias{" "}
+        <code>(c) =&gt; c.set.headers</code>) and keeps the full{" "}
+        <code>Context</code> for that route.
+      </Callout>
 
       {/* ──────────────── SERVER-SENT EVENTS ──────────────── */}
       <Heading
@@ -715,7 +750,7 @@ app.get("/users/:id", (ctx) => {
         code={`
 import { z } from "@buntok/core/middlewares/validator";
 
-const app = new App();
+const app = new Buntok();
 
 app.get("/", (ctx) => {
   return ctx.json({

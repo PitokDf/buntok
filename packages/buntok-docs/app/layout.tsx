@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     canonical: "./",
   },
   openGraph: {
-    title: "Buntok Framework - Decorator-Powered Web Framework for Bun",
+    title: "Buntok Framework - Decorator-First Web Framework for Bun",
     description:
       "Fast, type-safe web framework for Bun. Built-in auth, validation, caching, rate limiting. Zero config, zero dependencies.",
     url: baseUrl,
@@ -39,13 +39,13 @@ export const metadata: Metadata = {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Buntok Framework - Decorator-Powered Web Framework for Bun",
+        alt: "Buntok Framework - Decorator-First Web Framework for Bun",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Buntok Framework - Decorator-Powered Web Framework for Bun",
+    title: "Buntok Framework - Decorator-First Web Framework for Bun",
     description:
       "Fast, type-safe web framework for Bun. Built-in auth, validation, caching, rate limiting. Zero config, zero dependencies.",
     images: [
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
         url: "/twitter-image",
         width: 1200,
         height: 630,
-        alt: "Buntok Framework - Decorator-Powered Web Framework for Bun",
+        alt: "Buntok Framework - Decorator-First Web Framework for Bun",
       },
     ],
   },

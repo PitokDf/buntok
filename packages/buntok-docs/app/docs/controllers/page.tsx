@@ -79,7 +79,7 @@ class UserController {
         classes. It accepts a single class/instance or an array:
       </p>
       <CodeBlock
-        code={`const app = new App();
+        code={`const app = new Buntok();
 
 // Register single controller
 app.registerController(UserController);

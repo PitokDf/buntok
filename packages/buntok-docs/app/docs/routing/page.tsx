@@ -35,9 +35,9 @@ export default function RoutingPage() {
         <code>app</code> method:
       </p>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 
 // Classic style
 app.get("/", (ctx) => {
@@ -48,6 +48,10 @@ app.get("/", (ctx) => {
 app.get("/hello", () => "hello world");                    // text/plain
 app.get("/json", () => ({ hello: "buntok" }));             // application/json
 app.get("/users/:id", ({ params }) => params);               // { id: "123" }
+
+// Static value handlers - response baked at registration, served natively
+app.get("/ping", "pong");                                   // text/plain
+app.get("/version", new Response("v2", { status: 200 }));   // Response passthrough
 
 app.post("/users", async (ctx) => {
   const body = await ctx.body();
@@ -64,6 +68,15 @@ app.delete("/users/:id", (ctx) => {
 
 app.listen(1212);`}
       />
+      <p className="my-3 text-text-secondary leading-relaxed">
+        A handler may also be a raw value (string or <code>Response</code>)
+        instead of a function. The response is recorded at registration and
+        served natively from <code>Bun.serve</code> <code>routes</code> - Bun
+        answers the request without running JS per request. Promotion to native
+        routes is skipped (the normal JS path handles it) when global or route
+        middleware, request logging, dynamic paths, WebSocket paths, or
+        non-standard methods are present.
+      </p>
 
       {/* ──────────────── HTTP METHODS ──────────────── */}
       <Heading
@@ -124,6 +137,13 @@ app.listen(1212);`}
         include QUERY.
       </Callout>
 
+      <Callout type="info">
+        <strong>HEAD without a HEAD route:</strong> a <code>HEAD</code> request
+        is answered by the GET route (body stripped, <code>200</code>) when no
+        explicit HEAD route is registered &mdash; same as Elysia, Hono, and
+        Express. Paths without a GET route still return <code>404</code>.
+      </Callout>
+
       <Callout type="warning">
         <strong>Route matching:</strong> Exact static routes are checked before
         dynamic routes, so <code>app.get(&quot;/users/admin&quot;)</code> takes
@@ -161,13 +181,13 @@ app.listen(1212);`}
         <code>ctx.params</code>.
       </p>
       <CodeBlock
-        code={`// Single parameter — classic
+        code={`// Single parameter - classic
 app.get("/users/:id", (ctx) => {
   const { id } = ctx.params;
   return ctx.json({ userId: id });
 });
 
-// Single parameter — Elysia-style
+// Single parameter - Elysia-style
 app.get("/users/:id", ({ params }) => params);               // { id: "123" }
 app.get("/users/:id", ({ params: { id } }) => id);          // "123" text/plain
 

@@ -114,7 +114,7 @@ export default function MiddlewarePage() {
         Runs on <strong>every request</strong>. Register before routes:
       </p>
       <CodeBlock
-        code={`const app = new App();
+        code={`const app = new Buntok();
 
 app.use(logger);
 app.cors({ origin: "*" });  // Use app.cors() for CORS
@@ -377,7 +377,7 @@ import { zValidator } from "@buntok/core/middlewares/validator";`}
         CORS with flexible <code>origin</code> handling (string, array, or function). Handles preflight <code>OPTIONS</code> automatically.
       </p>
       <CodeBlock
-        code={`// Recommended — ensures CORS headers on ALL responses including errors
+        code={`// Recommended - ensures CORS headers on ALL responses including errors
 app.cors({
   origin: ["http://localhost:3000", "https://myapp.com"],
   // origin: (origin) => origin.endsWith(".myapp.com"),
@@ -688,7 +688,7 @@ app.use(rateLimiter({
       <CodeBlock
         code={`import { z } from "@buntok/core/middlewares/validator";
 
-const app = new App();
+const app = new Buntok();
 const secret = process.env.JWT_SECRET!;
 
 // Global middleware

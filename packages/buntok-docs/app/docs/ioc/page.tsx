@@ -30,7 +30,7 @@ export default function IoCPage() {
         Quick Start
       </Heading>
       <CodeBlock
-        code={`import { App, Container, Dependencies, Controller, Get } from "@buntok/core";
+        code={`import { Buntok, Container, Dependencies, Controller, Get } from "@buntok/core";
 import type { Context } from "@buntok/core";
 
 // 1. Define services with @Dependencies
@@ -54,7 +54,7 @@ class UserController {
 }
 
 // 3. One line resolves the entire tree
-const app = new App();
+const app = new Buntok();
 const container = new Container();
 container.scan([UserController]);  // auto-registers all 3
 app.setContainer(container);
@@ -65,7 +65,7 @@ app.listen(1212);`}
       <Callout type="info">
         <code>container.scan()</code> reads tokens from <code>@Dependencies()</code> and registers
         factory providers bottom-up. Controllers without <code>@Dependencies</code> don't need
-        to be in <code>scan()</code> — <code>registerController()</code> creates them directly.
+        to be in <code>scan()</code> - <code>registerController()</code> creates them directly.
       </Callout>
 
       {/* ──────────────── PROVIDERS ──────────────── */}
@@ -162,7 +162,7 @@ const url = container.resolve<string>("DATABASE_URL");`}
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         Declare constructor dependencies explicitly for <code>container.scan()</code>.
-        Works with TC39 decorators — no <code>emitDecoratorMetadata</code> or <code>reflect-metadata</code> needed.
+        Works with TC39 decorators - no <code>emitDecoratorMetadata</code> or <code>reflect-metadata</code> needed.
       </p>
       <CodeBlock
         code={`import { Dependencies } from "@buntok/core";
@@ -346,7 +346,7 @@ container.register(RequestLogger, { useClass: RequestLogger, scope: "transient" 
         Full Example: Controller with DI
       </Heading>
       <CodeBlock
-        code={`import { App, Container, Dependencies, Controller, Get } from "@buntok/core";
+        code={`import { Buntok, Container, Dependencies, Controller, Get } from "@buntok/core";
 import type { Context } from "@buntok/core";
 
 class UserRepository {
@@ -377,7 +377,7 @@ class UserController {
 }
 
 // One line resolves everything
-const app = new App();
+const app = new Buntok();
 const container = new Container();
 container.scan([UserController]);  // auto-registers UserRepository → UserService → UserController
 app.setContainer(container);

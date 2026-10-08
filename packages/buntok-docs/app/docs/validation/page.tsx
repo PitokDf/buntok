@@ -99,12 +99,42 @@ app.get("/users/:id", zValidator("params", idSchema), (ctx) => {
         level={2}
         className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
       >
+        Model Registry
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Register schemas once with <code>app.model</code> and reference them by
+        name anywhere a schema is accepted (<code>zValidator</code>,{" "}
+        <code>zResponse</code>, <code>validate()</code>):
+      </p>
+      <CodeBlock
+        code={`app.model("UserBody", z.object({ name: z.string().min(1) }));
+// or app.model({ UserBody: ..., UserIdParams: ... });
+
+app.post("/users", zValidator("body", "UserBody"), (ctx) =>
+  ctx.json(ctx.valid("body"), 201)
+);
+
+const schema = app.getModel("UserBody"); // throws if not registered`}
+      />
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Names are module-global - use unique names in tests. An unknown name
+        throws at route registration:{" "}
+        <code>
+          Unknown model &quot;X&quot;. Register it with app.model(&quot;X&quot;,
+          schema) before routes use it.
+        </code>
+      </p>
+
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
         ZodCtx
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         <code>ZodCtx</code> is a TypeScript type that gives you{" "}
         <strong>fully typed</strong> access to validated data in decorator-based
-        controllers. It infers types directly from your Zod schemas — no manual
+        controllers. It infers types directly from your Zod schemas - no manual
         type annotations needed.
       </p>
 
@@ -119,7 +149,7 @@ app.get("/users/:id", zValidator("params", idSchema), (ctx) => {
         validated field:
       </p>
       <CodeBlock
-        code={`// Without ZodCtx — manual types, easy to drift out of sync
+        code={`// Without ZodCtx - manual types, easy to drift out of sync
 app.post("/users", zValidator("body", userSchema), (ctx) => {
   const data = ctx.valid<{ name: string; email: string }>("body");
   //                         ^^^ manually duplicated type
@@ -130,7 +160,7 @@ app.post("/users", zValidator("body", userSchema), (ctx) => {
         <strong>inferred automatically</strong> from the schema:
       </p>
       <CodeBlock
-        code={`// With ZodCtx — types auto-inferred from Zod schema
+        code={`// With ZodCtx - types auto-inferred from Zod schema
 const userSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
@@ -138,7 +168,7 @@ const userSchema = z.object({
 
 app.post("/users", zValidator("body", userSchema), (ctx: ZodCtx<{ body: typeof userSchema }>) => {
   const data = ctx.valid("body");
-  //    ^? { name: string; email: string } — auto-inferred!
+  //    ^? { name: string; email: string } - auto-inferred!
 });`}
       />
 
@@ -191,7 +221,7 @@ export class UserController {
   @Use(zValidator("body", createUserSchema))
   async create(ctx: ZodCtx<{ body: typeof createUserSchema }>) {
     const { name, email, password } = ctx.valid("body");
-    //    ^? string   ^? string    ^? string — all auto-typed!
+    //    ^? string   ^? string    ^? string - all auto-typed!
 
     return ctx.json({ success: true, data: { name, email } });
   }
@@ -312,7 +342,7 @@ export class PostController {
         <a href="/docs/context" className="text-accent hover:underline">
           Context
         </a>{" "}
-        — you get all context methods plus typed validation:
+        - you get all context methods plus typed validation:
       </p>
       <div className="my-4 overflow-x-auto">
         <Table>
@@ -477,7 +507,7 @@ app.get("/users/:id", validateParams(idSchema), handler);`}
       <Callout type="warning">
         <code>validateBody</code> and <code>validateParams</code> are
         deprecated. Use <code>zValidator(&quot;body&quot;, schema)</code> and{" "}
-        <code>zValidator(&quot;params&quot;, schema)</code> instead — they
+        <code>zValidator(&quot;params&quot;, schema)</code> instead - they
         provide full type inference via{" "}
         <a
           href="/docs/validation#zodctx"
@@ -553,9 +583,9 @@ app.get("/users/:id", validateParams(idSchema), handler);`}
         handlers and other middleware:
       </p>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 
 app.onError((error, ctx) => {
   // Handle other errors
@@ -586,7 +616,7 @@ app.onError((error, ctx) => {
         match your runtime type.
       </p>
       <CodeBlock
-        code={`// Decorator controller — use ZodCtx for auto-inference
+        code={`// Decorator controller - use ZodCtx for auto-inference
 @Controller("/users")
 export class UserController {
   @Post("/")
@@ -596,7 +626,7 @@ export class UserController {
   }
 }
 
-// Functional handler — both work, ZodCtx is optional
+// Functional handler - both work, ZodCtx is optional
 app.post("/users", zValidator("body", createUserSchema), (ctx) => {
   const data = ctx.valid<UserCreateInput>("body"); // manual type
   return ctx.json(data);

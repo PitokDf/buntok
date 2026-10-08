@@ -20,7 +20,7 @@ export default function CircuitBreakerPage() {
       <p className="my-3 text-text-secondary leading-relaxed">
         Fail-fast resilience pattern for protecting against cascading failures.
         When a downstream service starts failing, the circuit breaker opens and
-        rejects calls immediately — avoiding slow timeouts and resource exhaustion.
+        rejects calls immediately - avoiding slow timeouts and resource exhaustion.
         Based on patterns from Resilience4j, Polly-TS, and Fiber.
       </p>
 
@@ -86,10 +86,10 @@ import { circuitBreaker, getCircuitBreakers } from "@buntok/core/middlewares";`}
         mount globally to protect all routes.
       </p>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { circuitBreaker } from "@buntok/core/middlewares";
 
-const app = new App();
+const app = new Buntok();
 
 // Protect a specific route
 app.post("/pay",
@@ -399,10 +399,10 @@ app.get("/health", (ctx) => {
         Example: Payment Service
       </Heading>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { circuitBreaker } from "@buntok/core/middlewares";
 
-const app = new App();
+const app = new Buntok();
 
 const paymentBreaker = circuitBreaker("payment", {
   failureThreshold: 3,

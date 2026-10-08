@@ -41,7 +41,7 @@ await emitter.emit("user:created", { user: { email: "test@example.com" } });
 
 // One-time listener
 emitter.once("app:ready", () => {
-  console.log("App is ready!");
+  console.log("Buntok is ready!");
 });
 
 // Unsubscribe

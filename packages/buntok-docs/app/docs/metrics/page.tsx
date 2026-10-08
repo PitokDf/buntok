@@ -33,10 +33,10 @@ export default function MetricsPage() {
         Setup
       </Heading>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { Metrics, metricsEndpoint, metricsMiddleware } from "@buntok/core/metrics";
 
-const app = new App();
+const app = new Buntok();
 const metrics = new Metrics();
 
 // Add middleware to record all requests

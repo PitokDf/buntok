@@ -40,7 +40,7 @@ export default function WebSocketPage() {
         Basic Usage
       </Heading>
       <CodeBlock
-        code={`const app = new App();
+        code={`const app = new Buntok();
 
 app.ws("/chat", {
   open: (ws) => {
@@ -171,7 +171,7 @@ app.listen(1212);`}
         wsAuth Helper
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        Use <code>wsAuth</code> for a composable auth pattern — it returns a{" "}
+        Use <code>wsAuth</code> for a composable auth pattern - it returns a{" "}
         <code>WSHandler</code> with the <code>open</code> callback wired up:
       </p>
       <CodeBlock
@@ -515,9 +515,9 @@ api.ws("/ws/notifications", {
         Full Example: Chat Room
       </Heading>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 const rooms = new Map<string, Set<string>>();
 
 app.ws("/chat/:room", {

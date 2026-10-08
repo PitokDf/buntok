@@ -3,7 +3,7 @@ import { CodeBlock } from "@/components/ui/CodeBlock";
 import { Callout } from "@/components/ui/Callout";
 
 export const metadata = {
-  title: "App Configuration",
+  title: "Buntok Configuration",
   description:
     "Validate environment variables and configure built-in features.",
 };
@@ -15,10 +15,10 @@ export default function AppConfigPage() {
         level={1}
         className="text-4xl font-bold mt-8 mb-4 text-text-primary"
       >
-        App Configuration
+        Buntok Configuration
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        Methods on the <code>App</code> class for environment validation,
+        Methods on the <code>Buntok</code> class for environment validation,
         feature toggles, and production settings.
       </p>
 
@@ -40,10 +40,10 @@ export default function AppConfigPage() {
         as needed:
       </p>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { z } from "@buntok/core/middlewares/validator";
 
-export const env = App.validateEnv({
+export const env = Buntok.validateEnv({
   PORT: z.coerce.number().default(1212),
   AUTH_STORE: z.enum(["header", "cookie"]).default("header"),
   AUTH_COOKIE: z.string().default("session"),
@@ -123,7 +123,7 @@ Server boot aborted.`}
         - the <code>X-Powered-By: buntok</code> response header.
       </p>
       <CodeBlock
-        code={`const app = new App();
+        code={`const app = new Buntok();
 
 // Disable X-Powered-By header (common in production)
 app.disable("x-powered-by");
@@ -153,7 +153,7 @@ app.enable("x-powered-by");`}
         port, and incoming requests are load-balanced at the kernel level.
       </p>
       <CodeBlock
-        code={`const app = new App();
+        code={`const app = new Buntok();
 
 app.enableReusePort();
 

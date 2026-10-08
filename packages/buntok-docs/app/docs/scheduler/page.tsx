@@ -212,7 +212,7 @@ class TaskController {
                 BunCronSchedulerDriver
               </td>
               <td className="px-4 py-2">
-                OS-level cron via <code>Bun.cron()</code> — survives restarts
+                OS-level cron via <code>Bun.cron()</code> - survives restarts
               </td>
             </tr>
           </tbody>
@@ -267,10 +267,10 @@ setDefaultSchedulerDriver(new BunCronSchedulerDriver());`}
         Full Example
       </Heading>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { Scheduler } from "@buntok/core/schedule";
 
-const app = new App();
+const app = new Buntok();
 const scheduler = new Scheduler();
 
 // Clean up old sessions every hour

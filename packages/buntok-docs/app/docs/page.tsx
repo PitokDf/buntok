@@ -75,7 +75,7 @@ bunx buntok init`}
 
       <Callout type="info">
         <code>buntok init</code> will automatically set up your project with an
-        optimal configuration. You'll be asked if you want to deploy to Vercel —
+        optimal configuration. You'll be asked if you want to deploy to Vercel -
         if yes, a <code>vercel.json</code> will be created for you.
       </Callout>
 
@@ -86,12 +86,12 @@ bunx buntok init`}
         Generated <code>src/index.ts</code>
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        Clean app setup — same for both Vercel and non-Vercel:
+        Clean app setup - same for both Vercel and non-Vercel:
       </p>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 
-export const app = new App();
+export const app = new Buntok();
 
 app.get("/", (ctx) => {
   return ctx.json({ message: "Hello from Buntok!" });
@@ -126,10 +126,10 @@ app.listen(env.PORT);`}
         Type-safe environment schema with sensible defaults:
       </p>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { z } from "@buntok/core/middlewares/validator";
 
-export const env = App.validateEnv({
+export const env = Buntok.validateEnv({
   PORT: z.coerce.number().default(1212),
   AUTH_STORE: z.enum(["header", "cookie"]).default("header"),
   AUTH_COOKIE: z.string().default("session"),
@@ -166,7 +166,7 @@ export const env = App.validateEnv({
                 <code>src/index.ts</code>
               </td>
               <td className="px-4 py-2">
-                Application entry point — exports the app instance
+                Application entry point - exports the app instance
               </td>
             </tr>
             <tr className="border-b border-border-primary">
@@ -223,7 +223,7 @@ export const env = App.validateEnv({
                 <span className="text-xs text-text-secondary">(optional)</span>
               </td>
               <td className="px-4 py-2">
-                Vercel deployment config — includes{" "}
+                Vercel deployment config - includes{" "}
                 <code>framework: "bun"</code>
               </td>
             </tr>
@@ -232,7 +232,7 @@ export const env = App.validateEnv({
                 <code>server.ts</code>
               </td>
               <td className="px-4 py-2">
-                Local server entry point — calls{" "}
+                Local server entry point - calls{" "}
                 <code>app.listen(env.PORT)</code>
               </td>
             </tr>
@@ -270,10 +270,10 @@ export const env = App.validateEnv({
         startup with sensible defaults:
       </p>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { z } from "@buntok/core/middlewares/validator";
 
-export const env = App.validateEnv({
+export const env = Buntok.validateEnv({
   PORT: z.coerce.number().default(1212),
   AUTH_STORE: z.enum(["header", "cookie"]).default("header"),
   AUTH_COOKIE: z.string().default("session"),
@@ -292,7 +292,7 @@ export const env = App.validateEnv({
         any required variable is missing or invalid:
       </p>
       <CodeBlock
-        code={`export const env = App.validateEnv({
+        code={`export const env = Buntok.validateEnv({
   PORT: z.coerce.number().default(1212),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
@@ -308,7 +308,7 @@ export const env = App.validateEnv({
       <Callout type="info">
         Learn more in{" "}
         <a href="/docs/app-config" className="text-accent hover:underline">
-          App Configuration
+          Buntok Configuration
         </a>
         .
       </Callout>
@@ -327,7 +327,7 @@ export const env = App.validateEnv({
       <CodeBlock
         code={`my-app/
 ├── src/
-│   ├── index.ts              # export const app = new App()
+│   ├── index.ts              # export const app = new Buntok()
 │   ├── env.ts                # Type-safe env schema
 │   └── modules/              # Feature-based modules
 │       └── user/
@@ -336,7 +336,7 @@ export const env = App.validateEnv({
 │           ├── user.repository.ts
 │           ├── user.service.ts
 │           └── user.controller.ts
-├── server.ts                 # app.listen(env.PORT) — local server entry point
+├── server.ts                 # app.listen(env.PORT) - local server entry point
 ├── vercel.json               # Vercel config (framework: "bun")
 ├── .agents/
 │   └── skills/
@@ -673,9 +673,9 @@ export class UserController {
         For simple cases, you can define routes directly on the app:
       </p>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 
-const app = new App();
+const app = new Buntok();
 
 app.get("/", (ctx) => {
   return ctx.json({ message: "Hello, Buntok!" });
@@ -723,7 +723,7 @@ app.post("/users", (ctx) => {
                 <code>buntok build</code>
               </td>
               <td className="px-4 py-2">
-                Build project for production (output to <code>.buntok/</code>)
+                Build project for production (output to <code>buntok/</code>)
               </td>
             </tr>
             <tr className="border-b border-border-primary">
@@ -864,7 +864,7 @@ export class UserController {
   "scripts": {
     "dev": "bun --watch server.ts",
     "build": "bunx buntok build",
-    "start": "bun .buntok/server.js",
+    "start": "bun buntok/server.js",
     "check": "bunx @biomejs/biome check --write .",
     "format": "bunx @biomejs/biome format --write .",
     "lint": "bunx @biomejs/biome lint ."
@@ -1144,7 +1144,7 @@ PORT=3000 bun run dev`}
         </li>
         <li>
           <a href="/docs/app-config" className="text-accent hover:underline">
-            App Configuration
+            Buntok Configuration
           </a>{" "}
           - Environment validation and settings
         </li>

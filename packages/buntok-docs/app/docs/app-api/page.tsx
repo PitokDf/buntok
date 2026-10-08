@@ -3,8 +3,8 @@ import { CodeBlock } from "@/components/ui/CodeBlock";
 import { Callout } from "@/components/ui/Callout";
 
 export const metadata = {
-  title: "App API",
-  description: "Complete reference for the App class and its methods.",
+  title: "Buntok API",
+  description: "Complete reference for the Buntok class and its methods.",
 };
 
 export default function AppApiPage() {
@@ -14,10 +14,10 @@ export default function AppApiPage() {
         level={1}
         className="text-4xl font-bold mt-8 mb-4 text-text-primary"
       >
-        App API
+        Buntok API
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
-        The <code>App</code> class is the core of Buntok. It provides HTTP
+        The <code>Buntok</code> class is the core of Buntok. It provides HTTP
         routing, middleware, dependency injection, and server lifecycle
         management.
       </p>
@@ -29,7 +29,7 @@ export default function AppApiPage() {
       >
         Constructor
       </Heading>
-      <CodeBlock code={`const app = new App();`} />
+      <CodeBlock code={`const app = new Buntok();`} />
 
       {/* ──────────────── HTTP METHODS ──────────────── */}
       <Heading
@@ -285,6 +285,18 @@ admin.get("/dashboard", handler);`}
             </tr>
             <tr>
               <td className="border border-border-primary px-4 py-2 text-text-secondary">
+                <code>decorate(key, value)</code> /{" "}
+                <code>decorate(record)</code>
+              </td>
+              <td className="border border-border-primary px-4 py-2 text-text-secondary">
+                App-level value on <code>ctx.di</code> with a narrowed type -
+                returns <code>Buntok&lt;DI &amp; T&gt;</code> (
+                <code>app.set</code> is the runtime equivalent without
+                narrowing)
+              </td>
+            </tr>
+            <tr>
+              <td className="border border-border-primary px-4 py-2 text-text-secondary">
                 <code>setContainer(container)</code>
               </td>
               <td className="border border-border-primary px-4 py-2 text-text-secondary">
@@ -389,6 +401,9 @@ api.registerController([UserController, PostController]);`}
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         Serve static files with directory-traversal protection and ETag caching.
+        Pass <code>{'{ native: true }'}</code> to serve via Bun's built-in
+        static router instead (no Cache-Control, empty-body 404 &mdash; see
+        Static Files).
       </p>
       <CodeBlock
         code={`app.static("/public", "./public", {
@@ -429,11 +444,11 @@ api.registerController([UserController, PostController]);`}
         clear error on failure.
       </p>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { z } from "@buntok/core/middlewares/validator";
 
 // Static method
-const env = App.validateEnv({
+const env = Buntok.validateEnv({
   PORT: z.coerce.number().default(1212),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
@@ -442,6 +457,38 @@ const env = App.validateEnv({
 // Instance method (backward compatible)
 const env = app.validateEnv({ ... });`}
       />
+
+      {/* ──────────────── MODEL REGISTRY ──────────────── */}
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        model()
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Register validation schemas in a global registry, then reference them by
+        name in <code>zValidator</code>, <code>zResponse</code>,{" "}
+        <code>validate()</code> and friends - define once, reuse everywhere.
+      </p>
+      <CodeBlock
+        code={`app.model("UserBody", z.object({ name: z.string().min(1) }));
+// or register several at once
+app.model({ UserIdParams: z.object({ id: z.string().uuid() }) });
+
+app.post("/users", zValidator("body", "UserBody"), (ctx) =>
+  ctx.json(ctx.valid("body"), 201)
+);
+
+const schema = app.getModel("UserBody"); // throws if not registered`}
+      />
+      <Callout type="info">
+        Names are module-global - use unique names in tests. Unknown names
+        throw at route registration:{" "}
+        <code>
+          Unknown model &quot;X&quot;. Register it with app.model(&quot;X&quot;,
+          schema) before routes use it.
+        </code>
+      </Callout>
 
       {/* ──────────────── SERVER LIFECYCLE ──────────────── */}
       <Heading
@@ -462,6 +509,50 @@ const env = app.validateEnv({ ... });`}
 // Uses process.env.PORT or 1212 by default
 app.listen();`}
       />
+
+      {/* ──────────────── LIFECYCLE HOOKS ──────────────── */}
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        Lifecycle Hooks
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Global per-request hooks. Order per request:{" "}
+        <strong>
+          onRequest &rarr; use() &rarr; derive &rarr; onBeforeHandle &rarr;
+          handler &rarr; onAfterHandle &rarr; middleware tail
+        </strong>
+        . Hooks registered after <code>listen()</code> take effect immediately
+        (the AOT pipeline is recompiled).
+      </p>
+      <CodeBlock
+        code={`app.onRequest((ctx) => {
+  if (ctx.request.headers.get("x-key") !== "s3cret")
+    return new Response("forbidden", { status: 403 }); // skips middleware + handler
+});
+
+app.derive(async () => ({ tenant: await resolveTenant() })); // → ctx.store.tenant
+
+app.onBeforeHandle((ctx) => {
+  if (!ctx.store.tenant) return new Response("no tenant", { status: 400 }); // skips handler
+});
+
+app.onAfterHandle((_ctx, res) => {
+  res.headers.set("x-powered-by", "benchmark"); // or return a new Response to replace
+});
+
+app.onStart(() => console.log("ready")); // fires when listen() succeeds
+app.onStop(() => console.log("bye"));    // fires during close()`}
+      />
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Returning a <code>Response</code> from <code>onRequest</code> /{" "}
+        <code>onBeforeHandle</code> short-circuits everything after it;
+        returning one from <code>onAfterHandle</code> replaces the response.{" "}
+        <code>derive</code> merges into <code>ctx.store</code>. Registering any
+        pipeline hook disables native static-route promotion - all requests
+        flow through the composed pipeline.
+      </p>
 
       {/* ──────────────── TESTING ──────────────── */}
       <Heading
@@ -632,7 +723,7 @@ export default { fetch: (req) => app.fetch(req) };`}
         Production-ready shutdown with resource cleanup, in-flight request drain, and signal handling.
       </p>
       <CodeBlock
-        code={`const app = new App({
+        code={`const app = new Buntok({
   handleSignals: true,        // auto-register SIGINT/SIGTERM (default: true)
   shutdownTimeout: 30_000,    // max ms to wait for resource cleanup
 });
@@ -684,7 +775,7 @@ await app.shutdown();                  // alias for app.close()`}
                 <code>app.close(options?)</code>
               </td>
               <td className="border border-border-primary px-4 py-2 text-text-secondary">
-                Stop accepting traffic, flush resources — <code>{`{ timeout?, force? }`}</code>
+                Stop accepting traffic, flush resources - <code>{`{ timeout?, force? }`}</code>
               </td>
             </tr>
             <tr>
@@ -692,7 +783,7 @@ await app.shutdown();                  // alias for app.close()`}
                 <code>app.registerResource(resource)</code>
               </td>
               <td className="border border-border-primary px-4 py-2 text-text-secondary">
-                Register a resource for cleanup — <code>{`{ name?, close?(), dispose?() }`}</code>
+                Register a resource for cleanup - <code>{`{ name?, close?(), dispose?() }`}</code>
               </td>
             </tr>
           </tbody>
@@ -748,14 +839,14 @@ app.setTrustedProxy();`}
         Full Example
       </Heading>
       <CodeBlock
-        code={`import { App } from "@buntok/core";
+        code={`import { Buntok } from "@buntok/core";
 import { z } from "@buntok/core/middlewares/validator";
 
-const env = App.validateEnv({
+const env = Buntok.validateEnv({
   PORT: z.coerce.number().default(1212),
 });
 
-const app = new App();
+const app = new Buntok();
 
 // Global middleware
 app.use(async (ctx, next) => {
