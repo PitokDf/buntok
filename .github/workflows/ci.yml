@@ -81,11 +81,11 @@ jobs:
         working-directory: packages/buntok-core
       - name: Validate ESM import
         run: |
-          echo 'import { App } from "@buntok/core"; console.log(typeof App);' > /tmp/test-esm.ts
-          cd /tmp && bun init -y && bun add ../../../packages/buntok-core && bun run test-esm.ts
+          echo 'import { Buntok } from "@buntok/core"; console.log(typeof Buntok);' > /tmp/test-esm.ts
+          cd /tmp && rm -rf package.json bun.lock node_modules && bun init -y && bun add "$GITHUB_WORKSPACE/packages/buntok-core" && bun run test-esm.ts
       - name: Validate CJS require
         run: |
-          echo 'const { App } = require("@buntok/core"); console.log(typeof App);' > /tmp/test-cjs.cjs
+          echo 'const { Buntok } = require("@buntok/core"); console.log(typeof Buntok);' > /tmp/test-cjs.cjs
           cd /tmp && node test-cjs.cjs
       - name: Validate CLI entry
         run: node packages/buntok-core/dist/cli/index.js --help || true
