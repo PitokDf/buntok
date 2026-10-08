@@ -22,8 +22,8 @@ Throughput benchmark for **Buntok** vs **Express**, **Fastify**, **Hono**, and *
   (spec verification, memory sampling, time series), rounds 1..N-1 are
   measured; the **best measured req/s per route wins** (best-of). Framework
   order is rotated every round so no framework always runs hot or cold.
-- **Runtimes**: Express and Fastify run on **node**; Hono, Elysia, and
-  Buntok run on **bun**.
+- **Runtimes**: every framework (Express, Fastify, Hono, Elysia, Buntok)
+  runs on **bun**.
 - **Build**: every app is minified with `Bun.build` and the built artifact
   is what gets measured (bundle size column).
 - **Verification**: the four-route spec (plus dynamic-query edge cases) is

@@ -18,7 +18,7 @@ import { extraRoutes } from "./extra-routes.mjs";
  *     or cold.
  *   - bombardier --fasthttp, 10s per route, 500 connections (video: 10).
  *   - Server runs the minified Bun.build artifact (bundle size column).
- *   - express/fastify run on node, hono/elysia/buntok run on bun.
+ *   - every framework runs on bun.
  *   - On Linux, server and load generator are pinned to disjoint core sets.
  */
 
@@ -30,8 +30,8 @@ type Runtime = "bun" | "node";
 type RouteSpec = { key: string; connections?: number; args: string[] };
 
 const frameworks: { name: string; runtime: Runtime }[] = [
-	{ name: "express", runtime: "node" },
-	{ name: "fastify", runtime: "node" },
+	{ name: "express", runtime: "bun" },
+	{ name: "fastify", runtime: "bun" },
 	{ name: "hono", runtime: "bun" },
 	{ name: "elysia", runtime: "bun" },
 	{ name: "buntok", runtime: "bun" },
@@ -119,11 +119,8 @@ function spawnServer(fw: {
 	name: string;
 	runtime: Runtime;
 }): ServerHandle {
-	const file =
-		fw.runtime === "node"
-			? `benchmarks/dist/${fw.name}/index.cjs`
-			: `benchmarks/dist/${fw.name}/index.js`;
-	const exe = fw.runtime === "node" ? "node" : "bun";
+	const file = `benchmarks/dist/${fw.name}/index.js`;
+	const exe = "bun";
 	const { server: serverCores } = coreSets();
 	const args = pinning
 		? ["-c", serverCores, exe, file]
@@ -254,20 +251,19 @@ async function memoryUsage(pid: number): Promise<number | null> {
 }
 
 async function buildOne(fw: { name: string; runtime: Runtime }) {
-	const isNode = fw.runtime === "node";
 	const result = await Bun.build({
 		entrypoints: [`benchmarks/${fw.name}.ts`],
 		outdir: `benchmarks/dist/${fw.name}`,
-		naming: isNode ? "index.cjs" : "index.js",
+		naming: "index.js",
 		target: fw.runtime,
-		format: isNode ? "cjs" : "esm",
+		format: "esm",
 		minify: true,
 	});
 	if (!result.success) {
 		result.logs.forEach((log) => console.error(log));
 		throw new Error(`Build failed for ${fw.name}`);
 	}
-	const out = `benchmarks/dist/${fw.name}/${isNode ? "index.cjs" : "index.js"}`;
+	const out = `benchmarks/dist/${fw.name}/index.js`;
 	const { size } = await fs.stat(out);
 	return size;
 }
