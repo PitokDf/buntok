@@ -347,13 +347,13 @@ function BenchmarkPage({ data }: { data: BenchmarkData }) {
             ) : null}
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-bold tracking-tight mb-3">
+          {/* <h1 className="text-3xl sm:text-5xl font-bold tracking-tight mb-3">
             Four routes. 500 connections.
             <br />
             <span className="text-text-secondary">
               Best of three rounds, no errors.
             </span>
-          </h1>
+          </h1> */}
 
           <p className="text-text-secondary text-sm max-w-3xl">
             Every server implements the exact same spec - <code>GET /</code>{" "}
