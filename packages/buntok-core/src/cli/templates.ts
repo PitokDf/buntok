@@ -1,8 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-const __dirname = import.meta.dir;
-
 export const BIOME_CONFIG = {
 	vcs: {
 		enabled: true,

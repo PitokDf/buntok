@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const __dirname = import.meta.dir;
 let _version = "0.0.0-dev";
 try {
 	let pkgPath = join(__dirname, "..", "package.json");
