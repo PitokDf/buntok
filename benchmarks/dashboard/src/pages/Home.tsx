@@ -83,7 +83,7 @@ export function HomePage({ setActiveTab, isDark, data }: { setActiveTab: (t: any
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border-primary bg-bg-secondary/50 backdrop-blur-sm text-xs text-text-secondary mb-8 hover:border-[#f97316]/50 hover:bg-[#f97316]/5 transition-all cursor-default group">
           <span className="w-1.5 h-1.5 rounded-full bg-[#f97316] animate-pulse group-hover:scale-125 transition-transform" />
-          <span>Buntok v0.2.0 is released —</span>
+          <span>Buntok v0.2.0 is released -</span>
           <span className="text-text-primary font-medium group-hover:text-[#f97316] transition-colors">Read the changelog →</span>
         </div>
 
@@ -150,7 +150,7 @@ export function HomePage({ setActiveTab, isDark, data }: { setActiveTab: (t: any
             </p>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-5">Clean. Fast. Typed.</h2>
             <p className="text-text-secondary leading-relaxed mb-8 text-lg">
-              Write your API the way it should be written — with classes, decorators,
+              Write your API the way it should be written - with classes, decorators,
               and automatic type inference. Buntok compiles everything ahead of time
               so the runtime has zero overhead.
             </p>
@@ -158,7 +158,7 @@ export function HomePage({ setActiveTab, isDark, data }: { setActiveTab: (t: any
               {[
                 'Decorator-based Controllers with @Get, @Post, etc.',
                 'RouteContext<Path, Body> for 100% type-safe handlers',
-                'AOT router compilation — no dynamic lookup at runtime',
+                'AOT router compilation - no dynamic lookup at runtime',
                 'Built-in zValidator, CORS, Rate Limiter, SSE, WebSockets',
               ].map((item) => (
                 <li 
@@ -224,7 +224,7 @@ export class UserController {
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-5">Faster than Hono. <br className="sm:hidden" /> Neck-and-neck with Elysia.</h2>
           <p className="text-text-secondary leading-relaxed mb-12 text-lg max-w-2xl mx-auto">
-            Buntok wasn't just built for developer experience—it was built for raw throughput. 
+            Buntok wasn't just built for developer experience-it was built for raw throughput. 
             By compiling your decorators Ahead-of-Time (AOT), Buntok bypasses the heavy runtime routing overhead found in Express and NestJS.
           </p>
           

@@ -2,7 +2,7 @@
 
 import { JSTrie } from "./src/ffi/fallback";
 
-// ─── Load Native Trie (old implementation — for comparison only) ──────────────
+// ─── Load Native Trie (old implementation - for comparison only) ──────────────
 
 let nativeLib: any = null;
 let ffi: any = null;

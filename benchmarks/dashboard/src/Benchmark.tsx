@@ -204,13 +204,13 @@ export function BenchmarkSection({ data, isDark }: { data: any; isDark: boolean 
           </div>
           <p className="text-sm text-text-secondary leading-relaxed">
             Buntok is a decorator-first, high-performance web framework designed for Bun. It bridges elegant
-            NestJS-like OOP developer experience with extreme raw throughput — no compromise.
+            NestJS-like OOP developer experience with extreme raw throughput - no compromise.
           </p>
         </div>
         <div className="border border-border-primary rounded-lg p-5 bg-bg-secondary">
           <h2 className="font-semibold text-text-primary mb-3">Performance Context</h2>
           <p className="text-sm text-text-secondary leading-relaxed">
-            Buntok uses an AOT-compiled switch-case router with static context allocation — the same
+            Buntok uses an AOT-compiled switch-case router with static context allocation - the same
             approach as Elysia but wrapped in a clean class-based API.
             This places Buntok <strong className="text-text-primary">ahead of Hono and Fastify</strong> while remaining a formidable challenger to Elysia.
           </p>
@@ -313,7 +313,7 @@ export function BenchmarkSection({ data, isDark }: { data: any; isDark: boolean 
         <div className="border border-border-primary rounded-lg p-5 bg-bg-secondary">
           <div className="flex items-center gap-2 mb-4">
             <Activity className="w-4 h-4 text-[#f97316]" />
-            <h2 className="font-semibold text-text-primary">Throughput Over Time — /plaintext</h2>
+            <h2 className="font-semibold text-text-primary">Throughput Over Time - /plaintext</h2>
           </div>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">

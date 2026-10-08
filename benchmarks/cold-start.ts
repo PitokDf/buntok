@@ -1,4 +1,4 @@
-// Cold start benchmark — measures time from process start to first request served
+// Cold start benchmark - measures time from process start to first request served
 import { performance } from "node:perf_hooks";
 
 const frameworks = [

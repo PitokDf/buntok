@@ -139,7 +139,7 @@ export function DocsPage({ isDark }: { isDark: boolean }) {
         <div className="pb-6 border-b border-border-primary">
           <h1 className="text-3xl font-bold tracking-tight mb-2">Documentation</h1>
           <p className="text-text-secondary">
-            Complete reference for Buntok — the decorator-first Bun framework.
+            Complete reference for Buntok - the decorator-first Bun framework.
           </p>
         </div>
 
@@ -181,9 +181,9 @@ bun run dev`}</CodeBlock>
 
         <DocSection id="initialization" title="Server Initialization">
           <p className="text-text-secondary leading-relaxed mb-4">Buntok listens on port <code>1212</code> by default or reads from <code>PORT</code> env.</p>
-          <CodeBlock language="typescript" isDark={isDark}>{`import { App } from "buntok";
+          <CodeBlock language="typescript" isDark={isDark}>{`import { Buntok } from "buntok";
 
-const app = new App();
+const app = new Buntok();
 
 app.listen(1212, () => {
   console.log("🚀 Server running on http://localhost:1212");
@@ -193,11 +193,11 @@ app.listen(1212, () => {
         <DocSection id="controllers" title="Controllers & ZodCtx">
           <p className="text-text-secondary leading-relaxed mb-4">
             Controllers group route handlers using ES classes and decorators. At startup, Buntok's AOT compiler
-            resolves all decorators into an optimized switch-case router — zero per-request overhead.
+            resolves all decorators into an optimized switch-case router - zero per-request overhead.
           </p>
           <h3 className="font-semibold text-sm uppercase tracking-widest text-text-secondary mt-6 mb-3">Strongly-Typed Decorators with ZodCtx</h3>
           <p className="text-text-secondary leading-relaxed mb-4">
-            TypeScript decorators cannot mutate method parameter types at the type level. <code>ZodCtx</code> solves this DX issue — it gives you automatic type inference for path params, request body, and query validations by simply passing your Zod schemas into an object!
+            TypeScript decorators cannot mutate method parameter types at the type level. <code>ZodCtx</code> solves this DX issue - it gives you automatic type inference for path params, request body, and query validations by simply passing your Zod schemas into an object!
           </p>
           <CodeBlock language="typescript" isDark={isDark}>{`import { Controller, Get, Post, ZodCtx, Use, zValidator } from 'buntok';
 import { z } from 'zod';
@@ -232,10 +232,10 @@ export class UserController {
   }
 }`}</CodeBlock>
           <h3 className="font-semibold text-sm uppercase tracking-widest text-text-secondary mt-6 mb-3">Registering Controllers</h3>
-          <CodeBlock language="typescript" isDark={isDark}>{`import { App } from 'buntok';
+          <CodeBlock language="typescript" isDark={isDark}>{`import { Buntok } from 'buntok';
 import { UserController } from './controllers/user';
 
-const app = new App();
+const app = new Buntok();
 app.registerController(new UserController());
 app.listen(1212);`}</CodeBlock>
         </DocSection>
@@ -254,7 +254,7 @@ admin.get("/dashboard", dashboardHandler); // GET /api/admin/dashboard`}</CodeBl
         </DocSection>
 
         <DocSection id="context" title="The Context Object">
-          <p className="text-text-secondary leading-relaxed mb-4">Every handler receives a lightweight <code>Context</code> — a zero-overhead wrapper around the native Bun <code>Request</code>.</p>
+          <p className="text-text-secondary leading-relaxed mb-4">Every handler receives a lightweight <code>Context</code> - a zero-overhead wrapper around the native Bun <code>Request</code>.</p>
 
           <h3 className="font-semibold text-sm uppercase tracking-widest text-text-secondary mt-6 mb-3">ctx.request & ctx.params</h3>
           <CodeBlock language="typescript" isDark={isDark}>{`app.get("/users/:id", (ctx) => {
@@ -263,7 +263,7 @@ admin.get("/dashboard", dashboardHandler); // GET /api/admin/dashboard`}</CodeBl
   return ctx.json({ id, ua });
 });`}</CodeBlock>
 
-          <h3 className="font-semibold text-sm uppercase tracking-widest text-text-secondary mt-6 mb-3">ctx.store — inter-middleware state</h3>
+          <h3 className="font-semibold text-sm uppercase tracking-widest text-text-secondary mt-6 mb-3">ctx.store - inter-middleware state</h3>
           <CodeBlock language="typescript" isDark={isDark}>{`app.use(async (ctx, next) => {
   ctx.store.user = await db.getUserFromToken(ctx.getCookie("token"));
   return next();
@@ -281,7 +281,7 @@ return ctx.status(204);                              // No content`}</CodeBlock>
 
         <DocSection id="body-query" title="Body & Query Parsing">
           <h3 className="font-semibold text-sm uppercase tracking-widest text-text-secondary mt-0 mb-3">Query Params</h3>
-          <p className="text-text-secondary leading-relaxed mb-4">Parsed automatically into <code>ctx.query</code>. All values are strings — convert manually if needed.</p>
+          <p className="text-text-secondary leading-relaxed mb-4">Parsed automatically into <code>ctx.query</code>. All values are strings - convert manually if needed.</p>
           <CodeBlock language="typescript" isDark={isDark}>{`// GET /search?q=buntok&limit=10
 app.get('/search', (ctx) => {
   const { q, limit } = ctx.query;
@@ -306,7 +306,7 @@ async create(ctx: RouteContext<"/", { name: string; email: string }>) {
   logger: Logger;
 };
 
-const app = new App<Container>();
+const app = new Buntok<Container>();
 app.set("db", new Database());
 app.set("logger", new Logger());
 
@@ -318,8 +318,8 @@ app.get("/users", async (ctx) => {
 });`}</CodeBlock>
 
           <h3 className="font-semibold text-sm uppercase tracking-widest text-text-secondary mt-6 mb-3">Approach 2: IoC Container (Recommended)</h3>
-          <p className="text-text-secondary leading-relaxed mb-4">Full decorator-based DI inspired by NestJS. Services are resolved at boot time — zero per-request overhead.</p>
-          <CodeBlock language="typescript" isDark={isDark}>{`import { App, Container, Injectable, Inject, Controller, Get } from "buntok";
+          <p className="text-text-secondary leading-relaxed mb-4">Full decorator-based DI inspired by NestJS. Services are resolved at boot time - zero per-request overhead.</p>
+          <CodeBlock language="typescript" isDark={isDark}>{`import { Buntok, Container, Injectable, Inject, Controller, Get } from "buntok";
 
 @Injectable()
 class UserRepository {
@@ -348,7 +348,7 @@ container.registerClass(UserRepository);
 container.registerClass(UserService);
 container.registerClass(UserController);
 
-const app = new App();
+const app = new Buntok();
 app.setContainer(container);
 app.registerController(UserController);
 app.listen(3000);`}</CodeBlock>
@@ -365,7 +365,7 @@ container.register("factory", { useFactory: (c) => new Logger(c.get("config")) }
   const start = performance.now();
   const response = await next();
   const ms = (performance.now() - start).toFixed(2);
-  console.log(\`[\${ctx.req.method}] \${ctx.req.url} — \${ms}ms\`);
+  console.log(\`[\${ctx.req.method}] \${ctx.req.url} - \${ms}ms\`);
   return response;
 });`}</CodeBlock>
         </DocSection>
@@ -390,7 +390,7 @@ container.register("factory", { useFactory: (c) => new Logger(c.get("config")) }
             ))}
           </div>
 
-          <h3 className="font-semibold text-sm uppercase tracking-widest text-text-secondary mt-6 mb-3">Validator — Functional vs Decorator</h3>
+          <h3 className="font-semibold text-sm uppercase tracking-widest text-text-secondary mt-6 mb-3">Validator - Functional vs Decorator</h3>
           <p className="text-text-secondary leading-relaxed mb-4"><code>zValidator</code> works the same way in both routing styles.</p>
           <CodeBlock language="typescript" isDark={isDark}>{`import { zValidator, Controller, Post, Use, RouteContext } from "buntok";
 import { z } from "zod";
@@ -449,7 +449,7 @@ app.use(requestId()); // attaches x-request-id header`}</CodeBlock>
         </DocSection>
 
         <DocSection id="websockets" title="WebSockets">
-          <p className="text-text-secondary leading-relaxed mb-4">Buntok exposes Bun's native WebSocket server — RFC 6455, no wrappers, maximum throughput.</p>
+          <p className="text-text-secondary leading-relaxed mb-4">Buntok exposes Bun's native WebSocket server - RFC 6455, no wrappers, maximum throughput.</p>
           <CodeBlock language="typescript" isDark={isDark}>{`app.ws("/ws", {
   open: (ws) => {
     ws.subscribe(\`room:\${ws.data.roomId}\`);
@@ -490,7 +490,7 @@ app.get("/events/live", (ctx) => {
         <DocSection id="advanced-methods" title="QUERY Method (RFC 10008)">
           <p className="text-text-secondary leading-relaxed mb-4">
             Need complex search filters but don't want to abuse <code>POST</code> for read-only operations?
-            Buntok natively supports the upcoming <strong>QUERY</strong> HTTP method — idempotent, cacheable,
+            Buntok natively supports the upcoming <strong>QUERY</strong> HTTP method - idempotent, cacheable,
             and accepts a JSON body.
           </p>
           <CodeBlock language="typescript" isDark={isDark}>{`app.query("/orders", async (ctx) => {
@@ -514,12 +514,12 @@ app.static("/assets", "./public");
 // Custom favicon
 app.icon("./assets/favicon.ico");
 
-// SPA catch-all — serve index.html for all unmatched routes
+// SPA catch-all - serve index.html for all unmatched routes
 app.get("*", () => new Response(Bun.file("./public/index.html")));`}</CodeBlock>
         </DocSection>
 
         <DocSection id="cookies" title="Cookie Helpers">
-          <p className="text-text-secondary leading-relaxed mb-4">First-class cookie support — read, set, and delete without external packages.</p>
+          <p className="text-text-secondary leading-relaxed mb-4">First-class cookie support - read, set, and delete without external packages.</p>
           <CodeBlock language="typescript" isDark={isDark}>{`import { setCookie, deleteCookie } from "buntok/helpers/cookie";
 
 // Set a secure, httpOnly cookie on login
@@ -630,7 +630,7 @@ app.post("/avatar", uploader({ storage: new CloudinaryStorage() }), (ctx) => {
 
         <DocSection id="enterprise" title="Enterprise Features">
           <p className="text-text-secondary leading-relaxed mb-4">
-            Caching, background queues, and cron jobs — all built around a swappable <strong>Driver Pattern</strong>.
+            Caching, background queues, and cron jobs - all built around a swappable <strong>Driver Pattern</strong>.
             Use the in-memory drivers locally, swap to Redis for production with a single line change.
           </p>
 
@@ -670,10 +670,10 @@ await emailQueue.add(
 
           <h3 className="font-semibold text-sm uppercase tracking-widest text-[#f97316] mt-6 mb-3">OOP + DI + Cron Integration</h3>
           <p className="text-text-secondary leading-relaxed mb-4">
-            The full power of Buntok — inject Queue and Cache into a Controller via DI,
+            The full power of Buntok - inject Queue and Cache into a Controller via DI,
             and declare background jobs with <code>@CronJob</code> right inside the class. <code>this</code> context is safely bound!
           </p>
-          <CodeBlock language="typescript" isDark={isDark}>{`import { App, Controller, Post, RouteContext, CronJob } from "buntok";
+          <CodeBlock language="typescript" isDark={isDark}>{`import { Buntok, Controller, Post, RouteContext, CronJob } from "buntok";
 import { cache, emailQueue } from "./infrastructure";
 
 type Container = {
@@ -699,7 +699,7 @@ export class NotificationController {
   }
 }
 
-const app = new App<Container>();
+const app = new Buntok<Container>();
 app.set("cache", cache);
 app.set("emailQueue", emailQueue);
 app.registerController(new NotificationController());
@@ -788,9 +788,9 @@ protectedApi.get("/stats", (ctx) => ctx.json({ data: "Top Secret" }));`}</CodeBl
             By validating your environment variables immediately at boot time, you guarantee that your application will <em>never</em> start in a broken state. It also provides 100% Type-Safety across your entire codebase, meaning no more <code>process.env.FOO as string</code> hacks.
           </p>
           <CodeBlock language="typescript" isDark={isDark}>{`import { z } from "zod";
-import { App } from "buntok";
+import { Buntok } from "buntok";
 
-const app = new App();
+const app = new Buntok();
 
 // 1. Define your strict schema
 export const env = app.validateEnv({
@@ -821,7 +821,7 @@ app.listen(env.PORT);`}</CodeBlock>
             Buntok apps expose a native <code>app.request()</code> method. This method takes a standard Web <code>Request</code> and routes it directly through Buntok's internal memory pipeline. <strong>No ports are opened, and no network sockets are used.</strong> This makes your unit tests and integration tests unbelievably fast and completely isolated.
           </p>
           <CodeBlock language="typescript" isDark={isDark}>{`import { describe, it, expect } from "bun:test";
-import { app } from "../src/app"; // Import your configured Buntok App
+import { app } from "../src/app"; // Import your configured Buntok app
 
 describe("Authentication API", () => {
   it("should reject invalid login attempts", async () => {
@@ -906,7 +906,7 @@ await smtpMailer.send({
 
         <DocSection id="devtools" title="Buntok Telescope (DevTools)">
           <p className="text-text-secondary leading-relaxed mb-4">
-            Debugging backend applications usually involves staring at a chaotic terminal window trying to decipher JSON strings. To solve this, Buntok ships with an integrated Developer Tools GUI—affectionately known as <strong>Telescope</strong>.
+            Debugging backend applications usually involves staring at a chaotic terminal window trying to decipher JSON strings. To solve this, Buntok ships with an integrated Developer Tools GUI-affectionately known as <strong>Telescope</strong>.
           </p>
           <p className="text-text-secondary leading-relaxed mb-4">
             When enabled, Buntok intercepts all incoming HTTP requests, API Route maps, and even terminal <code>console.log()</code> events, streaming them via WebSockets directly to a beautiful, real-time web dashboard running alongside your app.
@@ -916,9 +916,9 @@ await smtpMailer.send({
           <p className="text-text-secondary leading-relaxed mb-4">
             Simply call <code>app.enableDevTools()</code> before starting your server. Ensure this is only enabled in development environments to prevent performance degradation and memory leaks in production.
           </p>
-          <CodeBlock language="typescript" isDark={isDark}>{`import { App } from "buntok";
+          <CodeBlock language="typescript" isDark={isDark}>{`import { Buntok } from "buntok";
 
-const app = new App();
+const app = new Buntok();
 
 // Enable the real-time DevTools UI
 if (process.env.NODE_ENV !== "production") {
@@ -1024,7 +1024,7 @@ app.post("/api/chat", async (ctx) => {
         <DocSection id="cli" title="Code Generation (CLI)">
           <p className="text-text-secondary leading-relaxed mb-4">
             The Buntok CLI generates a full layered architecture (Controller → Service → Repository → Drizzle Schema).
-            By default all layers are wired together, but each flag makes the CLI generate only what you need — no forced coupling.
+            By default all layers are wired together, but each flag makes the CLI generate only what you need - no forced coupling.
           </p>
           <CodeBlock language="bash" isDark={isDark}>{`# 1. All layers (Controller + Service + Repo + Schema)
 bunx buntok create user
@@ -1046,8 +1046,8 @@ bunx buntok create audit --repo --schema`}</CodeBlock>
           </p>
           <CodeBlock language="bash" isDark={isDark}>{`# Scan routes & output swagger.json + docs.html to /public
 bunx buntok make:docs`}</CodeBlock>
-          <CodeBlock language="typescript" isDark={isDark}>{`// src/index.ts — export is required for the CLI to scan it
-export const app = new App();
+          <CodeBlock language="typescript" isDark={isDark}>{`// src/index.ts - export is required for the CLI to scan it
+export const app = new Buntok();
 app.static("/", "./public"); // serve the generated docs
 app.listen(1212);
 // → visit http://localhost:1212/docs.html`}</CodeBlock>
@@ -1055,9 +1055,9 @@ app.listen(1212);
 
         <DocSection id="examples" title="Full Example: CRUD API">
           <p className="text-text-secondary leading-relaxed mb-4">A complete RESTful CRUD API in a single file.</p>
-          <CodeBlock language="typescript" isDark={isDark}>{`import { App } from "buntok";
+          <CodeBlock language="typescript" isDark={isDark}>{`import { Buntok } from "buntok";
 
-const app = new App();
+const app = new Buntok();
 const users: Array<{ id: string; name: string; email: string }> = [];
 
 app.get("/users",       (ctx) => ctx.json({ data: users }));
