@@ -204,7 +204,7 @@ app.listen(1212);`}
       </p>
       <CodeBlock
         language="bash"
-        code={`Buntok v2.2.4 ready in 5ms
+        code={`Buntok v3.0.0 ready in 5ms
 
 Environment:  development
 Listening on: http://localhost:1212

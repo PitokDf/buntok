@@ -5,6 +5,101 @@ All notable changes to `@buntok/core` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-11-12
+
+A security and correctness pass over routing, proxying, uploads, cookies,
+compression, CORS, and payments. Several defaults changed to safer values, so
+this is a **major** release. See the upgrade guide in the docs
+(`/docs/upgrading`) for migration steps.
+
+### Breaking
+
+- **`encrypt()` no longer accepts a caller-supplied IV.** The signature is now
+  `encrypt(data, key)` and returns `{ ciphertext, iv }`. The IV is always
+  generated internally (AES-GCM nonce reuse is catastrophic). Use
+  `deriveKey()` instead of passing a raw password. `decrypt(ciphertext, key, iv)`
+  is unchanged.
+- **Cookies default to `SameSite=Lax`.** `setCookie()` now adds
+  `SameSite=Lax` when no policy is given. `SameSite=None` throws unless
+  `secure: true` is also set, preventing a silent browser downgrade.
+- **`ctx.ip` is the real peer address.** It now uses `server.requestIP()` and
+  only trusts `X-Forwarded-For` / `X-Real-IP` when the peer is configured via
+  `app.setTrustedProxy()`. `trustedProxy.depth` counts trusted hops **from the
+  right** of the header (`depth: 1` = the last entry).
+- **`TimeoutError` returns `504 Gateway Timeout`** (previously `500`).
+- **CORS no longer emits `Access-Control-Allow-Origin` for disallowed
+  origins.** Preflight requests from a disallowed origin return `403`.
+  `credentials: true` with `origin: "*"` logs a warning (browsers reject it).
+- **`apiDocs.safeOnProduction` now defaults to `true`**, so the documentation UI
+  is disabled in production unless explicitly enabled.
+- **Static files deny dotfiles by default.** `.env`, `.git/`, and other
+  dot-segments return `403`. Opt in with `{ dotfiles: "allow" }`.
+- **Request bodies are limited to 4 MB by default.** Larger bodies return
+  `413 Payload Too Large`. Adjust with `app.bodyLimit(bytes)`.
+- **Unsupported methods on a known path return `405` with `Allow`** instead of
+  `404`.
+- **`ctx.html()` sends `text/html; charset=utf-8`** (utf-8 added).
+- **Bun `>=1.2.0` is required.**
+- **Published files changed:** the package now ships `dist`, `README.md`,
+  `CHANGELOG.md`, and `scripts/buntok-skill` only. `public/` and other
+  `scripts/` files are no longer included.
+
+### Added
+
+- `app.integrate()` for mounting raw Bun HTTP/WebSocket handlers on an exact
+  pathname (`BunIntegration`).
+- Socket.IO on the same port via
+  `@buntok/core/plugins/socket-io` (`socketIOPlugin`).
+- File and stream responses: `ctx.file()` (Range/206), `ctx.stream()`,
+  `ctx.download()`, `ctx.htmlStream()`, and `serveFileOrFallback()`.
+- Application-wide response envelopes with `app.responseProfile()`, plus
+  `app.json({ bigint })` for BigInt serialization.
+- `app.bodyLimit()`, `PayloadTooLargeError`, and `app.httpIdleTimeout()`.
+- Context helpers: `ctx.pathname`, `ctx.search`, `ctx.path`,
+  `ctx.queryAll()`, `ctx.setCookie()`, `ctx.deleteCookie()`, and nullable
+  `ctx.set.headers` values (setting `null` removes a header).
+- Crypto helpers: `deriveKey()` (PBKDF2), `hash()` algorithm options, and
+  CSPRNG-backed `uuid()`.
+- Exported types/constants: `BunIntegration`, `Token`, `ContextOptions`,
+  `PaginationMeta`, `CursorPaginationMeta`, `ResponseProfile`, `BigIntMode`,
+  `JsonConfig`, `UploaderMessages`, `DEFAULT_BODY_LIMIT`, and `jsonResponse`.
+- Redesigned embedded API docs tester with `{{env}}` substitution and
+  autocomplete for URL, headers, cookies, body, SSE, and WebSocket inputs.
+- Upload error message overrides via `messages`.
+
+### Changed
+
+- Upload filenames are sanitized (path separators, `..`, NUL bytes) and
+  `deleteFile()` refuses paths outside the upload root.
+- Compression works without a `Content-Length` header and preserves `ETag`
+  `304` responses.
+- `helmet()` hides `X-Powered-By` by default (`hidePoweredBy` option).
+- Rate limiting keys on `ctx.ip` (now the resolved real peer IP).
+- Container `scan()` never guesses: classes with constructor parameters but no
+  `@Dependencies()` stay unregistered, and `register()` rejects
+  `useValue: undefined`.
+- Payment webhook signatures are verified for Stripe, PayPal, Midtrans, and
+  Xendit; webhook helpers were hardened.
+- Wildcard routes (`/docs/*`) now match correctly.
+
+### Fixed
+
+- Path traversal in multipart upload filenames and file deletion.
+- Malformed percent-encoding no longer throws in route matching.
+- Detached `app.fetch()` works without a live server.
+- `htmlStream()` cancellation propagates to the source generator.
+- AOT context detection keeps working for wrapped/bound handlers.
+- JWT configuration warns when the secret is missing or weak, and bearer
+  parsing no longer over-matches.
+- `groupBy()` and `formatBytes()` edge cases.
+
+### Security
+
+- Safer CORS, proxy/IP, cookie, and static-file defaults (see Breaking).
+- File upload and deletion boundary checks.
+- Webhook signature verification.
+- Internal-only AES-GCM IVs.
+
 ## [Unreleased]
 
 ### Added

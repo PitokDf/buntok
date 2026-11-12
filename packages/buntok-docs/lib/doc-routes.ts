@@ -7,6 +7,7 @@ export interface DocRoute {
 
 export const DOC_ROUTES: DocRoute[] = [
   { href: "/docs", title: "Getting Started", section: "Getting Started", description: "Installation, quick start, project structure, and first controller." },
+  { href: "/docs/upgrading", title: "Upgrading to 3.0", section: "Getting Started", description: "Migration guide for the breaking changes in @buntok/core 3.0." },
 
   { href: "/docs/routing", title: "Routing", section: "Fundamentals", description: "Route decorators @Get, @Post, @Put, @Delete, dynamic routes, route groups." },
   { href: "/docs/controllers", title: "Controllers", section: "Fundamentals", description: "Controller class pattern, base controller, CRUD operations, lifecycle hooks." },
