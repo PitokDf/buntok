@@ -92,6 +92,9 @@ this is a **major** release. See the upgrade guide in the docs
 - JWT configuration warns when the secret is missing or weak, and bearer
   parsing no longer over-matches.
 - `groupBy()` and `formatBytes()` edge cases.
+- Native promotion for decorated controller methods returning literals now works
+  on Bun 1.4.4+, whose `Function.prototype.toString()` includes the decorator
+  expression.
 
 ### Security
 

@@ -9,6 +9,23 @@
  * `ctx.body`, we skip body parsing entirely.
  */
 
+/**
+ * Bun 1.4.4+ includes decorator expressions in `Function.prototype.toString()`
+ * for decorated class methods, e.g.
+ * `[(_dec$3 = [Get("/lit")], "lit")]() { return "Hi"; }`.
+ * Strip that computed-key wrapper so source analysis sees the method body.
+ */
+export function normalizeFunctionSource(source: string): string {
+	const start = source.search(/\S/);
+	if (start === -1) return source;
+	const trimmed = source.slice(start);
+	if (!trimmed.startsWith("[(")) return source;
+	const close = trimmed.indexOf(")]", 2);
+	if (close === -1) return trimmed;
+	const rest = trimmed.slice(close + 2);
+	return /^\s*\(/.test(rest) ? rest.trimStart() : trimmed;
+}
+
 export interface HandlerAnalysis {
 	/** Whether handler uses ctx.body() or ctx.request (requires body parsing) */
 	needsBody: boolean;
@@ -70,7 +87,7 @@ export function analyzeHandler(
 		// Use _sucroseTarget if available (closure wrappers hide toString)
 		const target = (handler as any)._sucroseTarget ?? handler;
 		// Get function source code
-		const source = target.toString();
+		const source = normalizeFunctionSource(target.toString());
 
 		// Quick check: if source is too short or is a native function, return defaults
 		if (source.length < 10 || source.includes("[native code]")) {
@@ -97,7 +114,7 @@ export function analyzeHandler(
 			// Destructured ctx props - detect WHICH props are destructured
 			const destrMatch = source.match(/\(\s*\{([^}]+)\}/);
 			if (destrMatch) {
-				const destrProps = destrMatch[1];
+				const destrProps = destrMatch[1] ?? "";
 				analysis.needsBody = /body|request|raw|arrayBuffer/.test(destrProps);
 				analysis.needsQuery = /query/.test(destrProps);
 				analysis.needsParams = /params/.test(destrProps);
@@ -321,7 +338,9 @@ export function extractConstResponseOp(
 	if (typeof target !== "function") return undefined;
 	let source: string;
 	try {
-		source = Function.prototype.toString.call(target);
+		source = normalizeFunctionSource(
+			Function.prototype.toString.call(target),
+		);
 	} catch {
 		return undefined;
 	}

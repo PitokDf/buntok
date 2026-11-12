@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { analyzeHandler } from "../src/aot/sucrose";
+import { analyzeHandler, normalizeFunctionSource } from "../src/aot/sucrose";
 
 // NOTE: test functions are intentionally NOT named "handler" - the source
 // containing a literal "handler(" triggers analyzeHandler's conservative
@@ -120,5 +120,28 @@ describe("analyzeHandler (sucrose)", () => {
 			return "ok";
 		};
 		expect(analyzeHandler(endpoint).needsFullContext).toBe(true);
+	});
+});
+
+describe("normalizeFunctionSource", () => {
+	it("strips Bun 1.4.4+ decorator wrapper from method source", () => {
+		const source = `[(_dec$3 = [
+    Get("/lit")
+  ], "lit")]() {
+    return "Hi";
+  }`;
+		expect(normalizeFunctionSource(source)).toBe(`() {
+    return "Hi";
+  }`);
+	});
+
+	it("leaves ordinary functions untouched", () => {
+		const source = `function endpoint(ctx) { return ctx.text("Hi"); }`;
+		expect(normalizeFunctionSource(source)).toBe(source);
+	});
+
+	it("leaves computed methods that are not decorator wrappers untouched", () => {
+		const source = `["not-a-decorator"]() { return "Hi"; }`;
+		expect(normalizeFunctionSource(source)).toBe(source);
 	});
 });
