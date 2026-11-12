@@ -19,6 +19,7 @@ import type {
 import {
 	normalizeCheckoutStatus,
 	normalizeRefundStatus,
+	safeEqual,
 } from "../helpers";
 import {
 	PaymentProviderError,
@@ -564,7 +565,7 @@ export class MidtransDriver implements PaymentDriver {
 			const serverKey = secret || this.serverKey;
 			const raw = `${body.order_id}${body.status_code}${body.gross_amount}${serverKey}`;
 			const computed = await this.sha512(raw);
-			return computed === body.signature_key;
+			return await safeEqual(computed, body.signature_key);
 		} catch {
 			return false;
 		}

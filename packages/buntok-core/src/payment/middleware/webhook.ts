@@ -52,7 +52,7 @@ export function paymentWebhook(options: WebhookMiddlewareOptions): Middleware {
 		const rawBody = await ctx.request.text();
 		const signature = ctx.request.headers.get(signatureHeader) ?? "";
 
-		const isValid = await driver.verifyWebhookSignature(rawBody, signature, secret);
+		const isValid = await driver.verifyWebhookSignature(rawBody, signature, secret, ctx.request.headers);
 		if (!isValid) {
 			throw new PaymentVerificationError(driver.id);
 		}

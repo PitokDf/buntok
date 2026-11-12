@@ -147,6 +147,30 @@ export interface ZValidatorOptions {
 	 * Omit this option (or the entire `options` argument) for standard JSON bodies.
 	 */
 	contentType?: BodyContentType;
+	/**
+	 * HTTP status for validation failures. Defaults to
+	 * `app.responseProfile({ validation: { status } })`, then `422`.
+	 */
+	errorStatus?: number;
+	/**
+	 * Error `message` for validation failures. Defaults to
+	 * `app.responseProfile({ validation: { message } })`, then
+	 * `"Validation Failed"`.
+	 */
+	errorMessage?: string;
+	/**
+	 * Map Zod issues to the `errors`/`details` payload. Defaults to
+	 * `app.responseProfile({ validation: { errors } })`, then
+	 * `[{ field, message }]`.
+	 *
+	 * ```ts
+	 * errors: (issues) => issues.map((i) => ({
+	 *   path: i.path.join("."),
+	 *   message: i.message,
+	 * }));
+	 * ```
+	 */
+	errors?: (issues: z.ZodIssue[]) => unknown[];
 }
 
 export type SchemaType = z.ZodType | Record<string, z.ZodTypeAny>;
@@ -197,12 +221,22 @@ export function zValidator(
 	const middleware: Middleware = async (ctx, next) => {
 		let raw: unknown;
 
+		// Per-call options win, then the app response profile, then the
+		// historical defaults (422 / "Validation Failed" / { field, message }).
+		const validation = ctx.profile?.validation;
+		const errorStatus = options?.errorStatus ?? validation?.status ?? 422;
+		const errorMessage =
+			options?.errorMessage ?? validation?.message ?? "Validation Failed";
+		const errorMapper = options?.errors ?? validation?.errors;
+		const validationError = (details: unknown) =>
+			ctx.error(errorMessage, errorStatus, details);
+
 		if (target === "body") {
 			if (resolvedContentType === "multipart/form-data") {
 				// Parse both text and file fields from multipart/form-data
 				const ct = ctx.request.headers.get("content-type") || "";
 				if (!ct.includes("multipart/form-data")) {
-					return ctx.error("Validation Failed", 422, [
+					return validationError([
 						{ field: "content-type", message: "expected multipart/form-data content-type" },
 					]);
 				}
@@ -239,14 +273,14 @@ export function zValidator(
 					}
 					raw = fields;
 			} catch {
-				return ctx.error("Validation Failed", 422, [
+				return validationError([
 					{ field: "body", message: "failed to parse multipart/form-data" },
 				]);
 				}
 			} else if (resolvedContentType === "application/x-www-form-urlencoded") {
 				const ct = ctx.request.headers.get("content-type") || "";
 			if (!ct.includes("application/x-www-form-urlencoded")) {
-				return ctx.error("Validation Failed", 422, [
+				return validationError([
 					{ field: "content-type", message: "expected application/x-www-form-urlencoded content-type" },
 				]);
 				}
@@ -259,7 +293,7 @@ export function zValidator(
 					}
 					raw = fields;
 			} catch {
-				return ctx.error("Validation Failed", 422, [
+				return validationError([
 					{ field: "body", message: "failed to parse application/x-www-form-urlencoded" },
 				]);
 				}
@@ -270,28 +304,28 @@ export function zValidator(
 			) {
 				const ct = ctx.request.headers.get("content-type") || "";
 			if (!ct.includes(resolvedContentType)) {
-				return ctx.error("Validation Failed", 422, [
+				return validationError([
 					{ field: "content-type", message: `expected ${resolvedContentType} content-type` },
 				]);
 				}
 				try {
 					raw = await ctx.request.text();
 			} catch {
-				return ctx.error("Validation Failed", 422, [
+				return validationError([
 					{ field: "body", message: `failed to read ${resolvedContentType} body` },
 				]);
 				}
 			} else if (resolvedContentType === "application/octet-stream") {
 				const ct = ctx.request.headers.get("content-type") || "";
 			if (!ct.includes("application/octet-stream")) {
-				return ctx.error("Validation Failed", 422, [
+				return validationError([
 					{ field: "content-type", message: "expected application/octet-stream content-type" },
 				]);
 				}
 				try {
 					raw = await ctx.request.arrayBuffer();
 			} catch {
-				return ctx.error("Validation Failed", 422, [
+				return validationError([
 					{ field: "body", message: "failed to read application/octet-stream body" },
 				]);
 				}
@@ -300,7 +334,7 @@ export function zValidator(
 				try {
 					raw = await ctx.body();
 			} catch {
-				return ctx.error("Validation Failed", 422, [
+				return validationError([
 					{ field: "body", message: "invalid JSON" },
 				]);
 			}
@@ -314,15 +348,13 @@ export function zValidator(
 		// Use pre-compiled schema for faster validation
 		const result = compiledSchema.safeParse(raw);
 		if (!result.success) {
-			return ctx.error(
-				"Validation Failed",
-				422,
-				result.error.issues.map(
-					(issue) => ({
-						field: issue.path.join(".") || target,
-						message: issue.message,
-					}),
-				),
+			return validationError(
+				errorMapper
+					? errorMapper(result.error.issues)
+					: result.error.issues.map((issue) => ({
+							field: issue.path.join(".") || target,
+							message: issue.message,
+						})),
 			);
 		}
 

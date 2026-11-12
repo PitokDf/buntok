@@ -53,6 +53,26 @@ describe("compress", () => {
 		expect(result.headers.get("Content-Encoding")).toBeNull();
 	});
 
+	it("should compress large responses without a Content-Length header", async () => {
+		const middleware = compress({ threshold: 10 });
+		const ctx = createMockContext("gzip");
+
+		const encoded = new TextEncoder().encode("x".repeat(100));
+		const response = new Response(
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue(encoded);
+					controller.close();
+				},
+			}),
+			{ headers: { "Content-Type": "text/plain" } },
+		);
+		expect(response.headers.get("Content-Length")).toBeNull();
+
+		const result = await middleware(ctx, async () => response);
+		expect(result.headers.get("Content-Encoding")).toBe("gzip");
+	});
+
 	it("should not compress non-eligible content types", async () => {
 		const middleware = compress({ threshold: 10 });
 		const ctx = createMockContext("gzip");

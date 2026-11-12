@@ -223,6 +223,12 @@ app.post("/upload", async (ctx) => {
         Both <code>ctx.body()</code> and <code>ctx.formData()</code> cache their
         result. You can call them multiple times without re-parsing.
       </Callout>
+      <Callout type="warning">
+        Request bodies are limited to 4 MB by default (413
+        <code>Payload Too Large</code>). Change it with{" "}
+        <code>app.bodyLimit(bytes)</code>. Invalid JSON throws{" "}
+        <code>BadRequestError</code> → 400.
+      </Callout>
 
       {/* ──────────────── COOKIES ──────────────── */}
       <Heading
@@ -460,6 +466,14 @@ app.get("/profile", ({ store, request }) => store.user);`}
                 "ctx.htmlStream(generator, options?)",
                 "Streaming HTML via async generator - yields chunks progressively",
               ],
+              [
+                "ctx.file(path, options?)",
+                "Stream a file from disk with MIME + Range support",
+              ],
+              [
+                "ctx.stream(source, options?)",
+                "Stream strings/binary from an async iterable or ReadableStream",
+              ],
               ["ctx.sse(handler, options?)", "Server-Sent Events stream"],
             ].map(([method, desc]) => (
               <tr
@@ -540,6 +554,36 @@ return ctx.cursorPaginate(users, nextCursor);`}
         level={3}
         className="text-xl font-semibold mt-6 mb-2 text-text-primary"
       >
+        Response Profile & BigInt
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Configure the envelope once instead of at each endpoint.{" "}
+        <code>zValidator</code> failures and unhandled errors follow the same
+        contract.
+      </p>
+      <CodeBlock
+        code={`app.responseProfile({
+  success: (data, message) => ({ success: true, message, data }),
+  error: (message, status) => ({ success: false, message, status }),
+  validation: {
+    status: 400,
+    message: "Invalid input data.",
+    errors: (issues) => issues.map((i) => ({
+      path: (i as { path: (string | number)[] }).path.join("."),
+      message: (i as { message: string }).message,
+    })),
+  },
+});
+
+// BigInt is serialized as a string by default (safe for Prisma money columns)
+app.json({ bigint: "string" });
+// app.json({ bigint: "throw" });`}
+      />
+
+      <Heading
+        level={3}
+        className="text-xl font-semibold mt-6 mb-2 text-text-primary"
+      >
         Error Response
       </Heading>
       <CodeBlock
@@ -595,7 +639,8 @@ return ctx.redirect("/new-url", 301);`}
       <p className="my-3 text-text-secondary leading-relaxed">
         Mutate response headers per-request with <code>ctx.set.headers</code>{" "}
         (typed <code>HTTPHeaders</code>: well-known headers autocomplete,
-        values <code>string | number</code> with numbers stringified, and{" "}
+        values <code>string | number | null</code> with numbers stringified
+        (<code>null</code> removes the header), and{" "}
         <code>&quot;set-cookie&quot;</code> accepts{" "}
         <code>string | string[]</code> and appends each cookie). The map is
         merged into the final response <strong>after</strong> built-in headers,
@@ -617,6 +662,75 @@ return ctx.redirect("/new-url", 301);`}
         <code>(c) =&gt; c.set.headers</code>) and keeps the full{" "}
         <code>Context</code> for that route.
       </Callout>
+
+      {/* ──────────────── FILE STREAMING ──────────────── */}
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        File Streaming
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        <code>ctx.file()</code> streams directly from disk via{" "}
+        <code>Bun.file</code> - the file is never buffered in memory. MIME type
+        is detected from the extension, and single-range requests return{" "}
+        <code>206 Partial Content</code> for video/audio seeking.
+      </p>
+      <CodeBlock
+        code={`app.get("/download/:name", (ctx) =>
+  ctx.file(\`./storage/\${ctx.params.name}\`)
+);
+
+// Override the MIME type or add headers
+app.get("/report", (ctx) =>
+  ctx.file("./reports/latest.pdf", {
+    type: "application/pdf",
+    headers: { "Cache-Control": "private, max-age=60" },
+  })
+);`}
+      />
+      <Callout type="info">
+        <code>ctx.file()</code> does not fall back when the file is missing.
+        Use <code>serveFileOrFallback()</code> from{" "}
+        <code>@buntok/core/helpers/file</code> when you need a 404 or SPA
+        fallback.
+      </Callout>
+
+      {/* ──────────────── GENERIC STREAMING ──────────────── */}
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        Generic Streaming
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        <code>ctx.stream()</code> turns an async iterable or{" "}
+        <code>ReadableStream</code> into a response. Chunks may be{" "}
+        <code>string</code>, <code>Uint8Array</code>,{" "}
+        <code>ArrayBuffer</code>, or <code>Blob</code>.
+      </p>
+      <CodeBlock
+        code={`app.get("/stream", (ctx) =>
+  ctx.stream(
+    (async function* () {
+      yield "hello ";
+      yield new TextEncoder().encode("world");
+    })(),
+    {
+      status: 200,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    }
+  )
+);
+
+// Pass through an existing ReadableStream
+app.get("/proxy", async (ctx) => {
+  const upstream = await fetch("https://example.com/data");
+  return ctx.stream(upstream.body!, {
+    headers: { "Content-Type": "application/octet-stream" },
+  });
+});`}
+      />
 
       {/* ──────────────── SERVER-SENT EVENTS ──────────────── */}
       <Heading
@@ -675,6 +789,13 @@ return ctx.redirect("/new-url", 301);`}
                 "undefined",
                 "Client reconnection timeout (ms)",
               ],
+              [
+                "heartbeatInterval",
+                "number",
+                "30000",
+                "Keep-alive comment interval (ms); 0 disables",
+              ],
+              ["maxConnections", "number", "undefined", "Reject with 503 above limit"],
             ].map(([opt, type, def, desc]) => (
               <tr
                 key={opt}
@@ -693,6 +814,13 @@ return ctx.redirect("/new-url", 301);`}
           </tbody>
         </table>
       </div>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Keep-alive vs idle timeout: Bun closes idle HTTP connections after{" "}
+        <strong>10 seconds</strong> by default - shorter than the 30s SSE
+        heartbeat. Buntok raises the server idle timeout to <strong>120s</strong>{" "}
+        automatically; if your <code>heartbeatInterval</code> is longer, raise it
+        too with <code>app.httpIdleTimeout(seconds)</code> (max 255).
+      </p>
 
       {/* ──────────────── RAW REQUEST ACCESS ──────────────── */}
       <Heading

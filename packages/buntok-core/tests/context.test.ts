@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Context } from "../src/context";
 
 function createRequest(path = "/test", options?: RequestInit): Request {
@@ -139,7 +142,9 @@ describe("Context", () => {
 
 		it("html() should return HTML response", async () => {
 			const res = ctx.html("<h1>Hello</h1>");
-			expect(res.headers.get("content-type")).toBe("text/html");
+			expect(res.headers.get("content-type")).toBe(
+				"text/html; charset=utf-8",
+			);
 		});
 
 		it("redirect() should return redirect response", () => {
@@ -151,6 +156,79 @@ describe("Context", () => {
 		it("status() should return empty response with status", () => {
 			const res = ctx.status(204);
 			expect(res.status).toBe(204);
+		});
+	});
+
+	describe("file", () => {
+		it("should stream a file with MIME type and Range support", async () => {
+			const dir = await mkdtemp(join(tmpdir(), "buntok-ctx-file-"));
+			const path = join(dir, "hello.txt");
+			try {
+				await writeFile(path, "hello file");
+				const res = ctx.file(path).toResponse(ctx.request);
+				expect(res.status).toBe(200);
+				expect(res.headers.get("content-type")).toStartWith("text/plain");
+				expect(res.headers.get("accept-ranges")).toBe("bytes");
+				expect(await res.text()).toBe("hello file");
+			} finally {
+				await rm(dir, { recursive: true, force: true });
+			}
+		});
+
+		it("should answer a Range request with 206 + Content-Range", async () => {
+			const dir = await mkdtemp(join(tmpdir(), "buntok-ctx-file-"));
+			const path = join(dir, "hello.txt");
+			try {
+				await writeFile(path, "hello file");
+				const request = createRequest("/file", {
+					headers: { Range: "bytes=0-4" },
+				});
+				const res = ctx.file(path).toResponse(request);
+				expect(res.status).toBe(206);
+				expect(res.headers.get("content-range")).toBe("bytes 0-4/10");
+				expect(await res.text()).toBe("hello");
+			} finally {
+				await rm(dir, { recursive: true, force: true });
+			}
+		});
+	});
+
+	describe("stream", () => {
+		it("should stream string chunks from an async iterable", async () => {
+			const res = ctx.stream(
+				(async function* () {
+					yield "hello ";
+					yield "world";
+				})(),
+			);
+			expect(res.status).toBe(200);
+			expect(res.headers.get("content-type")).toBe("application/octet-stream");
+			expect(await res.text()).toBe("hello world");
+		});
+
+		it("should stream binary chunks and custom status/headers", async () => {
+			const res = ctx.stream(
+				(async function* () {
+					yield new Uint8Array([104, 105]);
+					yield new TextEncoder().encode("!").buffer;
+					yield new Blob(["?"]);
+				})(),
+				{ status: 201, headers: { "Content-Type": "text/plain" } },
+			);
+			expect(res.status).toBe(201);
+			expect(res.headers.get("content-type")).toBe("text/plain");
+			expect(await res.text()).toBe("hi!?");
+		});
+
+		it("should pass a ReadableStream through untouched", async () => {
+			const source = new ReadableStream<Uint8Array>({
+				start(controller) {
+					controller.enqueue(new TextEncoder().encode("raw"));
+					controller.close();
+				},
+			});
+			const res = ctx.stream(source);
+			expect(await res.text()).toBe("raw");
 		});
 	});
 

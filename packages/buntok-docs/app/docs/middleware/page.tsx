@@ -392,7 +392,7 @@ app.cors({
 `}
       />
       <Callout type="info">
-        <code>origin</code> can be a <code>string</code>, <code>string[]</code>, or <code>(origin: string) =&gt; boolean</code> for dynamic checks. Use <code>app.cors()</code> instead of <code>app.use(cors(...))</code> to ensure CORS headers are applied to error responses (4xx, 5xx) as well.
+        <code>origin</code> can be a <code>string</code>, <code>string[]</code>, or <code>(origin: string) =&gt; boolean</code> for dynamic checks. Use <code>app.cors()</code> instead of <code>app.use(cors(...))</code> to ensure CORS headers are applied to error responses (4xx, 5xx) as well. Disallowed origins receive no <code>Access-Control-Allow-Origin</code> header (not an empty one), reflected origins get <code>Vary: Origin</code>, preflight for a disallowed origin returns <code>403</code>, and <code>Access-Control-Request-Headers</code> is reflected back. Use <code>maxAge</code> for <code>Access-Control-Max-Age</code>.
       </Callout>
 
       {/* ──────────────── REQUEST ID ──────────────── */}
@@ -443,12 +443,14 @@ app.use(responseTime({ header: "x-response-time", format: "s" }));`}
       </Heading>
       <p className="my-3 text-text-secondary leading-relaxed">
         Security headers (X-Content-Type-Options, X-Frame-Options, XSS-Protection, Referrer-Policy, HSTS, DNS-Prefetch, Permissions-Policy).
+        Also removes <code>X-Powered-By</code> by default
+        (<code>hidePoweredBy: false</code> to keep it).
       </p>
       <CodeBlock
         code={`import { helmet } from "@buntok/core";
 
 app.use(helmet());
-// HelmetOptions { contentTypeOptions, frameOptions, xssProtection, referrerPolicy, hsts, dnsPrefetch, permissionsPolicy, additionalHeaders }
+// HelmetOptions { contentTypeOptions, frameOptions, xssProtection, referrerPolicy, hsts, dnsPrefetch, permissionsPolicy, additionalHeaders, hidePoweredBy }
 
 app.use(helmet({
   hsts: { maxAge: 31536000, includeSubDomains: true },
@@ -557,7 +559,10 @@ app.use(compress({
       <p className="my-3 text-text-secondary leading-relaxed">
         Limits the maximum request body size. Returns 413 (Payload Too Large)
         when exceeded. Useful for preventing abuse and protecting server
-        resources.
+        resources. The framework already caps{" "}
+        <code>ctx.body()</code> / <code>ctx.formData()</code> at 4 MB
+        (<code>app.bodyLimit()</code>); use this middleware for raw body
+        endpoints that read <code>ctx.request</code> directly.
       </p>
       <CodeBlock
         code={`// Default: 10MB limit
@@ -618,7 +623,11 @@ app.use(bodySizeLimit({
       <p className="my-3 text-text-secondary leading-relaxed">
         Two built-in rate limiters: <code>rateLimiter</code> (fixed window, lower
         memory) and <code>slidingWindowRateLimiter</code> (more accurate, higher
-        memory).
+        memory). Both default their bucket key to <code>ctx.ip</code> - the real
+        peer IP resolved via <code>server.requestIP()</code> once the server is
+        listening. <code>X-Forwarded-For</code> is only honored when the peer is
+        explicitly trusted via <code>app.setTrustedProxy()</code>; never key a
+        limiter on a client-controlled header directly.
       </p>
       <CodeBlock
         code={`// Fixed window - 100 requests per minute

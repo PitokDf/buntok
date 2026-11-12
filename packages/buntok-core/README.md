@@ -18,7 +18,8 @@
 - **Built-in middleware** - CORS, compress (gzip/brotli), rate limiter, request ID, response time, helmet (security headers), timeout
 - **File upload** - multipart/form-data parser, per-field validation, custom filename, storage drivers (disk, memory, custom S3/GCS/R2), file deletion
 - **Zod validation** - `zValidator` untuk body, query, dan params
-- **SSE & WebSocket** - native Bun WebSocket, built-in SSE stream
+- **SSE, WebSocket & Socket.IO** - native Bun WebSocket, built-in SSE stream, same-port Socket.IO via `@socket.io/bun-engine`
+- **File & stream responses** - `ctx.file()` (Range/206) dan `ctx.stream()` untuk chunk async/ReadableStream
 - **Utility functions** - crypto, password, string, object, number, date, ID generators, network, async helpers
 
 ---
@@ -31,7 +32,7 @@ bun add @buntok/core
 npm install @buntok/core
 ```
 
-**Requirement:** Bun >= 1.0.0
+**Requirement:** Bun >= 1.2.0
 
 ---
 
@@ -46,10 +47,10 @@ app.get("/", (ctx) => {
   return ctx.json({ message: "Hello, Buntok!" });
 });
 
-app.listen(3000);
+app.listen(1212);
 ```
 
-Port default: `3000`, atau dari `process.env.PORT`.
+Port default: `1212`, atau dari `process.env.PORT`.
 
 ---
 
@@ -168,8 +169,13 @@ const app = new Buntok();
 | `app.group` | `(prefix)` | Buat route group |
 | `app.static` | `(routePath, directory)` | Serve static files |
 | `app.ws` | `(path, handler)` | Register WebSocket endpoint |
+| `app.integrate` | `(integration)` | Mount handler Bun mentah di pathname exact - `BunIntegration {path, label?, fetch, websocket?, serve?}` |
+| `app.httpIdleTimeout` | `(seconds)` | Server HTTP idle timeout (1-255, default 120) - harus lebih besar dari heartbeat SSE / polling interval |
 | `app.listen` | `(port?, callback?)` | Mulai server |
 | `app.request` | `(input, init?)` | Dispatch request (untuk testing) |
+| `app.bodyLimit` | `(bytes)` | Batas ukuran request body (default 4 MB) → `413 Payload Too Large` |
+| `app.responseProfile` | `(profile)` | Envelope response global untuk `success`/`error`/pagination |
+| `app.json` | `({ bigint })` | Mode serialisasi `BigInt` (`"string"` default, atau `"throw"`) |
 | `app.onError` | `(handler)` | Override global error handler |
 | `app.notFound` | `(handler)` | Override 404 handler |
 | `app.set` | `(key, value)` | Simpan value di DI store |
@@ -198,7 +204,7 @@ app.listen(3000, () => {
 ### Validate Environment Variables
 
 ```ts
-import { z } from "@buntok/core";
+import { z } from "zod";
 
 const env = app.validateEnv({
   DATABASE_URL: z.string().url(),
@@ -224,6 +230,9 @@ const env = app.validateEnv({
 | `ctx.params` | `Record<string, string>` | Route parameters (`:id`, `*`) |
 | `ctx.query` | `Record<string, string>` | Parsed query string (lazy, cached) |
 | `ctx.ip` | `string` | Client IP - respects `x-forwarded-for` |
+| `ctx.pathname` | `string` | Pathname tanpa query string (lazy, cached) |
+| `ctx.search` | `string` | Query string mentah termasuk `?` (lazy, cached) |
+| `ctx.path` | `string` | `pathname + search` |
 | `ctx.store` | `Record<string, any>` | Key-value store antar middleware |
 | `await ctx.body<T>()` | `Promise<T>` | Parse JSON body (cached) |
 | `await ctx.formData()` | `Promise<FormData>` | Parse multipart form data (cached) |
@@ -244,7 +253,51 @@ const env = app.validateEnv({
 | `ctx.error(message, status?, details?)` | `Response` | Standard error envelope |
 | `ctx.paginate(data, total, page, limit)` | `Response` | Offset pagination |
 | `ctx.cursorPaginate(data, nextCursor)` | `Response` | Cursor/infinite scroll pagination |
+| `ctx.htmlStream(generator, options?)` | `Response` | Streaming HTML dari async generator |
+| `ctx.file(path, options?)` | `BuntokFile` | Stream file dari disk + MIME/Range (404 jika file tidak ada) |
+| `ctx.download(data, filename, options?)` | `Response` | Kirim buffer/bytes sebagai attachment + MIME dari nama file |
+| `ctx.setCookie(name, value, options?)` | `void` | Tambah satu cookie ke response |
+| `ctx.deleteCookie(name, options?)` | `void` | Hapus cookie (`Set-Cookie` dengan `Max-Age=0`) |
+| `ctx.stream(source, options?)` | `Response` | Stream async iterable / ReadableStream |
 | `ctx.sse(callback, options?)` | `Response` | Server-Sent Events stream |
+
+#### File & Stream Responses
+
+```ts
+// File - Bun.file native, tidak di-buffer, mendukung Range/206
+app.get("/video", (ctx) => ctx.file("./public/video.mp4"));
+
+// Override MIME / tambah header
+app.get("/report", (ctx) =>
+  ctx.file("./reports/latest.pdf", {
+    type: "application/pdf",
+    headers: { "Cache-Control": "private, max-age=60" },
+  }),
+);
+
+// Stream chunk string / Uint8Array / ArrayBuffer / Blob
+app.get("/stream", (ctx) =>
+  ctx.stream(
+    (async function* () {
+      yield "hello ";
+      yield new TextEncoder().encode("world");
+    })(),
+    { headers: { "Content-Type": "text/plain; charset=utf-8" } },
+  ),
+);
+
+// Pass-through ReadableStream
+app.get("/proxy", async (ctx) => {
+  const upstream = await fetch("https://example.com/data");
+  return ctx.stream(upstream.body!, {
+    headers: { "Content-Type": "application/octet-stream" },
+  });
+});
+```
+
+`ctx.file()` tidak membaca disk saat route didaftarkan - semua kerja (stat,
+MIME, Range) dilakukan saat response dibangun. Untuk fallback 404/SPA gunakan
+`serveFileOrFallback()` dari `@buntok/core/helpers/file`.
 
 #### Mutable Response Headers (`ctx.set`)
 
@@ -272,6 +325,57 @@ Catatan:
 - `ctx.set` hanya berisi `{ headers }` (belum `status`/`cookie`).
 - Akses `ctx.set` dijamin Context penuh - sucrose otomatis menandai handler
   yang memakai `ctx.set` / `set.headers` / param `set` terdestruktur.
+
+#### `null` = Hapus Header
+
+Nilai `null` di `ctx.set.headers` menghapus header dari response akhir (dipakai
+`helmet()` untuk membuang `X-Powered-By`):
+
+```ts
+ctx.set.headers["x-powered-by"] = null; // header dihapus
+```
+
+#### Request Body Limit
+
+Semua route otomatis dibatasi **4 MB** per request. Body yang lebih besar
+ditolak dengan `413 Payload Too Large` (dicek dari `Content-Length` sebelum
+body dibaca, dan dari ukuran hasil decode untuk request chunked).
+
+```ts
+app.bodyLimit(10 * 1024 * 1024); // 10 MB
+```
+
+`Invalid JSON` pada `ctx.body()` sekarang menghasilkan `400 Bad Request`,
+bukan `500`.
+
+#### Response Profile & BigInt
+
+Satu envelope untuk seluruh aplikasi:
+
+```ts
+app.responseProfile({
+  success: (data, message, _status, ctx) => ({
+    success: true,
+    message,
+    data,
+    timestamp: new Date().toISOString(),
+    path: ctx.path,
+  }),
+  error: (message, status) => ({ success: false, message, status }),
+  validation: {
+    status: 400,
+    message: "Invalid input data.",
+    errors: (issues) => issues.map((i) => ({
+      path: (i as { path: (string | number)[] }).path.join("."),
+      message: (i as { message: string }).message,
+    })),
+  },
+});
+
+// BigInt (mis. kolom uang Prisma) aman diserialisasi sebagai string
+app.json({ bigint: "string" }); // default
+// app.json({ bigint: "throw" }); // error dengan pesan yang jelas
+```
 
 #### Standard Envelope
 
@@ -343,6 +447,21 @@ app.get("/files/*", (ctx) => {
   return ctx.text(`File: ${ctx.params["*"]}`);
 });
 ```
+
+### 405 Method Not Allowed
+
+Jika path terdaftar tetapi method-nya tidak, Buntok membalas `405` dengan
+header `Allow` (bukan `404` yang menyesatkan). Path yang benar-benar tidak ada
+tetap `404`, dan middleware global (mis. CORS preflight) tetap berjalan.
+
+```ts
+app.post("/users", createUser);
+
+// GET /users -> 405, Allow: POST
+```
+
+Path tanpa leading slash otomatis dinormalisasi (`app.get("users")` →
+`/users`) dan memunculkan warning di mode development.
 
 ### Route Group
 
@@ -607,7 +726,7 @@ app.use(responseTime({
 `zValidator` adalah middleware yang memvalidasi request menggunakan Zod schema. Data hasil validasi dibaca via `ctx.valid(target)`.
 
 ```ts
-import { zValidator } from "@buntok/core";
+import { zValidator } from "@buntok/core/middlewares/validator";
 import { z } from "zod";
 ```
 
@@ -684,7 +803,7 @@ Error response saat validasi gagal:
 Untuk kasus sederhana yang hanya perlu validasi satu target, gunakan shorthand:
 
 ```ts
-import { validateBody, validateParams } from "@buntok/core";
+import { validateBody, validateParams } from "@buntok/core/middlewares/validator";
 
 // Sama dengan zValidator("body", schema)
 app.post("/users", validateBody(createUserSchema), (ctx) => {
@@ -704,7 +823,7 @@ app.get("/users/:id", validateParams(idSchema), (ctx) => {
 `zResponse` adalah middleware no-op yang menyisipkan metadata response ke dalam OpenAPI docs (diekspos via `app.openApiDocs`):
 
 ```ts
-import { zResponse } from "@buntok/core";
+import { zResponse } from "@buntok/core/middlewares/validator";
 
 app.get("/users",
   zResponse(200, z.array(UserSchema), "List of users"),
@@ -771,7 +890,7 @@ container.register(UserService, {
 ```ts
 import { Controller, Get, Post, Put, Delete, Use } from "@buntok/core";
 import type { Context } from "@buntok/core";
-import { zValidator } from "@buntok/core";
+import { zValidator } from "@buntok/core/middlewares/validator";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -829,6 +948,7 @@ Throw langsung dari handler - framework auto-catch dan kirim response yang sesua
 | `ForbiddenError` | 403 | Tidak punya akses |
 | `NotFoundError` | 404 | Resource tidak ditemukan |
 | `MethodNotAllowedError` | 405 | HTTP method tidak diizinkan |
+| `PayloadTooLargeError` | 413 | Request body melebihi `app.bodyLimit()` |
 | `ConflictError` | 409 | Konflik data (unique constraint, dll) |
 | `UnprocessableEntityError` | 422 | Validasi gagal (business logic) |
 | `TooManyRequestsError` | 429 | Rate limit terlampaui |
@@ -839,7 +959,7 @@ Throw langsung dari handler - framework auto-catch dan kirim response yang sesua
 import {
   NotFoundError, BadRequestError, UnauthorizedError, ForbiddenError,
   ConflictError, UnprocessableEntityError, TooManyRequestsError,
-  MethodNotAllowedError, InternalServerError, ServiceUnavailableError,
+  MethodNotAllowedError, PayloadTooLargeError, InternalServerError, ServiceUnavailableError,
 } from "@buntok/core";
 
 app.get("/users/:id", async (ctx) => {
@@ -920,13 +1040,6 @@ import type {
   RouteMeta,
   ControllerMeta,
 
-  // Upload
-  UploadedFile,
-  StorageDriver,
-  UploadOptions,
-  UploadFieldConfig,
-  ParseUploadResult,
-
   // Config
   CorsOptions,
   HelmetOptions,
@@ -937,6 +1050,14 @@ import type {
   ExtractParams,
   ZodCtx,
 } from "@buntok/core";
+// Upload types tinggal di subpath:
+import type {
+  UploadedFile,
+  StorageDriver,
+  UploadOptions,
+  UploadFieldConfig,
+  ParseUploadResult,
+} from "@buntok/core/upload";
 ```
 
 ### Contoh Penggunaan
@@ -1014,6 +1135,12 @@ app.registerController(UserController);
 
 No `reflect-metadata` needed. `@Dependencies()` explicitly declares what each class needs.
 
+`scan()` tidak menebak: class yang punya parameter constructor tapi tanpa
+`@Dependencies()` **tidak** didaftarkan otomatis, sehingga `resolve()` melempar
+`No provider registered for: X` (bukan error `undefined` saat runtime).
+Factory yang melempar error juga selalu membersihkan state deteksi circular
+dependency, dan `useValue: undefined` ditolak saat `register()`.
+
 ### Manual registration
 
 ```ts
@@ -1031,7 +1158,7 @@ app.setContainer(container);
 |--------|-----------|
 | `container.register(token, provider)` | Register provider manual |
 | `container.registerClass(cls, scope?)` | Auto-register class provider |
-| `container.scan(classes[], scope?)` | Auto-scan classes dan resolve dependencies via `emitDecoratorMetadata` |
+| `container.scan(classes[], scope?)` | Auto-scan class tanpa argumen / ber-`@Dependencies()` secara bottom-up |
 | `container.resolve(token)` | Resolve instance (dengan DI) |
 | `container.get(token)` | Resolve atau `undefined` jika tidak ada |
 | `container.has(token)` | Cek apakah token terdaftar |
@@ -1395,12 +1522,20 @@ app.get("/events", (ctx) => {
 | `initialEvent` | `string` | `"connected"` | Nama event pertama |
 | `retry` | `number` | - | Reconnect interval yang dikirim ke client (ms) |
 
+> **Keepalive vs idle timeout:** Bun memakai server-level `idleTimeout` default
+> **10 detik** - lebih pendek dari heartbeat 30s, sehingga koneksi SSE/long-polling
+> mati sebelum heartbeat pertama. Buntok otomatis menaikkannya ke **120 detik**;
+> naikkan lagi dengan `app.httpIdleTimeout(seconds)` (maks 255) bila kamu memakai
+> `heartbeatInterval` yang lebih panjang. `heartbeatInterval: 0` menonaktifkan
+> heartbeat (koneksi harus selalu punya trafik). Referensi: `app.integrate` juga
+> bisa meng-override `serve.idleTimeout`.
+
 ### createSSE (Alternatif)
 
 `createSSE` adalah helper untuk membuat SSE stream secara manual tanpa `ctx.sse()`:
 
 ```ts
-import { createSSE } from "@buntok/core";
+import { createSSE } from "@buntok/core/sse";
 
 app.get("/events", (ctx) => {
   const sse = createSSE(ctx.request, {
@@ -1446,6 +1581,101 @@ app.server?.publish("room-general", JSON.stringify({ type: "announcement" }));
 ```
 
 `app.server` adalah Bun `Server` instance, tersedia setelah `app.listen()` dipanggil.
+
+### Socket.IO (port yang sama)
+
+Socket.IO membutuhkan transport Engine.IO sendiri. Plugin resmi memakai
+`@socket.io/bun-engine`, jadi polling + WebSocket berbagi port dengan Buntok
+tanpa polyfill `http.Server` Node.
+
+```bash
+bun add socket.io @socket.io/bun-engine
+```
+
+```ts
+import { Buntok } from "@buntok/core";
+import { socketIOPlugin } from "@buntok/core/plugins/socket-io";
+import { Server } from "socket.io";
+
+const app = new Buntok();
+const io = new Server();
+
+io.on("connection", (socket) => {
+  socket.on("hello", (message) => socket.emit("world", message));
+});
+
+await app.plugin(socketIOPlugin({ io }));
+app.listen(1212);
+```
+
+Plugin memasang `/socket.io/` secara default, lalu menggabungkan handler
+WebSocket engine dengan `app.ws()` milik Buntok. Koneksi Buntok dikenali dari
+marker `handler` yang dipasang saat `server.upgrade()`. Saat listen, banner
+menampilkan path Socket.IO:
+
+```text
+Listening on: http://localhost:1212
+Socket.IO:    http://localhost:1212/socket.io/
+```
+
+| Option | Default | Deskripsi |
+|--------|---------|-----------|
+| `io` | - | Instance Socket.IO `Server` (wajib) |
+| `path` | `"/socket.io/"` | Path polling + WebSocket |
+| `engine` | `undefined` | Opsi untuk `@socket.io/bun-engine` |
+| `closeOnShutdown` | `true` | Tutup Socket.IO saat app shutdown |
+
+Hanya satu handler WebSocket pihak ketiga yang boleh berbagi server. Untuk
+multi-instance, pasang adapter Socket.IO (mis. `@socket.io/redis-adapter`) pada
+instance `io`.
+
+### Third-party Integrations (`app.integrate`)
+
+`app.integrate()` bukan Socket.IO-only. API ini memasang handler Bun mentah di
+satu pathname exact, sebelum router/middleware/AOT. Cocok untuk library yang
+butuh `(request, server) => Response` atau melakukan upgrade WebSocket sendiri.
+
+```ts
+app.integrate({
+  path: "/vendor/health/",
+  label: "Vendor Health",
+  fetch: () => new Response("ok"),
+});
+
+// Contoh WebSocket: handler upgrade sendiri
+app.integrate({
+  path: "/custom-ws/",
+  label: "Custom WS",
+  fetch: (request, server) =>
+    server.upgrade(request, { data: { source: "custom" } })
+      ? (undefined as unknown as Response)
+      : new Response("Upgrade Required", { status: 426 }),
+  websocket: {
+    open(ws) { ws.send("connected"); },
+    message(ws, message) { ws.send(message); },
+  },
+  serve: { idleTimeout: 30 },
+});
+```
+
+| Field | Deskripsi |
+|-------|-----------|
+| `path` | Pathname exact yang di-intercept (wajib) |
+| `label` | Nama di banner startup |
+| `fetch` | Handler Bun mentah `(request, server) => Response` (wajib) |
+| `websocket` | Handler WebSocket untuk koneksi hasil `server.upgrade()` |
+| `serve` | Opsi tambahan `Bun.serve` (kecuali `fetch`, `websocket`, `routes`, `port`) |
+
+Batasan:
+
+- Path exact - tidak ada prefix, params, wildcard, atau catch-all.
+- Bypass middleware, auth, `ctx`, DI, request log, error handler, dan lifecycle hooks.
+- Hanya jalan saat ada server live; `app.fetch(request)` tanpa server melewati integration.
+- Hanya satu integration dengan `websocket` yang didukung (Bun hanya punya satu handler global).
+- `serve` di-merge saat `listen()`, bukan saat integration ditambahkan setelah server jalan.
+
+Gunakan route Buntok biasa (`app.get()`, `app.group()`, `app.static()`) untuk
+endpoint HTTP normal.
 
 ---
 
@@ -1599,7 +1829,7 @@ healthCheck(app, {
 ## Queue
 
 ```ts
-import { Queue } from "@buntok/core";
+import { Queue } from "@buntok/core/queue";
 
 const queue = new Queue<{ email: string }>("emails");
 queue.process(async (job) => {
@@ -1639,7 +1869,7 @@ Buntok menyediakan upload handler untuk `multipart/form-data` - mendukung valida
 import {
   uploader, parseUploads, deleteUploadedFile,
   LocalDiskStorage, MemoryStorage,
-} from "@buntok/core";
+} from "@buntok/core/upload";
 ```
 
 ### Upload Options
@@ -1649,8 +1879,13 @@ import {
 | `storage` | `StorageDriver` | - | **wajib** - `LocalDiskStorage`, `MemoryStorage`, atau custom driver |
 | `filename` | `(original, file) => string` | `original-uuid.ext` | Global default filename generator |
 | `fields` | `Record<string, UploadFieldConfig>` | - | Whitelist & validasi per-field |
+| `messages` | `UploaderMessages` | bahasa Inggris | Override pesan error (content-type, ukuran, MIME, magic bytes, required) |
 
 > **Note:** `maxFileSize` dan `allowedMimeTypes` sekarang di level per-field, bukan global.
+>
+> Nama file dari client selalu disanitasi: komponen path (`../`, `..\\`) dan NUL
+> byte dibuang sebelum ditulis, sehingga `LocalDiskStorage` tidak bisa dipakai
+> untuk path traversal. `deleteFile()` juga menolak path di luar direktori upload.
 
 ### Upload Field Config
 
@@ -1793,7 +2028,7 @@ app.post("/gallery",
 Untuk connect ke provider lain (AWS S3, Google Cloud Storage, Cloudflare R2, dll), implement `StorageDriver` interface:
 
 ```ts
-import type { StorageDriver, UploadedFile } from "@buntok/core";
+import type { StorageDriver, UploadedFile } from "@buntok/core/upload";
 
 class S3Storage implements StorageDriver {
   constructor(private bucket: string, private region: string) {}
@@ -1872,7 +2107,7 @@ class R2Storage implements StorageDriver {
 Hapus file yang sudah di-upload menggunakan `deleteUploadedFile`:
 
 ```ts
-import { deleteUploadedFile, LocalDiskStorage } from "@buntok/core";
+import { deleteUploadedFile, LocalDiskStorage } from "@buntok/core/upload";
 
 const storage = new LocalDiskStorage("./uploads");
 
@@ -2175,8 +2410,11 @@ Menambahkan security headers standar ke semua response:
 | `X-DNS-Prefetch-Control` | `on` |
 | `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` |
 
+Secara default `helmet()` juga menghapus header `X-Powered-By: buntok`.
+Set `helmet({ hidePoweredBy: false })` jika ingin mempertahankannya.
+
 ```ts
-// Default - semua standard headers
+// Default - semua standard headers + sembunyikan X-Powered-By
 app.use(helmet());
 
 // Custom options

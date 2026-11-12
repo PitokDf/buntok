@@ -6,6 +6,12 @@ const urlAlphabet =
 /**
  * Generate a sequential code with prefix and auto-incrementing counter.
  *
+ * **Warning:** the counter is kept in a module-level `Map`, so it resets on
+ * process restart and is not shared across multiple processes/instances. Do
+ * not use `generateCode` for values that must be globally unique (e.g.
+ * invoice numbers, order IDs) - prefer `nanoid()`/`ulid()`/`crypto.randomUUID()`
+ * for those.
+ *
  * @example
  * generateCode("T");        // "T0001"
  * generateCode("T");        // "T0002"

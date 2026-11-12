@@ -33,7 +33,7 @@ describe("parseCookies", () => {
 describe("serializeCookie", () => {
 	it("should serialize basic cookie", () => {
 		const result = serializeCookie("name", "value");
-		expect(result).toBe("name=value; Path=/");
+		expect(result).toBe("name=value; Path=/; SameSite=Lax");
 	});
 
 	it("should include Max-Age", () => {
@@ -69,6 +69,38 @@ describe("serializeCookie", () => {
 	it("should include Partitioned flag", () => {
 		const result = serializeCookie("name", "value", { partitioned: true });
 		expect(result).toContain("; Partitioned");
+	});
+
+	it("should default SameSite to Lax", () => {
+		const result = serializeCookie("name", "value");
+		expect(result).toContain("SameSite=Lax");
+	});
+
+	it("should require Secure when SameSite=None", () => {
+		expect(() =>
+			serializeCookie("name", "value", { sameSite: "none" }),
+		).toThrow(/Secure/);
+		expect(
+			serializeCookie("name", "value", { sameSite: "none", secure: true }),
+		).toContain("SameSite=None");
+		expect(
+			serializeCookie("name", "value", { sameSite: "none", secure: true }),
+		).toContain("; Secure");
+	});
+
+	it("should reject invalid cookie names", () => {
+		expect(() => serializeCookie("bad;name", "value")).toThrow(/name/);
+		expect(() => serializeCookie("bad=name", "value")).toThrow(/name/);
+		expect(() => serializeCookie("bad name", "value")).toThrow(/name/);
+	});
+
+	it("should reject invalid path and domain", () => {
+		expect(() =>
+			serializeCookie("name", "value", { path: "/api;evil" }),
+		).toThrow(/path/);
+		expect(() =>
+			serializeCookie("name", "value", { domain: "evil.com;x" }),
+		).toThrow(/domain/);
 	});
 });
 

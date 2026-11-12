@@ -1,8 +1,24 @@
 import { mkdir, stat, unlink } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join, resolve, sep } from "node:path";
 import type { Middleware } from "./buntok";
 import type { Context } from "./context";
 import { BadRequestError } from "./helpers/async-handler";
+
+/**
+ * Strip any path components from a client-controlled filename segment.
+ * Works for both POSIX (`/`) and Windows (`\`) separators, and removes
+ * NUL bytes - so `../../evil` becomes `evil` regardless of the host OS.
+ */
+function sanitizeSegment(value: string): string {
+	const noNulls = value.replace(/\0/g, "");
+	const lastSlash = Math.max(
+		noNulls.lastIndexOf("/"),
+		noNulls.lastIndexOf("\\"),
+	);
+	const segment = lastSlash === -1 ? noNulls : noNulls.slice(lastSlash + 1);
+	if (segment === "." || segment === "..") return "";
+	return segment;
+}
 
 export interface UploadedFile {
 	/** Original name of the file */
@@ -266,6 +282,45 @@ export interface UploadFieldConfig {
 	outputFormat?: "webp" | "png" | "jpeg" | "avif";
 }
 
+/**
+ * Customizable upload validation messages. Each callback receives the
+ * relevant context and must return the final error message. When omitted,
+ * the built-in English message is used.
+ */
+export interface UploaderMessages {
+	/** Wrong request content-type (not multipart/form-data). */
+	invalidContentType?: (info: {
+		expected: string;
+		received: string;
+	}) => string;
+	/** Multipart body could not be parsed. */
+	parseFailed?: () => string;
+	/** A file exceeds its size limit. */
+	maxFileSize?: (info: {
+		field: string;
+		filename: string;
+		size: number;
+		limit: number;
+	}) => string;
+	/** A file's MIME type is not in the allowed list. */
+	invalidMime?: (info: {
+		field: string;
+		filename: string;
+		mime: string;
+		allowed: string[];
+	}) => string;
+	/** Magic bytes do not match the claimed MIME type. */
+	invalidMagicBytes?: (info: {
+		field: string;
+		filename: string;
+		mime: string;
+	}) => string;
+	/** A required file field is missing. */
+	required?: (info: { field: string }) => string;
+	/** Alias for `required`. */
+	missingFile?: (info: { field: string }) => string;
+}
+
 export interface UploadOptions {
 	/** Destination storage driver (e.g., LocalDiskStorage or MemoryStorage) */
 	storage: StorageDriver;
@@ -299,6 +354,8 @@ export interface UploadOptions {
 	fields?: Record<string, UploadFieldConfig>;
 	/** Verify file magic bytes against expected MIME type. Defaults to true. */
 	verifyMagicBytes?: boolean;
+	/** Override validation error messages (per category). */
+	messages?: UploaderMessages;
 }
 
 export type UploadOptionsWithFields<
@@ -364,8 +421,16 @@ export class LocalDiskStorage implements StorageDriver {
 			await mkdir(this.destination, { recursive: true });
 		}
 
-		const filename = `${name}${ext}`;
+		const filename = `${sanitizeSegment(name)}${sanitizeSegment(ext)}`;
 		const filePath = join(this.destination, filename);
+
+		// Defense in depth: never write outside `destination`, even if a
+		// custom filename generator produced something unexpected.
+		const root = resolve(this.destination) + sep;
+		if (!resolve(filePath).startsWith(root)) {
+			throw new BadRequestError("Invalid file name");
+		}
+
 		await Bun.write(filePath, file);
 
 		return {
@@ -379,6 +444,11 @@ export class LocalDiskStorage implements StorageDriver {
 	}
 
 	async deleteFile(filePath: string): Promise<boolean> {
+		const root = resolve(this.destination) + sep;
+		if (!resolve(filePath).startsWith(root)) {
+			// Path is outside the upload root - refuse to unlink arbitrary files.
+			return false;
+		}
 		try {
 			await unlink(filePath);
 			return true;
@@ -443,7 +513,13 @@ function resolveFilename(
 	// Ensure ext always has the dot prefix
 	const finalExt = result.ext.startsWith(".") ? result.ext : ext;
 
-	return { name: result.name, ext: finalExt };
+	// Sanitize here (not only in LocalDiskStorage) so custom storage drivers
+	// (S3/GCS/R2) also receive a safe object key without path traversal.
+	const safeExt = sanitizeSegment(finalExt);
+	return {
+		name: sanitizeSegment(result.name),
+		ext: safeExt && !safeExt.startsWith(".") ? `.${safeExt}` : safeExt,
+	};
 }
 
 async function verifyFileSignature(
@@ -497,7 +573,10 @@ export async function handleUploads<
 	const contentType = ctx.request.headers.get("content-type") || "";
 	if (!contentType.includes("multipart/form-data")) {
 		throw new BadRequestError(
-			"Invalid content-type. Must be multipart/form-data",
+			options.messages?.invalidContentType?.({
+				expected: "multipart/form-data",
+				received: contentType,
+			}) ?? "Invalid content-type. Must be multipart/form-data",
 		);
 	}
 
@@ -506,7 +585,9 @@ export async function handleUploads<
 	try {
 		formData = await ctx.formData();
 	} catch (_err) {
-		throw new BadRequestError("Failed to parse form data");
+		throw new BadRequestError(
+			options.messages?.parseFailed?.() ?? "Failed to parse form data",
+		);
 	}
 
 	const textFields: Record<string, string> = {};
@@ -529,7 +610,13 @@ export async function handleUploads<
 			const maxFileSize = fieldConfig?.maxFileSize ?? options.maxFileSize;
 			if (maxFileSize && value.size > maxFileSize) {
 				throw new BadRequestError(
-					`File "${value.name}" in field "${key}" exceeds max size of ${maxFileSize} bytes`,
+					options.messages?.maxFileSize?.({
+						field: key,
+						filename: value.name,
+						size: value.size,
+						limit: maxFileSize,
+					}) ??
+						`File "${value.name}" in field "${key}" exceeds max size of ${maxFileSize} bytes`,
 				);
 			}
 
@@ -538,7 +625,13 @@ export async function handleUploads<
 				fieldConfig?.allowedMimeTypes ?? options.allowedMimeTypes;
 			if (allowedMimeTypes && !allowedMimeTypes.includes(value.type as MimeType)) {
 				throw new BadRequestError(
-					`File type "${value.type}" is not allowed for field "${key}" (file: "${value.name}")`,
+					options.messages?.invalidMime?.({
+						field: key,
+						filename: value.name,
+						mime: value.type,
+						allowed: allowedMimeTypes as string[],
+					}) ??
+						`File type "${value.type}" is not allowed for field "${key}" (file: "${value.name}")`,
 				);
 			}
 
@@ -547,7 +640,12 @@ export async function handleUploads<
 				const isValid = await verifyFileSignature(value, value.type);
 				if (!isValid) {
 					throw new BadRequestError(
-						`File "${value.name}" has invalid magic bytes for type "${value.type}"`,
+						options.messages?.invalidMagicBytes?.({
+							field: key,
+							filename: value.name,
+							mime: value.type,
+						}) ??
+							`File "${value.name}" has invalid magic bytes for type "${value.type}"`,
 					);
 				}
 			}
@@ -635,7 +733,9 @@ export async function handleUploads<
 		for (const [fieldName, config] of Object.entries(fieldWhitelist)) {
 			if (config.required && !(fieldName in fileMap)) {
 				throw new BadRequestError(
-					`Required file field "${fieldName}" is missing`,
+					options.messages?.required?.({ field: fieldName }) ??
+						options.messages?.missingFile?.({ field: fieldName }) ??
+						`Required file field "${fieldName}" is missing`,
 				);
 			}
 		}

@@ -63,7 +63,7 @@ export class ${pascalName}Controller {
   async create(ctx: Context) {
     const body = await ctx.body();
     const data = await this.${serviceProp}.create(body);
-    return ctx.success(data, "Created successfully!.", 201);
+    return ctx.success(data, "Created successfully!", 201);
   }
 
   @Put("/:id")

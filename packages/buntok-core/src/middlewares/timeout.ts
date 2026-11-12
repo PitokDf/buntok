@@ -1,4 +1,5 @@
 import type { Middleware } from "../buntok";
+import { HttpError } from "../helpers/async-handler";
 
 /**
  * Request timeout middleware - automatically aborts the handler if it takes
@@ -36,11 +37,11 @@ export function timeout(ms: number, message = "Request timed out"): Middleware {
 	};
 }
 
-export class TimeoutError extends Error {
+export class TimeoutError extends HttpError {
 	public readonly timeoutMs: number;
 
-	constructor(message: string, timeoutMs: number) {
-		super(message);
+	constructor(message = "Gateway Timeout", timeoutMs: number) {
+		super(504, message);
 		this.name = "TimeoutError";
 		this.timeoutMs = timeoutMs;
 	}

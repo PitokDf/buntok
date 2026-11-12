@@ -1,7 +1,33 @@
 import { createSSE, type SSE, type SSEOptions } from "./sse";
 import { getClientIP } from "./helpers/network";
+import { BuntokFile, type FileOptions } from "./helpers/file";
+import { serializeCookie, type CookieOptions } from "./helpers/cookie";
+import {
+	downloadBuffer,
+	type DownloadOptions,
+} from "./helpers/download";
+import {
+	jsonResponse,
+	type BigIntMode,
+	type JsonConfig,
+} from "./helpers/response";
+import {
+	BadRequestError,
+	PayloadTooLargeError,
+} from "./helpers/async-handler";
 
-export type HTTPHeaders = Record<string, string | number> & {
+/** Default request body limit: 4 MB. */
+export const DEFAULT_BODY_LIMIT = 4 * 1024 * 1024;
+
+function safeDecodeURIComponent(component: string, what: string): string {
+	try {
+		return decodeURIComponent(component);
+	} catch {
+		throw new BadRequestError(`Invalid ${what}`);
+	}
+}
+
+export type HTTPHeaders = Record<string, string | number | null> & {
 	'www-authenticate'?: string;
 	authorization?: string;
 	'proxy-authenticate'?: string;
@@ -95,6 +121,73 @@ export type HTTPHeaders = Record<string, string | number> & {
 	'x-ua-compatible'?: string;
 };
 
+export interface PaginationMeta {
+	currentPage: number;
+	perPage: number;
+	total: number;
+	lastPage: number;
+	hasMore: boolean;
+}
+
+export interface CursorPaginationMeta {
+	nextCursor: string | number | null;
+	hasMore: boolean;
+}
+
+/**
+ * App-level response envelope customization. Installed once via
+ * `app.responseProfile()` and applied to every `ctx.success()`,
+ * `ctx.paginate()`, `ctx.cursorPaginate()` and `ctx.error()` call.
+ *
+ * Profile callbacks return the envelope **object** (not a `Response`) so the
+ * framework can still merge `ctx.set.headers`, cookies and BigInt serialization.
+ */
+export interface ResponseProfile {
+	success?: (
+		data: unknown,
+		message: string,
+		status: number,
+		// biome-ignore lint/suspicious/noExplicitAny: profile is app-agnostic
+		ctx: Context<any, any>,
+	) => unknown;
+	paginate?: (
+		data: unknown[],
+		meta: PaginationMeta,
+		message: string,
+		status: number,
+		// biome-ignore lint/suspicious/noExplicitAny: profile is app-agnostic
+		ctx: Context<any, any>,
+	) => unknown;
+	cursorPaginate?: (
+		data: unknown[],
+		meta: CursorPaginationMeta,
+		message: string,
+		status: number,
+		// biome-ignore lint/suspicious/noExplicitAny: profile is app-agnostic
+		ctx: Context<any, any>,
+	) => unknown;
+	error?: (
+		message: string,
+		status: number,
+		details: unknown,
+		// biome-ignore lint/suspicious/noExplicitAny: profile is app-agnostic
+		ctx: Context<any, any>,
+	) => unknown;
+	/** Defaults for `zValidator()` failures. Per-call options win. */
+	validation?: {
+		status?: number;
+		message?: string;
+		errors?: (issues: unknown[]) => unknown[];
+	};
+}
+
+export interface ContextOptions {
+	responseProfile?: ResponseProfile;
+	json?: JsonConfig;
+	/** Max request body size in bytes. Defaults to 4 MB. */
+	bodyLimit?: number;
+}
+
 export class Context<
 	DI = Record<string, unknown>,
 	Params = Record<string, string>,
@@ -103,10 +196,23 @@ export class Context<
 	public params: Params & Record<string, string>;
 	public user?: Record<string, unknown>;
 
+	/**
+	 * App-level response profile installed via `app.responseProfile()`.
+	 * Read-mostly: used by `ctx.success()`/`ctx.error()` and `zValidator()`.
+	 */
+	public readonly profile?: ResponseProfile;
+	/** BigInt serialization mode, configured via `app.json({ bigint })`. */
+	public readonly bigint: BigIntMode;
+	/** Max request body size in bytes (default 4 MB, `app.bodyLimit()`). */
+	public readonly bodyLimit: number;
+
 	private _store: Record<string, unknown> | undefined;
 	private _cookies: Record<string, string> | undefined;
 	private _query: Record<string, string> | undefined;
+	private _queryAll: Record<string, string[]> | undefined;
 	private _validated: Record<string, unknown> | undefined;
+	private _pathname: string | undefined;
+	private _search: string | undefined;
 	public readonly di: DI;
 	public _afterHooks?: Array<(res: Response) => Response | undefined>;
 	/**
@@ -116,11 +222,20 @@ export class Context<
 	public _set?: { headers: HTTPHeaders };
 	private readonly clientIPResolver: (request: Request) => string;
 
-	constructor(request: Request, params: Record<string, string>, di: DI, clientIPResolver: (request: Request) => string = getClientIP) {
+	constructor(
+		request: Request,
+		params: Record<string, string>,
+		di: DI,
+		clientIPResolver: (request: Request) => string = getClientIP,
+		options?: ContextOptions,
+	) {
 		this.request = request;
 		this.params = params as unknown as Params & Record<string, string>;
 		this.di = di;
 		this.clientIPResolver = clientIPResolver;
+		this.profile = options?.responseProfile;
+		this.bigint = options?.json?.bigint ?? "string";
+		this.bodyLimit = options?.bodyLimit ?? DEFAULT_BODY_LIMIT;
 	}
 
 	public get store(): Record<string, unknown> {
@@ -192,7 +307,7 @@ export class Context<
 
 				const key = cookieHeader.substring(keyStart, eqIdx);
 				const val = cookieHeader.substring(valStart, end);
-				if (key && val) result[key] = decodeURIComponent(val);
+				if (key && val) result[key] = safeDecodeURIComponent(val, "cookie value");
 			}
 			start = end + 1;
 		}
@@ -249,15 +364,20 @@ export class Context<
 					if (!pair) continue;
 					const eqIdx = pair.indexOf("=");
 					if (eqIdx !== -1) {
-						const key = decodeURIComponent(
+						const key = safeDecodeURIComponent(
 							pair.substring(0, eqIdx).replace(/\+/g, " "),
+							"query key",
 						);
-						const value = decodeURIComponent(
+						const value = safeDecodeURIComponent(
 							pair.substring(eqIdx + 1).replace(/\+/g, " "),
+							"query value",
 						);
 						this._query[key] = value;
 					} else {
-						const key = decodeURIComponent(pair.replace(/\+/g, " "));
+						const key = safeDecodeURIComponent(
+							pair.replace(/\+/g, " "),
+							"query key",
+						);
 						this._query[key] = "";
 					}
 				}
@@ -265,6 +385,89 @@ export class Context<
 		}
 
 		return this._query;
+	}
+
+	/**
+	 * All values for each query key - e.g. `?t=a&t=b` → `{ t: ["a","b"] }`.
+	 * Parsed lazily and cached after first access.
+	 */
+	public queryAll(): Record<string, string[]> {
+		if (this._queryAll) return this._queryAll;
+
+		this._queryAll = {};
+		const url = this.request.url;
+		const queryIdx = url.indexOf("?");
+		if (queryIdx !== -1) {
+			const queryStr = url.substring(queryIdx + 1);
+			if (queryStr) {
+				const pairs = queryStr.split("&");
+				for (let i = 0; i < pairs.length; i++) {
+					const pair = pairs[i] as string;
+					if (!pair) continue;
+					const eqIdx = pair.indexOf("=");
+					if (eqIdx !== -1) {
+						const key = safeDecodeURIComponent(
+							pair.substring(0, eqIdx).replace(/\+/g, " "),
+							"query key",
+						);
+						const value = safeDecodeURIComponent(
+							pair.substring(eqIdx + 1).replace(/\+/g, " "),
+							"query value",
+						);
+						(this._queryAll[key] ??= []).push(value);
+					} else {
+						const key = safeDecodeURIComponent(
+							pair.replace(/\+/g, " "),
+							"query key",
+						);
+						(this._queryAll[key] ??= []).push("");
+					}
+				}
+			}
+		}
+
+		return this._queryAll;
+	}
+
+	/**
+	 * Request pathname (without query string), e.g. `"/api/v1/outlets"`.
+	 * Parsed lazily and cached after first access.
+	 */
+	public get pathname(): string {
+		if (this._pathname === undefined) {
+			const url = this.request.url;
+			const start = url.indexOf("/", url.indexOf("//") + 2);
+			if (start === -1) {
+				this._pathname = "/";
+			} else {
+				const end = url.indexOf("?", start);
+				this._pathname = url.substring(
+					start,
+					end === -1 ? url.length : end,
+				);
+			}
+		}
+		return this._pathname;
+	}
+
+	/**
+	 * Query string including the leading `?`, e.g. `"?page=2"`.
+	 * Empty string when the request has no query string.
+	 */
+	public get search(): string {
+		if (this._search === undefined) {
+			const q = this.request.url.indexOf("?");
+			this._search = q === -1 ? "" : this.request.url.substring(q);
+		}
+		return this._search;
+	}
+
+	/**
+	 * Pathname plus query string, e.g. `"/api/v1/outlets?page=2"`.
+	 * Handy for response envelopes that record the request `path`.
+	 */
+	public get path(): string {
+		return this.pathname + this.search;
 	}
 
 	/**
@@ -295,12 +498,44 @@ export class Context<
 	}
 
 	private _body: unknown | undefined;
+	private _bodyParsed = false;
 
 	public async body<T>(): Promise<T> {
-		if (this._body !== undefined) {
+		if (this._bodyParsed) {
 			return this._body as T;
 		}
-		this._body = await this.request.json();
+
+		// Reject oversized bodies before buffering whenever the client
+		// declares Content-Length (the common case).
+		const declared = Number(
+			this.request.headers.get("content-length") ?? "0",
+		);
+		if (declared > this.bodyLimit) {
+			throw new PayloadTooLargeError();
+		}
+
+		let buffer: ArrayBuffer;
+		try {
+			buffer = await this.request.arrayBuffer();
+		} catch {
+			throw new BadRequestError("Failed to read request body");
+		}
+		if (buffer.byteLength > this.bodyLimit) {
+			throw new PayloadTooLargeError();
+		}
+
+		const text = new TextDecoder().decode(buffer);
+		if (text === "") {
+			// No body - mirror `Request.json()` (it would throw); callers that
+			// guard with try/catch still see a client error, not a 500.
+			throw new BadRequestError("Invalid JSON body");
+		}
+		try {
+			this._body = JSON.parse(text);
+		} catch {
+			throw new BadRequestError("Invalid JSON body");
+		}
+		this._bodyParsed = true;
 		return this._body as T;
 	}
 
@@ -318,18 +553,41 @@ export class Context<
 		if (this._formData !== undefined) {
 			return this._formData;
 		}
-		this._formData = await this.request.formData();
+		const declared = Number(
+			this.request.headers.get("content-length") ?? "0",
+		);
+		if (declared > this.bodyLimit) {
+			throw new PayloadTooLargeError();
+		}
+		const formData = await this.request.formData();
+
+		// Chunked uploads have no Content-Length - enforce the limit on the
+		// decoded field/file sizes instead.
+		if (!declared) {
+			let total = 0;
+			for (const value of formData.values()) {
+				total += value instanceof File ? value.size : String(value).length;
+				if (total > this.bodyLimit) {
+					throw new PayloadTooLargeError();
+				}
+			}
+		}
+
+		this._formData = formData;
 		return this._formData;
 	}
 
 	public json(data: unknown, status = 200): Response {
-		if (status === 200) {
-			return Response.json(data);
-		}
-		return Response.json(data, { status });
+		return jsonResponse(data, status, this.bigint);
 	}
 
 	public success(data?: unknown, message = "Success", status = 200): Response {
+		if (this.profile?.success) {
+			return this.json(
+				this.profile.success(data, message, status, this),
+				status,
+			);
+		}
 		return this.json({ success: true, message, data }, status);
 	}
 
@@ -344,21 +602,20 @@ export class Context<
 		message = "Success",
 		status = 200,
 	): Response {
-		return this.json(
-			{
-				success: true,
-				message,
-				data,
-				meta: {
-					currentPage: page,
-					perPage: limit,
-					total,
-					lastPage: Math.ceil(total / limit),
-					hasMore: page * limit < total,
-				},
-			},
-			status,
-		);
+		const meta: PaginationMeta = {
+			currentPage: page,
+			perPage: limit,
+			total,
+			lastPage: Math.ceil(total / limit),
+			hasMore: page * limit < total,
+		};
+		if (this.profile?.paginate) {
+			return this.json(
+				this.profile.paginate(data, meta, message, status, this),
+				status,
+			);
+		}
+		return this.json({ success: true, message, data, meta }, status);
 	}
 
 	/**
@@ -370,22 +627,87 @@ export class Context<
 		message = "Success",
 		status = 200,
 	): Response {
-		return this.json(
-			{
-				success: true,
-				message,
-				data,
-				meta: {
-					nextCursor,
-					hasMore: nextCursor !== null,
-				},
-			},
-			status,
-		);
+		const meta: CursorPaginationMeta = {
+			nextCursor,
+			hasMore: nextCursor !== null,
+		};
+		if (this.profile?.cursorPaginate) {
+			return this.json(
+				this.profile.cursorPaginate(data, meta, message, status, this),
+				status,
+			);
+		}
+		return this.json({ success: true, message, data, meta }, status);
 	}
 
 	public error(message: string, status = 400, details?: unknown): Response {
+		if (this.profile?.error) {
+			return this.json(
+				this.profile.error(message, status, details, this),
+				status,
+			);
+		}
 		return this.json({ success: false, message, details }, status);
+	}
+
+	/**
+	 * Serve a buffer/bytes as a downloadable file
+	 * (`Content-Disposition: attachment`), with MIME type inferred from the
+	 * filename when `options.contentType` is omitted.
+	 *
+	 * @example
+	 * ```ts
+	 * return ctx.download(workbookBuffer, "products.xlsx");
+	 * ```
+	 */
+	public download(
+		data: ArrayBuffer | Uint8Array | Blob,
+		filename: string,
+		options?: DownloadOptions,
+	): Response {
+		return downloadBuffer(this, data, filename, options);
+	}
+
+	/**
+	 * Queue a `Set-Cookie` header on the current response. Can be called
+	 * anywhere in the handler - no need to wrap the returned `Response`.
+	 * Headers are merged into the final response, including error responses.
+	 *
+	 * @example
+	 * ```ts
+	 * ctx.setCookie("token", token, { httpOnly: true, sameSite: "none" });
+	 * return ctx.success(user);
+	 * ```
+	 */
+	public setCookie(
+		name: string,
+		value: string,
+		options: CookieOptions = {},
+	): this {
+		const cookie = serializeCookie(name, value, options);
+		const existing = this.set.headers["set-cookie"];
+		if (existing === undefined) {
+			this.set.headers["set-cookie"] = cookie;
+		} else if (Array.isArray(existing)) {
+			this.set.headers["set-cookie"] = [...existing, cookie];
+		} else {
+			this.set.headers["set-cookie"] = [existing, cookie];
+		}
+		return this;
+	}
+
+	/**
+	 * Queue an expired `Set-Cookie` header to delete a cookie on the client.
+	 */
+	public deleteCookie(
+		name: string,
+		options: Omit<CookieOptions, "maxAge" | "expires"> = {},
+	): this {
+		return this.setCookie(name, "", {
+			...options,
+			maxAge: 0,
+			expires: new Date(0),
+		});
 	}
 
 	private static readonly TEXT_HEADERS = {
@@ -402,7 +724,9 @@ export class Context<
 		});
 	}
 
-	private static readonly HTML_HEADERS = { "Content-Type": "text/html" };
+	private static readonly HTML_HEADERS = {
+		"Content-Type": "text/html; charset=utf-8",
+	};
 	/**
 	 * Return HTML response
 	 */
@@ -443,6 +767,10 @@ export class Context<
 					controller.enqueue(new TextEncoder().encode(value));
 				}
 			},
+			async cancel() {
+				// Client disconnected - release the generator to avoid leaks.
+				await iterator.return?.();
+			},
 		});
 
 		return new Response(stream, {
@@ -450,6 +778,84 @@ export class Context<
 			headers: {
 				"Content-Type": "text/html; charset=utf-8",
 				"Transfer-Encoding": "chunked",
+				...options?.headers,
+			},
+		});
+	}
+
+	/**
+	 * Stream a file from disk as the response body.
+	 *
+	 * The file is not read into memory - Bun streams it natively and handles
+	 * `Range` requests (`206 Partial Content`) for video/audio seeking.
+	 *
+	 * @example
+	 * ```ts
+	 * app.get('/video', (ctx) => ctx.file('./public/video.mp4'));
+	 * ```
+	 */
+	public file(filePath: string, options?: FileOptions): BuntokFile {
+		return new BuntokFile(filePath, options);
+	}
+
+	/**
+	 * Stream an arbitrary chunk source as the response body.
+	 *
+	 * Accepts a `ReadableStream<Uint8Array>` or an async iterable of
+	 * `string | Uint8Array | ArrayBuffer | Blob` chunks. For files on disk,
+	 * prefer {@link Context.file} so `Range` and MIME detection are handled.
+	 *
+	 * @example
+	 * ```ts
+	 * app.get('/stream', (ctx) => {
+	 *   return ctx.stream(async function* () {
+	 *     yield "hello ";
+	 *     yield "world";
+	 *   }, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+	 * });
+	 * ```
+	 */
+	public stream(
+		source:
+			| ReadableStream<Uint8Array>
+			| AsyncIterable<string | Uint8Array | ArrayBuffer | Blob>,
+		options?: { status?: number; headers?: Record<string, string> },
+	): Response {
+		if (source instanceof ReadableStream) {
+			return new Response(source, {
+				status: options?.status ?? 200,
+				headers: options?.headers,
+			});
+		}
+
+		const iterator = source[Symbol.asyncIterator]();
+		const encoder = new TextEncoder();
+		const body = new ReadableStream<Uint8Array>({
+			async pull(controller) {
+				const { value, done } = await iterator.next();
+				if (done) {
+					controller.close();
+					return;
+				}
+				if (typeof value === "string") {
+					controller.enqueue(encoder.encode(value));
+				} else if (value instanceof Uint8Array) {
+					controller.enqueue(value);
+				} else if (value instanceof ArrayBuffer) {
+					controller.enqueue(new Uint8Array(value));
+				} else {
+					controller.enqueue(new Uint8Array(await value.arrayBuffer()));
+				}
+			},
+			async cancel(reason) {
+				await iterator.return?.(reason);
+			},
+		});
+
+		return new Response(body, {
+			status: options?.status ?? 200,
+			headers: {
+				"Content-Type": "application/octet-stream",
 				...options?.headers,
 			},
 		});

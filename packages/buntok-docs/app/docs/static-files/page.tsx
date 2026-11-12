@@ -76,7 +76,7 @@ app.static("/files", "./assets");`}
               <td className="px-4 py-2 font-mono">StaticOptions?</td>
               <td className="px-4 py-2">
                 <code>maxAge</code>, <code>cacheControl</code>,{" "}
-                <code>etag</code>, <code>native</code>
+                <code>etag</code>, <code>native</code>, <code>dotfiles</code>
               </td>
             </tr>
           </tbody>
@@ -93,7 +93,11 @@ app.static("/files", "./assets");`}
         Directory traversal attacks are automatically prevented. Requests that
         attempt to escape the base directory (e.g.,{" "}
         <code>/files/../../etc/passwd</code>) will receive a{" "}
-        <code>403 Forbidden</code> response.
+        <code>403 Forbidden</code> response. Files and directories whose name
+        starts with a dot (e.g. <code>.env</code>, <code>.git/</code>) are also
+        blocked with <code>403 Forbidden</code> by default - set{" "}
+        <code>dotfiles: "allow"</code> in <code>StaticOptions</code> to serve
+        them.
       </p>
 
       <Heading

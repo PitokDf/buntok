@@ -6,6 +6,11 @@ export interface TrustedProxyOptions {
 	depth?: number;
 }
 
+/** Minimal structural shape of a Bun `Server` for peer IP resolution. */
+export interface ServerLike {
+	requestIP(req: Request): { address?: string; port?: number; family?: string } | null;
+}
+
 function normalizeIP(ip: string): string {
 	return ip.replace(/^::ffff:/i, "").trim().toLowerCase();
 }
@@ -35,7 +40,18 @@ function matchesProxy(ip: string, configured: string): boolean {
 	return (value & mask) === (networkValue & mask);
 }
 
-function getRemoteAddress(request: Request): string | undefined {
+function getRemoteAddress(
+	request: Request,
+	server?: ServerLike,
+): string | undefined {
+	const raw = server?.requestIP(request);
+	const fromServer =
+		raw === null || raw === undefined
+			? undefined
+			: typeof raw === "string"
+			? raw
+			: (raw as { address?: string }).address;
+	if (typeof fromServer === "string" && fromServer) return fromServer;
 	// Bun exposes remoteAddress on the request.
 	// biome-ignore lint/suspicious/noExplicitAny: Bun-specific property
 	const remote = (request as any).remoteAddress;
@@ -45,9 +61,18 @@ function getRemoteAddress(request: Request): string | undefined {
 /**
  * Get the client IP. Forwarding headers are ignored unless the direct peer is
  * explicitly trusted through addresses or a proxy depth.
+ *
+ * `depth` counts trusted hops from the right of `X-Forwarded-For`:
+ * `depth: 1` means the last entry (appended by the immediate trusted proxy) is
+ * the real client. Without `depth`, a trusted peer still trusts the header and
+ * reads the last entry as the client.
  */
-export function getClientIP(request: Request, trustedProxy?: TrustedProxyOptions): string {
-	const remote = getRemoteAddress(request);
+export function getClientIP(
+	request: Request,
+	trustedProxy?: TrustedProxyOptions,
+	server?: ServerLike,
+): string {
+	const remote = getRemoteAddress(request, server);
 	const addresses = trustedProxy?.addresses ?? [];
 	const trustedPeer = remote ? addresses.some((address) => matchesProxy(remote, address)) : false;
 	const depth = trustedProxy?.depth;
@@ -57,7 +82,14 @@ export function getClientIP(request: Request, trustedProxy?: TrustedProxyOptions
 		const forwarded = request.headers.get("x-forwarded-for");
 		const chain = forwarded?.split(",").map((ip) => ip.trim()).filter(Boolean) ?? [];
 		if (chain.length) {
-			const index = depth ? Math.max(0, chain.length - depth - 1) : 0;
+			let index: number;
+			if (depth !== undefined) {
+				index = Math.max(0, chain.length - depth);
+			} else if (trustedPeer) {
+				index = chain.length - 1;
+			} else {
+				index = 0;
+			}
 			const clientIP = chain[index] ?? chain[0];
 			if (clientIP) return clientIP;
 		}

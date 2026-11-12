@@ -34,7 +34,11 @@ export function parseCookies(cookieHeader: string): Record<string, string> {
 		const value = valueParts.join("=").trim();
 
 		if (trimmedName) {
-			cookies[trimmedName] = decodeURIComponent(value);
+			try {
+				cookies[trimmedName] = decodeURIComponent(value);
+			} catch {
+				cookies[trimmedName] = value;
+			}
 		}
 	}
 
@@ -49,6 +53,25 @@ export function serializeCookie(
 	value: string,
 	options: CookieOptions = {},
 ): string {
+	if (!/^[^;=\s,\x00-\x1f\x7f]+$/.test(name)) {
+		throw new Error(`Invalid cookie name: ${JSON.stringify(name)}`);
+	}
+	if (
+		options.path !== undefined &&
+		/[;,\n\r\x00-\x1f\x7f]/.test(options.path)
+	) {
+		throw new Error(`Invalid cookie path: ${JSON.stringify(options.path)}`);
+	}
+	if (options.domain && /[;=,\s\x00-\x1f\x7f]/.test(options.domain)) {
+		throw new Error(`Invalid cookie domain: ${JSON.stringify(options.domain)}`);
+	}
+
+	// SameSite defaults to Lax; None requires Secure (prevents silent downgrade).
+	const sameSite = options.sameSite ?? "lax";
+	if (sameSite === "none" && !options.secure) {
+		throw new Error("SameSite=None requires the Secure attribute");
+	}
+
 	let cookie = `${name}=${encodeURIComponent(value)}`;
 
 	if (options.domain) {
@@ -73,8 +96,8 @@ export function serializeCookie(
 		cookie += "; HttpOnly";
 	}
 
-	if (options.sameSite) {
-		cookie += `; SameSite=${options.sameSite.charAt(0).toUpperCase() + options.sameSite.slice(1)}`;
+	if (sameSite) {
+		cookie += `; SameSite=${sameSite.charAt(0).toUpperCase() + sameSite.slice(1)}`;
 	}
 
 	if (options.partitioned) {

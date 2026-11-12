@@ -576,6 +576,121 @@ app.ws("/chat", {
 });`}
       />
 
+      {/* ──────────────── SOCKET.IO ──────────────── */}
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        Socket.IO
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Socket.IO needs its own Engine.IO transport on the same port as Buntok.
+        Mount it with <code>socketIOPlugin</code>, which uses the official{" "}
+        <code>@socket.io/bun-engine</code> - no Node{" "}
+        <code>http.Server</code> polyfill.
+      </p>
+      <CodeBlock
+        language="bash"
+        code={`bun add socket.io @socket.io/bun-engine`}
+      />
+      <CodeBlock
+        code={`import { Buntok } from "@buntok/core";
+import { socketIOPlugin } from "@buntok/core/plugins/socket-io";
+import { Server } from "socket.io";
+
+const app = new Buntok();
+const io = new Server();
+
+io.on("connection", (socket) => {
+  socket.on("hello", (message) => {
+    socket.emit("world", message);
+  });
+});
+
+await app.plugin(socketIOPlugin({ io }));
+
+app.get("/", () => "HTTP and Socket.IO share port 1212");
+app.listen(1212);`}
+      />
+      <p className="my-3 text-text-secondary leading-relaxed">
+        The plugin mounts <code>/socket.io/</code> by default and merges the
+        engine WebSocket handler with <code>app.ws()</code> routes. Connections
+        are dispatched by the <code>handler</code> marker that Buntok attaches
+        during <code>upgrade()</code>, so both APIs work side by side.
+      </p>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        When the server starts, the banner confirms the mount path:
+      </p>
+      <CodeBlock
+        language="bash"
+        code={`Listening on: http://localhost:1212
+Socket.IO:    http://localhost:1212/socket.io/`}
+      />
+      <div className="my-4 overflow-x-auto">
+        <table className="w-full text-sm text-text-secondary border border-border-primary rounded-lg overflow-hidden">
+          <thead className="bg-bg-tertiary border-b border-border-primary">
+            <tr>
+              <th className="px-4 py-2 text-left font-semibold text-text-primary">
+                Option
+              </th>
+              <th className="px-4 py-2 text-left font-semibold text-text-primary">
+                Type
+              </th>
+              <th className="px-4 py-2 text-left font-semibold text-text-primary">
+                Default
+              </th>
+              <th className="px-4 py-2 text-left font-semibold text-text-primary">
+                Description
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ["io", "Server", "-", "Socket.IO server instance (required)"],
+              ["path", "string", '"/socket.io/"', "Mount path for polling + WebSocket"],
+              ["engine", "object", "undefined", "Forwarded to @socket.io/bun-engine"],
+              [
+                "closeOnShutdown",
+                "boolean",
+                "true",
+                "Close Socket.IO when the app shuts down",
+              ],
+            ].map(([opt, type, def, desc]) => (
+              <tr
+                key={opt}
+                className="border-b border-border-primary/50 hover:bg-bg-tertiary/50 transition-colors"
+              >
+                <td className="px-4 py-2 font-mono text-accent">{opt}</td>
+                <td className="px-4 py-2 font-mono text-text-secondary">
+                  {type}
+                </td>
+                <td className="px-4 py-2 font-mono text-text-secondary">
+                  {def}
+                </td>
+                <td className="px-4 py-2">{desc}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Callout type="info">
+        For multi-instance deployments, configure a Socket.IO adapter (for
+        example <code>@socket.io/redis-adapter</code>) on the{" "}
+        <code>io</code> instance. The Buntok plugin only handles the transport.
+      </Callout>
+      <Callout type="warning">
+        Only one third-party WebSocket handler can share the server. Registering
+        more than one integration with a <code>websocket</code> handler throws
+        at startup.
+      </Callout>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Need to mount a different HTTP or WebSocket library manually? See{" "}
+        <a href="/docs/custom-integrations" className="text-accent hover:underline">
+          Custom Integrations
+        </a>{" "}
+        for the underlying <code>app.integrate()</code> API.
+      </p>
+
       {/* ──────────────── PLUGGABLE INFRASTRUCTURE ──────────────── */}
       <Heading
         level={2}

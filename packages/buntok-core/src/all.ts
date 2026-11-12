@@ -50,6 +50,7 @@ export type {
 	UploadedFile,
 	UploadFieldConfig,
 	UploadOptions,
+	UploaderMessages,
 } from "./upload";
 export {
 	deleteUploadedFile,

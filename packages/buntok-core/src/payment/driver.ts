@@ -57,6 +57,7 @@ export interface PaymentDriver {
 		payload: string,
 		signature: string,
 		secret: string,
+		headers?: Headers,
 	): Promise<boolean> | boolean;
 
 	/** Parse raw webhook payload into a normalized WebhookEvent */

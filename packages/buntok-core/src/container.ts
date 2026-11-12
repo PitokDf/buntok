@@ -1,7 +1,7 @@
 export type Scope = "singleton" | "transient";
 
-// biome-ignore lint/complexity/noBannedTypes: Token can be string or class constructor
-type Token = string | Function;
+// biome-ignore lint/suspicious/noExplicitAny: Constructor args are unknowable
+export type Token = string | (new (...args: any[]) => unknown);
 
 // biome-ignore lint/suspicious/noExplicitAny: Generic provider defaults require any
 export interface ClassProvider<T = any> {
@@ -30,7 +30,8 @@ export type Provider<T = any> =
 	| FactoryProvider<T>;
 
 // ── Dependency declaration registry (used by @Dependencies) ────────
-const dependenciesRegistry = new Map<Function, any[]>();
+// biome-ignore lint/complexity/noBannedTypes: Registry keys are decorator targets
+const dependenciesRegistry = new Map<Function, Token[]>();
 
 /**
  * Declares constructor dependencies for a class. Used with `container.scan()`
@@ -48,12 +49,19 @@ const dependenciesRegistry = new Map<Function, any[]>();
  * ```
  */
 export function Dependencies(
-	...tokens: any[]
+	...tokens: Token[]
 	// biome-ignore lint/complexity/noBannedTypes: TC39 decorator signature
 ): (target: Function, context: ClassDecoratorContext) => void {
 	return (target: Function, context: ClassDecoratorContext) => {
 		if (context.kind !== "class") {
 			throw new Error("@Dependencies can only decorate classes");
+		}
+		for (const token of tokens) {
+			if (typeof token !== "string" && typeof token !== "function") {
+				throw new TypeError(
+					`@Dependencies() expects class constructors or string tokens, got ${typeof token}`,
+				);
+			}
 		}
 		dependenciesRegistry.set(target, tokens);
 	};
@@ -62,7 +70,7 @@ export function Dependencies(
 /**
  * Returns the dependency tokens declared via `@Dependencies()`.
  */
-export function getDependencies(cls: any): any[] {
+export function getDependencies(cls: Function): Token[] {
 	return dependenciesRegistry.get(cls) ?? [];
 }
 
@@ -91,6 +99,13 @@ export class Container {
 	 * Register a provider for a given token (class or string key).
 	 */
 	register<T>(token: Token, provider: Provider<T>): this {
+		if (isValueProvider(provider) && provider.useValue === undefined) {
+			const name = typeof token === "function" ? token.name : String(token);
+			throw new TypeError(
+				`Invalid provider for "${name}": useValue is undefined. ` +
+					"Did you pass the wrong variable? Use a factory provider for lazy values.",
+			);
+		}
 		this.providers.set(token, provider);
 		return this;
 	}
@@ -142,18 +157,22 @@ export class Container {
 		let instance: any;
 		let scope: Scope = "singleton";
 
-		if (isClassProvider(provider)) {
-			scope = provider.scope ?? "singleton";
-			instance = new provider.useClass();
-		} else if (isValueProvider(provider)) {
-			scope = "singleton";
-			instance = provider.useValue;
-		} else if (isFactoryProvider(provider)) {
-			scope = provider.scope ?? "singleton";
-			instance = provider.useFactory(this);
+		try {
+			if (isClassProvider(provider)) {
+				scope = provider.scope ?? "singleton";
+				instance = new provider.useClass();
+			} else if (isValueProvider(provider)) {
+				scope = "singleton";
+				instance = provider.useValue;
+			} else if (isFactoryProvider(provider)) {
+				scope = provider.scope ?? "singleton";
+				instance = provider.useFactory(this);
+			}
+		} finally {
+			// Always clear the in-flight marker, otherwise a throwing factory
+			// leaves the container permanently convinced there is a cycle.
+			this.resolving.delete(token);
 		}
-
-		this.resolving.delete(token);
 
 		if (scope !== "transient") {
 			this.singletons.set(token, instance);
@@ -220,7 +239,7 @@ export class Container {
 			visited.add(cls);
 
 			// Read dependency tokens from @Dependencies() decorator
-			const depTokens: any[] = getDependencies(cls);
+			const depTokens: Token[] = getDependencies(cls);
 
 			// Register dependencies first (bottom-up)
 			for (const dep of depTokens) {
@@ -229,14 +248,15 @@ export class Container {
 				}
 			}
 
-			// Register this class (skip if already registered manually)
-			if (!self.has(cls)) {
+			// Register this class (skip if already registered manually).
+			// Never guess: a class with constructor parameters but no
+			// @Dependencies() is left unregistered so `resolve()` throws a
+			// clear "No provider registered for: X" instead of a confusing
+			// runtime `undefined is not a function`.
+			if (!self.has(cls) && (depTokens.length > 0 || cls.length === 0)) {
 				self.register(cls, {
 					useFactory: (c) => {
-						const args = depTokens.map(
-							// biome-ignore lint/suspicious/noExplicitAny: Dynamic resolution
-							(dep: any) => (dep ? c.resolve(dep) : undefined),
-						);
+						const args = depTokens.map((dep) => c.resolve(dep));
 						return new cls(...args);
 					},
 					scope,

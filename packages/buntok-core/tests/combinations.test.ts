@@ -150,7 +150,10 @@ describe("Combination: registerController array + cors", () => {
 		});
 		app.registerController([UserController, PostController]);
 
-		const res = await app.request("/users", { method: "OPTIONS" });
+		const res = await app.request("/users", {
+			method: "OPTIONS",
+			headers: { Origin: "http://example.com" },
+		});
 		expect(res.status).toBe(204);
 		expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://example.com");
 		expect(res.headers.get("Access-Control-Allow-Methods")).toBe("GET,POST");
@@ -376,7 +379,7 @@ describe("Combination: apiDocs + cors + array registerController", () => {
 			headers: { Origin: "http://evil.com" },
 		});
 		expect(res2.status).toBe(200);
-		expect(res2.headers.get("Access-Control-Allow-Origin")).toBe("");
+		expect(res2.headers.get("Access-Control-Allow-Origin")).toBeNull();
 
 		app.server?.stop();
 	});
@@ -405,11 +408,10 @@ describe("Combination: apiDocs + cors + array registerController", () => {
 			headers: { Origin: "http://evil.com" },
 		});
 		expect(res2.status).toBe(200);
-		expect(res2.headers.get("Access-Control-Allow-Origin")).toBe("");
+		expect(res2.headers.get("Access-Control-Allow-Origin")).toBeNull();
 
 		app.server?.stop();
 	});
-});
 
 describe("Combination: mixed registration (single + array) + cors", () => {
 	it("should work with mixed single and array calls + cors", async () => {
@@ -611,4 +613,5 @@ describe("Combination: response body verification", () => {
 		const body2 = await res2.json();
 		expect(body2).toEqual({ posts: [] });
 	});
+});
 });

@@ -187,6 +187,41 @@ const admin = api.group("/admin");
 admin.get("/dashboard", handler);`}
       />
 
+      {/* ──────────────── BODY LIMIT / JSON / RESPONSE PROFILE ──────────────── */}
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        bodyLimit() · json() · responseProfile()
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Every request body is capped at <strong>4 MB</strong> by default.
+        Oversized bodies throw <code>PayloadTooLargeError</code> (413) before
+        being buffered. JSON parsing errors in <code>ctx.body()</code> return
+        400 instead of 500.
+      </p>
+      <CodeBlock
+        code={`app.bodyLimit(10 * 1024 * 1024); // 10 MB
+
+// BigInt (e.g. Prisma money columns) serialized as strings (default)
+app.json({ bigint: "string" });
+// app.json({ bigint: "throw" }); // throw with a clear message
+
+// One response envelope for success / error / pagination / validation
+app.responseProfile({
+  success: (data, message) => ({ success: true, message, data }),
+  error: (message, status) => ({ success: false, message, status }),
+  validation: {
+    status: 400,
+    message: "Invalid input data.",
+    errors: (issues) => issues.map((i) => ({
+      path: (i as { path: (string | number)[] }).path.join("."),
+      message: (i as { message: string }).message,
+    })),
+  },
+});`}
+      />
+
       {/* ──────────────── MIDDLEWARE ──────────────── */}
       <Heading
         level={2}
@@ -388,6 +423,14 @@ api.registerController([UserController, PostController]);`}
                 Configure Bun WebSocket options
               </td>
             </tr>
+            <tr>
+              <td className="border border-border-primary px-4 py-2 text-text-secondary">
+                <code>httpIdleTimeout(seconds)</code>
+              </td>
+              <td className="border border-border-primary px-4 py-2 text-text-secondary">
+                Set server HTTP idle timeout (1-255s, default 120)
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -428,7 +471,7 @@ api.registerController([UserController, PostController]);`}
   title: "My API",
   version: "1.0.0",
   description: "API documentation",
-  safeOnProduction: true,  // hide docs when NODE_ENV=production
+  safeOnProduction: true,  // hide docs when NODE_ENV=production (default: true)
 });`}
       />
 
@@ -808,6 +851,34 @@ await app.shutdown();                  // alias for app.close()`}
   maxBackpressure: 1024,        // max bytes buffered per connection
   publishToSelf: false,         // don't deliver to sender's own connection
 });`}
+      />
+
+      {/* ──────────────── HTTP IDLE TIMEOUT ──────────────── */}
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        HTTP Idle Timeout
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Bun&apos;s server-level <code>idleTimeout</code> defaults to{" "}
+        <strong>10 seconds</strong> - too short for SSE heartbeats (30s) or
+        Socket.IO long-polling. Buntok raises it to <strong>120s</strong> and
+        keeps it above your keep-alive intervals (max 255).
+      </p>
+      <CodeBlock
+        code={`app.httpIdleTimeout(60);                 // seconds, before or after listen()
+
+new Buntok({
+  handleSignals: true,
+  httpIdleTimeout: 60,                   // same value via constructor
+});
+
+app.get("/events", (ctx) =>
+  ctx.sse((sse) => sse.sendData("hi"), {
+    heartbeatInterval: 30_000,           // must be < httpIdleTimeout
+  }),
+);`}
       />
 
       {/* ──────────────── TRUSTED PROXY ──────────────── */}

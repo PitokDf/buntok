@@ -3,11 +3,21 @@ import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import type { Server, ServerWebSocket, BunFile } from "bun";
 import type { z } from "zod";
 import { Container } from "./container";
-import { Context } from "./context";
+import {
+	Context,
+	type ContextOptions,
+	type ResponseProfile,
+} from "./context";
 import { getControllerMeta, type RouteMeta } from "./decorators";
 import { HttpError } from "./helpers/async-handler";
+import { TimeoutError } from "./middlewares/timeout";
 import { BuntokFile } from "./helpers/file";
-import { toResponse } from "./helpers/response";
+import {
+	jsonResponse,
+	toResponse,
+	type BigIntMode,
+	type JsonConfig,
+} from "./helpers/response";
 import {
 	analyzeHandler,
 	extractConstResponseOp,
@@ -38,6 +48,27 @@ export interface WSOptions {
 	maxBackpressure?: number;
 	/** Publish to self? default false */
 	publishToSelf?: boolean;
+}
+
+/**
+ * Third-party integration that owns an exact pathname on the same Bun server.
+ * The `fetch` handler receives the live `Server` so it can perform WebSocket
+ * upgrades (e.g. `@socket.io/bun-engine`).
+ */
+export interface BunIntegration<DI = Record<string, unknown>> {
+	/** Exact pathname to intercept, e.g. `/socket.io/`. */
+	path: string;
+	/** Human-readable name shown in the startup banner. */
+	label?: string;
+	/** Raw Bun request handler. Called before the Buntok router/middleware. */
+	fetch: (
+		request: Request,
+		server: Server<WSData<DI>>,
+	) => Response | Promise<Response>;
+	/** WebSocket event handlers for connections upgraded by this integration. */
+	websocket?: Record<string, unknown>;
+	/** Extra Bun.serve options merged at listen() time. */
+	serve?: Record<string, unknown>;
 }
 
 export interface WSHandler<DI = Record<string, unknown>> {
@@ -242,6 +273,13 @@ export interface StaticOptions {
 	/** Enable ETag generation and conditional requests (default: true) */
 	etag?: boolean;
 	/**
+	 * How to handle files/directories whose name starts with a dot
+	 * (e.g. `.env`, `.git/`). `"deny"` returns 403 by default; `"allow"`
+	 * serves them normally.
+	 * @default "deny"
+	 */
+	dotfiles?: "allow" | "deny";
+	/**
 	 * Serve the directory through Bun's native `{ dir }` route - zero JS per
 	 * request (kernel-clamped path traversal, native mime/etag/range/index.html).
 	 * Falls back to the JS handler when the native gates are off (request
@@ -294,7 +332,7 @@ export interface ApiDocsOptions {
 	version?: string;
 	/** API description */
 	description?: string;
-	/** Hide docs when NODE_ENV is "production" (default: false) */
+	/** Hide docs when NODE_ENV is "production" (default: true) */
 	safeOnProduction?: boolean;
 }
 
@@ -313,6 +351,12 @@ export interface BuntokOptions {
 	handleSignals?: boolean;
 	/** Maximum time allowed for graceful shutdown. */
 	shutdownTimeout?: number;
+	/**
+	 * Server-level HTTP idle timeout in seconds (Bun default: 10, Buntok: 120,
+	 * max 255). Must be longer than your SSE heartbeat interval or Socket.IO
+	 * polling interval, otherwise long-lived connections get cut off.
+	 */
+	httpIdleTimeout?: number;
 }
 
 export interface DisposableResource {
@@ -444,6 +488,9 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 	public di = {} as DI;
 	private wsRoutes: Map<string, WSHandler<DI>> = new Map();
 	private wsOpts: WSOptions = {};
+	private _httpIdleTimeout: number = 120;
+	private integrations: BunIntegration<DI>[] = [];
+	private integrationByPath = new Map<string, BunIntegration<DI>>();
 	private poweredByHeaderEnabled: boolean = process.env.NODE_ENV !== "production";
 	private _reusePort: boolean = false;
 	private _skipLogResponse: boolean = false;
@@ -451,8 +498,10 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 	private _handlerNeedsFullContext = new WeakMap<Function, boolean>();
 	// Track routes that have per-route middlewares (need full Context)
 	private _routesWithMiddleware = new Set<string>();
-	// Precomputed client IP resolver - avoid closure alloc per request
-	private _clientIPResolver: (request: Request) => string = (req) => getClientIP(req);
+	// Precomputed client IP resolver - avoid closure alloc per request.
+	// Reads `this.server` live so `server.requestIP()` is used once listening.
+	private _clientIPResolver: (request: Request) => string = (req) =>
+		getClientIP(req, this.trustedProxy, this.server);
 	// Cache full needsFullContext per handler for AOT codegen (includes ctx.json detection)
 	private _handlerFullContextCache = new WeakMap<Function, { needsFullContext: boolean; needsParams: boolean; needsSetHeaders: boolean }>();
 	// Static handler values (string/Response/ConstResponseOp) per `METHOD:path`,
@@ -479,6 +528,12 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 	// biome-ignore lint/suspicious/noExplicitAny: OpenAPI document is dynamically generated
 	private _swaggerDocument: any | null = null;
 	public routeDebugInfo: RouteDebugInfo[] = [];
+	// Stable object shared with every `new Context(...)` - mutated by
+	// responseProfile()/json() so already-compiled AOT routers pick it up.
+	private readonly _contextOptions: ContextOptions = {
+		json: { bigint: "string" },
+	};
+	private _bigintMode: BigIntMode = "string";
 
 	/**
 	 * The underlying Bun Server instance. Only available after app.listen() is called.
@@ -487,10 +542,6 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 	public server?: Server<WSData<DI>>;
 
 	private customErrorHandler: ErrorHandler<DI> = (err, ctx) => {
-		logger.error("Unhandled Exception", {
-			error: err.message,
-			stack: err.stack,
-		});
 		const status = err instanceof HttpError ? err.status : 500;
 		const errorName =
 			status === 400
@@ -505,25 +556,35 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 								? "Method Not Allowed"
 								: status === 409
 									? "Conflict"
-									: status === 422
+									: status === 413
+										? "Payload Too Large"
+										: status === 422
 										? "Unprocessable Entity"
 										: status === 429
 											? "Too Many Requests"
 											: status === 503
 												? "Service Unavailable"
-												: "Internal Server Error";
+												: status === 504
+													? "Gateway Timeout"
+													: "Internal Server Error";
+		const message =
+			err instanceof HttpError && err.status < 500
+				? err.message
+				: process.env.NODE_ENV === "production"
+					? "An unexpected error occurred"
+					: err.message;
+		// When an app response profile is installed, unhandled errors follow
+		// the same envelope as ctx.error() - one contract for the whole app.
+		if (ctx.profile?.error) {
+			return ctx.error(message, status);
+		}
 		return ctx.json(
 			{
 				success: false,
 				error: errorName,
 				// Buntok-thrown 4xx HttpErrors keep their message (also in
 				// production); 5xx and unexpected errors are masked in production.
-				message:
-					err instanceof HttpError && err.status < 500
-						? err.message
-						: process.env.NODE_ENV === "production"
-							? "An unexpected error occurred"
-							: err.message,
+				message,
 			},
 			status,
 		);
@@ -545,8 +606,16 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 	constructor(options: BuntokOptions = {}) {
 		this.handleSignals = options.handleSignals ?? true;
 		this.shutdownTimeout = options.shutdownTimeout ?? 30_000;
+		if (options.httpIdleTimeout !== undefined) {
+			this._httpIdleTimeout = Buntok.clampIdleTimeout(options.httpIdleTimeout);
+		}
 		this.router = new Router();
 		// Favicon served as static file from docs templates directory
+	}
+
+	/** Bun.serve rejects idleTimeout above 255 seconds. */
+	private static clampIdleTimeout(seconds: number): number {
+		return Math.max(1, Math.min(255, Math.floor(seconds)));
 	}
 
 	public use(middleware: Middleware<DI>): this {
@@ -637,8 +706,8 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 	public setTrustedProxy(options?: TrustedProxyOptions): this {
 		this.trustedProxy = options;
 		this._clientIPResolver = options
-			? (req) => getClientIP(req, options)
-			: (req) => getClientIP(req);
+			? (req) => getClientIP(req, options, this.server)
+			: (req) => getClientIP(req, undefined, this.server);
 		this._invalidateAOT();
 		return this;
 	}
@@ -725,6 +794,55 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 	/** Configure Bun WebSocket options - Bun-only, zero-deps */
 	public wsOptions(opts: WSOptions): this {
 		this.wsOpts = { ...this.wsOpts, ...opts };
+		return this;
+	}
+
+	/**
+	 * Set the server-level HTTP idle timeout in seconds (1-255, default 120).
+	 *
+	 * Bun's own default is only 10 seconds - long-lived connections (SSE
+	 * streams, Socket.IO long-polling, slow uploads) must send traffic more
+	 * often than this, or the connection is closed. Keep it larger than your
+	 * SSE `heartbeatInterval` / Socket.IO `pingInterval`.
+	 *
+	 * @example
+	 * ```ts
+	 * app.httpIdleTimeout(60); // SSE heartbeat every 30s stays alive
+	 * ```
+	 */
+	public httpIdleTimeout(seconds: number): this {
+		this._httpIdleTimeout = Buntok.clampIdleTimeout(seconds);
+		// Apply immediately on a running server via server.reload()
+		this._invalidateAOT();
+		return this;
+	}
+
+	/**
+	 * Mount a third-party handler on the same Bun server.
+	 *
+	 * The exact `path` is dispatched before Buntok's router, middleware, and
+	 * AOT pipeline - the integration owns all methods (including WebSocket
+	 * upgrades) for that pathname. Optional `websocket` handlers are composed
+	 * with `app.ws()` routes, and `serve` options are merged into `Bun.serve()`
+	 * at `listen()`.
+	 *
+	 * @example
+	 * ```ts
+	 * const engine = new Engine({ path: "/socket.io/" });
+	 * app.integrate({
+	 *   path: "/socket.io/",
+	 *   fetch: (req, server) => engine.handleRequest(req, server),
+	 *   websocket: engine.handler().websocket,
+	 *   serve: { idleTimeout: 30 },
+	 * });
+	 * ```
+	 */
+	public integrate(integration: BunIntegration<DI>): this {
+		this.integrationByPath.set(integration.path, integration);
+		if (!this.integrations.includes(integration)) {
+			this.integrations.push(integration);
+		}
+		this._invalidateAOT();
 		return this;
 	}
 
@@ -905,6 +1023,71 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 
 	public onError(handler: ErrorHandler<DI>): this {
 		this.customErrorHandler = handler;
+		return this;
+	}
+
+	/**
+	 * Install an app-wide response profile. Applied to every `ctx.success()`,
+	 * `ctx.paginate()`, `ctx.cursorPaginate()` and `ctx.error()` call - and to
+	 * `zValidator()` failures via `validation` - so the response contract is
+	 * configured once instead of at each endpoint.
+	 *
+	 * ```ts
+	 * app.responseProfile({
+	 *   success: (data, message, _status, ctx) => ({
+	 *     success: true,
+	 *     message: message === "Success" ? "Berhasil" : message,
+	 *     data,
+	 *     timestamp: new Date().toISOString(),
+	 *     path: ctx.path,
+	 *   }),
+	 *   validation: {
+	 *     status: 400,
+	 *     message: "Invalid input data.",
+	 *     errors: (issues) => issues.map((i) => ({
+	 *       path: (i as { path: (string | number)[] }).path.join("."),
+	 *       message: (i as { message: string }).message,
+	 *     })),
+	 *   },
+	 * });
+	 * ```
+	 */
+	public responseProfile(profile: ResponseProfile): this {
+		this._contextOptions.responseProfile = profile;
+		return this;
+	}
+
+	/**
+	 * Configure JSON serialization. `bigint: "string"` (default) serializes
+	 * `BigInt` values as strings so Prisma money columns no longer throw
+	 * inside `Response.json`; `"throw"` keeps throwing but with a clear error.
+	 *
+	 * ```ts
+	 * app.json({ bigint: "string" });
+	 * ```
+	 */
+	public json(config: JsonConfig): this {
+		this._contextOptions.json = {
+			...this._contextOptions.json,
+			...config,
+		};
+		if (config.bigint) this._bigintMode = config.bigint;
+		return this;
+	}
+
+	/**
+	 * Set the maximum request body size in bytes. Exceeding it makes
+	 * `ctx.body()` / `ctx.formData()` / `zValidator()` throw a
+	 * `PayloadTooLargeError` → `413`.
+	 *
+	 * Defaults to 4 MB.
+	 *
+	 * ```ts
+	 * app.bodyLimit(10 * 1024 * 1024); // 10 MB
+	 * ```
+	 */
+	public bodyLimit(bytes: number): this {
+		this._contextOptions.bodyLimit = bytes;
 		return this;
 	}
 
@@ -1456,9 +1639,20 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 		const maxAge = options?.maxAge ?? 3600;
 		const cacheControl = options?.cacheControl ?? `public, max-age=${maxAge}`;
 		const enableEtag = options?.etag !== false;
+		const dotfiles = options?.dotfiles ?? "deny";
 
 		const handler: Handler<DI> = async (ctx) => {
 			const requestedPath = ctx.params["*"] || "";
+
+			// Block dotfiles/dot-directories (.env, .git/, ...) by default.
+			if (dotfiles !== "allow") {
+				for (const segment of requestedPath.split("/")) {
+					if (segment.startsWith(".")) {
+						return ctx.json({ error: "Forbidden" }, 403);
+					}
+				}
+			}
+
 			let absolutePath = join(baseDir, requestedPath);
 
 			if (absolutePath !== baseDir && !absolutePath.startsWith(baseDir + sep)) {
@@ -1482,12 +1676,17 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 			const etag = enableEtag ? `"${file.size}-${file.lastModified}"` : null;
 
 			// ETag-based conditional request (If-None-Match → 304)
+			// Supports weak validators (`W/"..."`) and lists of tags per RFC 7232.
 			if (etag) {
 				const ifNoneMatch = ctx.request.headers.get("If-None-Match");
-				if (ifNoneMatch === etag) {
+				const match = parseETagList(ifNoneMatch ?? "", etag);
+				if (match) {
 					return new Response(null, {
 						status: 304,
-						headers: { ETag: etag },
+						headers: {
+							ETag: etag,
+							"Cache-Control": cacheControl,
+						},
 					});
 				}
 			}
@@ -1540,7 +1739,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 			title: options?.title ?? "API Documentation",
 			version: options?.version ?? "1.0.0",
 			description: options?.description,
-			safeOnProduction: options?.safeOnProduction ?? false,
+			safeOnProduction: options?.safeOnProduction ?? true,
 		};
 		return this;
 	}
@@ -1551,6 +1750,19 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 		handlers: Array<Middleware<DI> | Handler<DI> | string | Response>,
 		options?: { source?: "route" | "controller" | "group"; controller?: string; group?: string },
 	): void {
+		// Accept "users" as "/users" instead of silently registering a route
+		// that can never match (common copy-paste mistake from Express docs).
+		if (path === "") {
+			path = "/";
+		} else if (!path.startsWith("/")) {
+			if (process.env.NODE_ENV !== "production") {
+				logger.warn(
+					`Route path "${path}" is missing a leading "/" - registering "${`/${path}`}" instead.`,
+				);
+			}
+			path = `/${path}`;
+		}
+
 		const routeMiddlewares = handlers.slice(0, -1) as Middleware<DI>[];
 		const routeKey = `${method}:${path}`;
 		let mainHandler = handlers[handlers.length - 1] as Handler<DI>;
@@ -1647,6 +1859,18 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 
 		// Map compiled pipeline → original handler for AOT sucrose analysis
 		this._pipelineToHandler.set(executionChain, mainHandler);
+
+		if (process.env.NODE_ENV !== "production") {
+			const upperMethod = method.toUpperCase();
+			const existing =
+				this.router.staticRoutes.get(path)?.get(upperMethod) ??
+				this.router.dynamicRoutes.get(path)?.get(upperMethod);
+			if (existing) {
+				logger.warn(
+					`Duplicate route: ${method} ${path} is already registered - the last handler wins.`,
+				);
+			}
+		}
 
 		this.router.insert(method, path, executionChain);
 	}
@@ -1892,7 +2116,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 			code +=
 				"  if (server && wsRoutes.has(pathname)) {\n" +
 				"    const wsHandler = wsRoutes.get(pathname);\n" +
-				"    const wsCtx = new Context(request, EMPTY_PARAMS, di, clientIPResolver);\n" +
+				"    const wsCtx = new Context(request, EMPTY_PARAMS, di, clientIPResolver, contextOptions);\n" +
 				"    const data = { ctx: wsCtx, handler: wsHandler };\n" +
 				"    const upgraded = server.upgrade(request, { data });\n" +
 				"    if (upgraded) return undefined;\n" +
@@ -1927,7 +2151,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 		}
 
 		for (const [method, routes] of methodPaths.entries()) {
-			code += `case "${method}": {\n`;
+			code += `case ${JSON.stringify(method)}: {\n`;
 			code += "  switch(pathname) {\n";
 			for (const route of routes) {
 				const handlerRef = getHandlerIndex(route.handler);
@@ -1953,10 +2177,10 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 				const ctxArg = needsFullContext ? "ctx" : "{ request }";
 				// Error handler always needs full Context, so we declare ctx for catch blocks
 				const ctxDecl = needsFullContext
-					? "      ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver);\n"
+					? "      ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver, contextOptions);\n"
 					: "";
 
-				code += `    case "${route.path}": {\n`;
+				code += `    case ${JSON.stringify(route.path)}: {\n`;
 				code += ctxDecl;
 				code += hasGlobalMiddleware
 					? `      const raw = compiledGlobalPipeline(${ctxArg}, ${handlerRef});\n`
@@ -1965,11 +2189,11 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 					// Normalization expressions - promise branch (v) and sync branch
 					// (raw) - shared by the set-headers and no-set variants below.
 					const normV =
-						'typeof v === "string" ? new Response(v) : v instanceof Response ? v : typeof v === "object" && v !== null ? (v instanceof BuntokFile ? v.toResponse(request) : Response.json(v)) : toResponse(v)';
+						'typeof v === "string" ? new Response(v) : v instanceof Response ? v : typeof v === "object" && v !== null ? (v instanceof BuntokFile ? v.toResponse(request) : jsonResponse(v, 200, contextOptions.json?.bigint)) : toResponse(v)';
 					const normRaw =
-						'typeof raw === "string" ? new Response(raw) : raw instanceof Response ? raw : typeof raw === "object" && raw !== null ? (raw instanceof BuntokFile ? raw.toResponse(request) : Response.json(raw)) : toResponse(raw)';
+						'typeof raw === "string" ? new Response(raw) : raw instanceof Response ? raw : typeof raw === "object" && raw !== null ? (raw instanceof BuntokFile ? raw.toResponse(request) : jsonResponse(raw, 200, contextOptions.json?.bigint)) : toResponse(raw)';
 					const tailCatch =
-						'.catch((e) => { if (!ctx) ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver); return handleError(request, pathname, ctx, e); });\n';
+						'.catch((e) => { if (!ctx) ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver, contextOptions); return handleError(request, pathname, ctx, e); });\n';
 					if (!this.poweredByHeaderEnabled) {
 						if (needsSetHeaders) {
 							// Fastest path: no logging, no powered-by - skip setPoweredBy entirely
@@ -1981,7 +2205,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 								'      if (typeof raw === "string") return applyCtxHeaders(ctx, new Response(raw));\n';
 							code +=
 								"      if (raw instanceof Response) return applyCtxHeaders(ctx, raw);\n" +
-								'      if (typeof raw === "object" && raw !== null) return applyCtxHeaders(ctx, raw instanceof BuntokFile ? raw.toResponse(request) : Response.json(raw));\n' +
+								'      if (typeof raw === "object" && raw !== null) return applyCtxHeaders(ctx, raw instanceof BuntokFile ? raw.toResponse(request) : jsonResponse(raw, 200, contextOptions.json?.bigint));\n' +
 								"      return applyCtxHeaders(ctx, toResponse(raw));\n";
 						} else {
 							// sucrose: handler can never write ctx.set.headers →
@@ -1994,7 +2218,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 								'      if (typeof raw === "string") return new Response(raw);\n';
 							code +=
 								"      if (raw instanceof Response) return raw;\n" +
-								'      if (typeof raw === "object" && raw !== null) return raw instanceof BuntokFile ? raw.toResponse(request) : Response.json(raw);\n' +
+								'      if (typeof raw === "object" && raw !== null) return raw instanceof BuntokFile ? raw.toResponse(request) : jsonResponse(raw, 200, contextOptions.json?.bigint);\n' +
 								"      return toResponse(raw);\n";
 						}
 					} else if (needsSetHeaders) {
@@ -2006,7 +2230,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 							'      if (typeof raw === "string") return setPoweredBy(ctx, new Response(raw));\n';
 						code +=
 							"      if (raw instanceof Response) return setPoweredBy(ctx, raw);\n" +
-							'      if (typeof raw === "object" && raw !== null) return setPoweredBy(ctx, raw instanceof BuntokFile ? raw.toResponse(request) : Response.json(raw));\n' +
+							'      if (typeof raw === "object" && raw !== null) return setPoweredBy(ctx, raw instanceof BuntokFile ? raw.toResponse(request) : jsonResponse(raw, 200, contextOptions.json?.bigint));\n' +
 							"      return setPoweredBy(ctx, toResponse(raw));\n";
 					} else {
 						// powered-by without the ctx.set merge (baked at compile -
@@ -2023,13 +2247,13 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 				} else {
 					code += "      if (raw instanceof Promise) {\n";
 					code +=
-						'        return raw.then((v) => typeof v === "string" ? logResponse(request, pathname, ctx, new Response(v)) : logResponse(request, pathname, ctx, v instanceof Response ? v : typeof v === "object" && v !== null ? (v instanceof BuntokFile ? v.toResponse(request) : Response.json(v)) : toResponse(v))).catch((e) => { if (!ctx) ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver); return handleError(request, pathname, ctx, e); });\n';
+						'        return raw.then((v) => typeof v === "string" ? logResponse(request, pathname, ctx, new Response(v)) : logResponse(request, pathname, ctx, v instanceof Response ? v : typeof v === "object" && v !== null ? (v instanceof BuntokFile ? v.toResponse(request) : jsonResponse(v, 200, contextOptions.json?.bigint)) : toResponse(v))).catch((e) => { if (!ctx) ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver, contextOptions); return handleError(request, pathname, ctx, e); });\n';
 					code += "      }\n";
 					code +=
 						'      if (typeof raw === "string") return logResponse(request, pathname, ctx, new Response(raw));\n';
 					code +=
 						"      if (raw instanceof Response) return logResponse(request, pathname, ctx, raw);\n" +
-						'      if (typeof raw === "object" && raw !== null) return logResponse(request, pathname, ctx, raw instanceof BuntokFile ? raw.toResponse(request) : Response.json(raw));\n' +
+						'      if (typeof raw === "object" && raw !== null) return logResponse(request, pathname, ctx, raw instanceof BuntokFile ? raw.toResponse(request) : jsonResponse(raw, 200, contextOptions.json?.bigint));\n' +
 						"      return logResponse(request, pathname, ctx, toResponse(raw));\n";
 				}
 				code += "    }\n";
@@ -2039,7 +2263,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 			code += "}\n";
 		}
 
-		code += "  }\n  } catch(err) { if (!ctx) ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver); return handleError(request, pathname, ctx, err); }\n" + "  return fallback(request, server);\n" + "};\n";
+		code += "  }\n  } catch(err) { if (!ctx) ctx = new Context(request, EMPTY_PARAMS, di, clientIPResolver, contextOptions); return handleError(request, pathname, ctx, err); }\n" + "  return fallback(request, server);\n" + "};\n";
 
 		const factory = new Function(
 			"Context",
@@ -2056,6 +2280,8 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 			"BuntokFile",
 			"setPoweredBy",
 			"applyCtxHeaders",
+			"jsonResponse",
+			"contextOptions",
 			code,
 		);
 
@@ -2075,6 +2301,8 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 			BuntokFile,
 			this.setPoweredBy,
 			this.applyCtxHeaders,
+			jsonResponse,
+			this._contextOptions,
 		);
 	}
 
@@ -2134,7 +2362,12 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 		if (headers) {
 			for (const key in headers) {
 				const value = headers[key];
-				if (value === undefined || value === null) continue;
+				if (value === undefined || value === null) {
+					// `null` = explicitly remove the header (e.g. helmet hiding
+					// X-Powered-By). `undefined` is ignored for backward compat.
+					if (value === null) result.headers.delete(key);
+					continue;
+				}
 				if (key.toLowerCase() === "set-cookie" && Array.isArray(value)) {
 					for (const cookie of value) {
 						result.headers.append(key, cookie);
@@ -2178,11 +2411,13 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 					? new Response(v)
 					: v instanceof Response
 						? v
-						: toResponse(v, request),
+						: toResponse(v, request, this._bigintMode),
 			);
 		}
 		if (typeof value === "string") return new Response(value);
-		return value instanceof Response ? value : toResponse(value, request);
+		return value instanceof Response
+			? value
+			: toResponse(value, request, this._bigintMode);
 	}
 
 	/**
@@ -2211,9 +2446,23 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 		err: unknown,
 	): Response | Promise<Response> => {
 		const errorObj = err instanceof Error ? err : new Error(String(err));
-		logger.error(`${request.method} ${pathname}`, {
-			error: errorObj.message,
-		});
+		// Log centrally (not inside the default handler) so a custom
+		// `app.onError()` does not lose logs. Client errors are expected
+		// control flow: warn without a stack; server errors keep the stack.
+		const status = errorObj instanceof HttpError ? errorObj.status : 500;
+		// Client errors are expected control flow: warn without a stack.
+		// Gateway timeouts are logged as warn (handler took too long, not a
+		// code bug) - everything else >= 500 keeps the stack.
+		if (status >= 500 && !(errorObj instanceof TimeoutError)) {
+			logger.error(`${request.method} ${pathname}`, {
+				error: errorObj.message,
+				stack: errorObj.stack,
+			});
+		} else {
+			logger.warn(`${request.method} ${pathname}`, {
+				error: errorObj.message,
+			});
+		}
 		const result = this.customErrorHandler(errorObj, ctx);
 		// Normalize ErrorHandler flexible return as well
 		const normalized = this.normalizeReturn(result, request);
@@ -2247,10 +2496,10 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 	 *
 	 * Accepts the same input as the global `fetch()` / `Request` constructor.
 	 */
-	public async request(
+	public request = async (
 		input: string | Request | URL,
 		init?: RequestInit,
-	): Promise<Response> {
+	): Promise<Response> => {
 		const request =
 			input instanceof Request && !init
 				? input
@@ -2262,12 +2511,16 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 					init,
 				);
 		return this._dispatch(request);
-	}
+	};
 
 	/**
 	 * Standard fetch handler for serverless platforms (Vercel, Cloudflare Workers, etc.).
 	 * Compiles AOT once, then dispatches straight to the router - no
 	 * `request()` indirection (input normalization + `handleRequest`).
+	 *
+	 * Arrow property (not a prototype method) so `export default app` and
+	 * `const f = app.fetch` keep working after the function is detached
+	 * from the instance by Bun/Vercel.
 	 *
 	 * Usage:
 	 * ```ts
@@ -2275,8 +2528,26 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 	 * export default app;
 	 * ```
 	 */
-	public fetch(request: Request): Response | Promise<Response> {
-		return this._dispatch(request);
+	public fetch = (
+		request: Request,
+		server?: Server<WSData<DI>>,
+	): Response | Promise<Response> => {
+		return this._dispatch(request, server);
+	};
+
+	/** Rebuild the composed WebSocket handler on a running server. */
+	private _refreshWebSocketHandler(): void {
+		if (!this._serveOptions) return;
+		const external = this.integrations.find((i) => i.websocket)?.websocket;
+		const websocket = this.composeWebSocketHandler(
+			this.buildWebSocketHandler(),
+			external,
+		);
+		if (websocket) {
+			this._serveOptions.websocket = websocket;
+		} else {
+			delete this._serveOptions.websocket;
+		}
 	}
 
 	/**
@@ -2288,10 +2559,13 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 		this._compiledAOTRouter = this.compileAOTRouter();
 		this._aotReady = true;
 		if (this.server && this._serveOptions && this.isListening) {
+			this._refreshWebSocketHandler();
 			this._serveOptions.routes = this.collectNativeStaticRoutes() ?? {};
+			this._serveOptions.idleTimeout = this._httpIdleTimeout;
 			this.server.reload({
 				fetch: this._serveOptions.fetch,
 				routes: this._serveOptions.routes,
+				idleTimeout: this._serveOptions.idleTimeout,
 				...(this._serveOptions.websocket
 					? { websocket: this._serveOptions.websocket }
 					: {}),
@@ -2318,10 +2592,19 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 		}
 	}
 
+	private _integrationFor(request: Request): BunIntegration<DI> | undefined {
+		if (this.integrationByPath.size === 0) return undefined;
+		return this.integrationByPath.get(this.extractPathname(request.url));
+	}
+
 	private _dispatch(
 		request: Request,
 		server?: Server<WSData<DI>>,
 	): Response | Promise<Response> {
+		if (server) {
+			const integration = this._integrationFor(request);
+			if (integration) return integration.fetch(request, server);
+		}
 		if (!this.compiledGlobalPipeline) this.compileGlobalPipeline();
 		// Lazy AOT - compile once; recompile when a codegen flag changes
 		// (disable/enable logger|powered-by, setTrustedProxy, use()).
@@ -2341,6 +2624,10 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 		request: Request,
 		server?: Server<WSData<DI>>,
 	): Response | Promise<Response> {
+		if (server) {
+			const integration = this._integrationFor(request);
+			if (integration) return integration.fetch(request, server);
+		}
 		return this._compiledAOTRouter(request, server);
 	}
 
@@ -2348,12 +2635,16 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 		request: Request,
 		server?: Server<WSData<DI>>,
 	): Response | Promise<Response> {
+		if (server) {
+			const integration = this._integrationFor(request);
+			if (integration) return integration.fetch(request, server);
+		}
 		const pathname = this.extractPathname(request.url);
 
 		if (server && this.wsRoutes.size > 0) {
 			const wsHandler = this.wsRoutes.get(pathname);
 			if (wsHandler) {
-				const ctx = new Context(request, {}, this.di, this._clientIPResolver) as Context<DI>;
+				const ctx = new Context(request, {}, this.di, this._clientIPResolver, this._contextOptions) as Context<DI>;
 				const data: WSData<DI> = { ctx, handler: wsHandler };
 				const upgraded = server.upgrade(request, { data });
 				if (upgraded) {
@@ -2374,7 +2665,27 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 
 		let finalHandler = route.handler as Handler<DI>;
 		if (!finalHandler) {
-			finalHandler = this.customNotFoundHandler;
+			const allowed = this.router.allowedMethods(pathname);
+			if (allowed.length > 0) {
+				// Answer 405 + Allow through the normal pipeline so global
+				// middleware (CORS preflight, helmet, logging) still runs.
+				finalHandler = (ctx: Context<DI>): Response => {
+					const response = ctx.profile?.error
+						? ctx.error("Method Not Allowed", 405)
+						: ctx.json(
+								{
+									success: false,
+									error: "Method Not Allowed",
+									message: "Method Not Allowed",
+								},
+								405,
+							);
+					response.headers.set("Allow", allowed.join(", "));
+					return response;
+				};
+			} else {
+				finalHandler = this.customNotFoundHandler;
+			}
 		}
 
 		// Sucrose: use cached analysis from compile time (includes ctx.json detection).
@@ -2385,7 +2696,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 			this.hasPipelineHooks || (cached ? cached.needsFullContext : true);
 		const needsParams = cached ? cached.needsParams : false;
 		const fullCtx = needsFullContext
-			? new Context(request, routeParams, this.di, this._clientIPResolver)
+			? new Context(request, routeParams, this.di, this._clientIPResolver, this._contextOptions)
 			: null;
 		const ctxArg = fullCtx ?? (needsParams ? { request, params: routeParams } : { request, params: routeParams });
 
@@ -2398,13 +2709,13 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 					.then((value) => this.logNormalized(request, pathname, value, fullCtx))
 					.catch((err) => {
 						// Ensure full Context for error handler
-						const errCtx = fullCtx ?? new Context(request, routeParams, this.di, this._clientIPResolver);
+						const errCtx = fullCtx ?? new Context(request, routeParams, this.di, this._clientIPResolver, this._contextOptions);
 						return this.handleError(request, pathname, errCtx, err);
 					});
 			}
 			return this.logNormalized(request, pathname, result, fullCtx);
 		} catch (err) {
-			const errCtx = fullCtx ?? new Context(request, routeParams, this.di, this._clientIPResolver);
+			const errCtx = fullCtx ?? new Context(request, routeParams, this.di, this._clientIPResolver, this._contextOptions);
 			return this.handleError(request, pathname, errCtx, err);
 		}
 	}
@@ -2606,7 +2917,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 
 		return (request: Request): Response | Promise<Response> => {
 			const fullCtx = needsFullContext
-				? new Context(request, rawParams(request), this.di, this._clientIPResolver)
+				? new Context(request, rawParams(request), this.di, this._clientIPResolver, this._contextOptions)
 				: null;
 			const params = fullCtx ? fullCtx.params : rawParams(request);
 			const ctxArg = fullCtx ?? { request, params };
@@ -2624,6 +2935,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 									rawParams(request),
 									this.di,
 									this._clientIPResolver,
+									this._contextOptions,
 								);
 							return this.handleError(request, parsePathname(request), errCtx, err);
 						});
@@ -2637,6 +2949,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 						rawParams(request),
 						this.di,
 						this._clientIPResolver,
+						this._contextOptions,
 					);
 				return this.handleError(request, parsePathname(request), errCtx, err);
 			}
@@ -2709,7 +3022,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 
 		return (request: Request): Response | Promise<Response> => {
 			const fullCtx = needsFullContext
-				? new Context(request, EMPTY_PARAMS, this.di, this._clientIPResolver)
+				? new Context(request, EMPTY_PARAMS, this.di, this._clientIPResolver, this._contextOptions)
 				: null;
 			const ctxArg = fullCtx ?? { request, params: EMPTY_PARAMS };
 			try {
@@ -2726,6 +3039,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 									EMPTY_PARAMS,
 									this.di,
 									this._clientIPResolver,
+									this._contextOptions,
 								);
 							return this.handleError(request, parsePathname(request), errCtx, err);
 						});
@@ -2734,7 +3048,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 			} catch (err) {
 				const errCtx =
 					fullCtx ??
-					new Context(request, EMPTY_PARAMS, this.di, this._clientIPResolver);
+					new Context(request, EMPTY_PARAMS, this.di, this._clientIPResolver, this._contextOptions);
 				return this.handleError(request, parsePathname(request), errCtx, err);
 			}
 		};
@@ -2813,9 +3127,7 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 					});
 					break;
 				case "json":
-					response = value.status === 200
-						? Response.json(value.data)
-						: Response.json(value.data, { status: value.status });
+					response = jsonResponse(value.data, value.status, this._bigintMode);
 					break;
 			}
 			if (xpb) response.headers.set("X-Powered-By", "buntok");
@@ -2825,12 +3137,141 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 		}
 	}
 
+	/** Build the native Bun WebSocket handler for `app.ws()` routes. */
+	private buildWebSocketHandler(): Record<string, unknown> | undefined {
+		if (this.wsRoutes.size === 0) return undefined;
+		return {
+			// Bun-only native options - pluggable, zero-deps
+			perMessageDeflate: this.wsOpts.perMessageDeflate ?? false,
+			maxPayloadLength: this.wsOpts.maxPayloadLength ?? 16 * 1024 * 1024,
+			idleTimeout: this.wsOpts.idleTimeout ?? 120,
+			maxBackpressure: this.wsOpts.maxBackpressure,
+			publishToSelf: this.wsOpts.publishToSelf ?? false,
+			open: async (ws: ServerWebSocket<WSData<DI>>) => {
+				try {
+					if (ws.data.handler.authenticate) {
+						const authData = await ws.data.handler.authenticate(ws);
+						if (authData === null) {
+							ws.close(4001, "Unauthorized");
+							return;
+						}
+						(ws.data as unknown as Record<string, unknown>).auth = authData;
+					}
+					ws.data.handler.open?.(ws);
+				} catch (err) {
+					logger.error("WS open error", { error: (err as Error).message });
+					try { ws.close(1011, "Internal error"); } catch { }
+				}
+			},
+			message: (
+				ws: ServerWebSocket<WSData<DI>>,
+				message: string | Buffer,
+			) => {
+				try {
+					ws.data.handler.message?.(ws, message);
+				} catch (err) {
+					logger.error("WS message error", { error: (err as Error).message });
+				}
+			},
+			close: (
+				ws: ServerWebSocket<WSData<DI>>,
+				code: number,
+				reason: string,
+			) => {
+				try { ws.data.handler.close?.(ws, code, reason); } catch (err) {
+					logger.error("WS close error", { error: (err as Error).message });
+				}
+			},
+			drain: (ws: ServerWebSocket<WSData<DI>>) => {
+				try { ws.data.handler.drain?.(ws); } catch { }
+			},
+			pong: (ws: ServerWebSocket<WSData<DI>>) => {
+				try {
+					// heartbeat pong - reset alive (fix: pong is not a message)
+					(ws.data.handler as unknown as { pong?: (ws: ServerWebSocket<WSData<DI>>) => void }).pong?.(ws);
+					// also a fallback for wsHeartbeat attached on ws.data
+					const hb = (ws.data as unknown as { heartbeat?: { alive: boolean } }).heartbeat;
+					if (hb) hb.alive = true;
+				} catch { }
+			},
+		};
+	}
+
+	/**
+	 * Compose Buntok's `app.ws()` handler with a third-party WebSocket handler.
+	 * Buntok connections are recognized by the `handler` marker attached during
+	 * `server.upgrade()`; everything else is delegated to the integration.
+	 */
+	private composeWebSocketHandler(
+		buntok: Record<string, unknown> | undefined,
+		external: Record<string, unknown> | undefined,
+	): Record<string, unknown> | undefined {
+		if (!buntok) return external;
+		if (!external) return buntok;
+
+		// biome-ignore lint/suspicious/noExplicitAny: Bun's ws data is untyped for third-party handlers
+		type AnyWS = ServerWebSocket<any>;
+		const isBuntokSocket = (ws: AnyWS): boolean => {
+			const data = ws.data as unknown;
+			return typeof data === "object" && data !== null && "handler" in data;
+		};
+		const dispatch = (event: string, ws: AnyWS, ...args: unknown[]): unknown => {
+			const target = isBuntokSocket(ws) ? buntok : external;
+			const fn = target[event];
+			if (typeof fn !== "function") return undefined;
+			return (fn as (ws: AnyWS, ...args: unknown[]) => unknown)(ws, ...args);
+		};
+		const maxNumber = (a: unknown, b: unknown): number | undefined => {
+			const av = typeof a === "number" ? a : undefined;
+			const bv = typeof b === "number" ? b : undefined;
+			if (av === undefined && bv === undefined) return undefined;
+			return Math.max(av ?? 0, bv ?? 0);
+		};
+
+		const merged: Record<string, unknown> = {
+			...buntok,
+			...external,
+			perMessageDeflate:
+				buntok.perMessageDeflate ?? external.perMessageDeflate ?? false,
+			maxPayloadLength:
+				maxNumber(buntok.maxPayloadLength, external.maxPayloadLength) ??
+				16 * 1024 * 1024,
+			idleTimeout: maxNumber(buntok.idleTimeout, external.idleTimeout) ?? 120,
+			publishToSelf: buntok.publishToSelf ?? false,
+			open: (ws: AnyWS) => dispatch("open", ws),
+			message: (ws: AnyWS, message: string | Buffer) =>
+				dispatch("message", ws, message),
+			close: (ws: AnyWS, code: number, reason: string) =>
+				dispatch("close", ws, code, reason),
+			drain: (ws: AnyWS) => dispatch("drain", ws),
+			pong: (ws: AnyWS) => dispatch("pong", ws),
+		};
+		const maxBackpressure = maxNumber(
+			buntok.maxBackpressure,
+			external.maxBackpressure,
+		);
+		if (maxBackpressure !== undefined) merged.maxBackpressure = maxBackpressure;
+		if (
+			typeof buntok.error === "function" ||
+			typeof external.error === "function"
+		) {
+			merged.error = (ws: AnyWS, error: unknown) =>
+				dispatch("error", ws, error);
+		}
+		return merged;
+	}
+
 	public listen(port?: number, callback?: () => void): void {
 		// Skip server startup when running under make:docs or when a CLI
 		// command imports the entry point just to inspect it (debug:routes)
 		if (process.env.BUNTOK_DOCS_BUILD === "1") return;
 		if (process.env.BUNTOK_CLI_NO_LISTEN === "1") return;
-		if (this.isListening) return;
+		if (this.isListening) {
+			if (process.env.NODE_ENV !== "production") {
+				logger.warn("listen() called while the server is already running - ignoring.");
+			}
+			return;
+		}
 		this.isListening = true;
 
 		const startTime = performance.now();
@@ -2895,63 +3336,39 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 			serveOptions.reusePort = true;
 		}
 
-		if (this.wsRoutes.size > 0) {
-			serveOptions.websocket = {
-				// Bun-only native options - pluggable, zero-deps
-				perMessageDeflate: this.wsOpts.perMessageDeflate ?? false,
-				maxPayloadLength: this.wsOpts.maxPayloadLength ?? 16 * 1024 * 1024,
-				idleTimeout: this.wsOpts.idleTimeout ?? 120,
-				maxBackpressure: this.wsOpts.maxBackpressure,
-				publishToSelf: this.wsOpts.publishToSelf ?? false,
-				open: async (ws: ServerWebSocket<WSData<DI>>) => {
-					try {
-						if (ws.data.handler.authenticate) {
-							const authData = await ws.data.handler.authenticate(ws);
-							if (authData === null) {
-								ws.close(4001, "Unauthorized");
-								return;
-							}
-							(ws.data as unknown as Record<string, unknown>).auth = authData;
-						}
-						ws.data.handler.open?.(ws);
-					} catch (err) {
-						logger.error("WS open error", { error: (err as Error).message });
-						try { ws.close(1011, "Internal error"); } catch { }
-					}
-				},
-				message: (
-					ws: ServerWebSocket<WSData<DI>>,
-					message: string | Buffer,
-				) => {
-					try {
-						ws.data.handler.message?.(ws, message);
-					} catch (err) {
-						logger.error("WS message error", { error: (err as Error).message });
-					}
-				},
-				close: (
-					ws: ServerWebSocket<WSData<DI>>,
-					code: number,
-					reason: string,
-				) => {
-					try { ws.data.handler.close?.(ws, code, reason); } catch (err) {
-						logger.error("WS close error", { error: (err as Error).message });
-					}
-				},
-				drain: (ws: ServerWebSocket<WSData<DI>>) => {
-					try { ws.data.handler.drain?.(ws); } catch { }
-				},
-				pong: (ws: ServerWebSocket<WSData<DI>>) => {
-					try {
-						// heartbeat pong - reset alive (fix: pong is not a message)
-						(ws.data.handler as unknown as { pong?: (ws: ServerWebSocket<WSData<DI>>) => void }).pong?.(ws);
-						// also a fallback for wsHeartbeat attached on ws.data
-						const hb = (ws.data as unknown as { heartbeat?: { alive: boolean } }).heartbeat;
-						if (hb) hb.alive = true;
-					} catch { }
-				},
-			} as unknown as Record<string, unknown>;
+		// Bun defaults to 10s - far below the SSE heartbeat (30s) and
+		// Socket.IO polling intervals, which killed long-lived connections.
+		serveOptions.idleTimeout = this._httpIdleTimeout;
+
+		// Merge third-party serve options (idleTimeout, maxRequestBodySize, ...)
+		// and compose their WebSocket handlers with `app.ws()` routes.
+		const integrationServe: Record<string, unknown> = {};
+		let externalWebSocket: Record<string, unknown> | undefined;
+		for (const integration of this.integrations) {
+			if (integration.websocket) {
+				if (externalWebSocket) {
+					throw new Error(
+						"Buntok supports only one external WebSocket handler; combine integrations behind a single handler.",
+					);
+				}
+				externalWebSocket = integration.websocket;
+			}
+			if (integration.serve) {
+				const extra = { ...integration.serve };
+				delete extra.fetch;
+				delete extra.websocket;
+				delete extra.routes;
+				delete extra.port;
+				Object.assign(integrationServe, extra);
+			}
 		}
+		Object.assign(serveOptions, integrationServe);
+
+		const websocket = this.composeWebSocketHandler(
+			this.buildWebSocketHandler(),
+			externalWebSocket,
+		);
+		if (websocket) serveOptions.websocket = websocket;
 
 		// Promote static-value handlers to native Bun.serve routes - computed
 		// once here, recomputed on AOT recompile (see _dispatch).
@@ -2996,6 +3413,12 @@ export class Buntok<DI extends Record<string, unknown> = Record<string, unknown>
 			if (this._apiDocsConfig) {
 				const docsPath = (this._apiDocsConfig.path ?? "/docs").replace(/\/+$/, "");
 				console.log(`  Docs:         \x1b[36mhttp://localhost:${currentPort}${docsPath}/\x1b[0m`);
+			}
+			for (const integration of this.integrations) {
+				if (!integration.label) continue;
+				console.log(
+					`  ${`${integration.label}:`.padEnd(13)} \x1b[36mhttp://localhost:${currentPort}${integration.path}\x1b[0m`,
+				);
 			}
 			console.log();
 		}
@@ -3705,4 +4128,22 @@ export class RouterGroup<
 
 		return this;
 	}
+}
+
+/**
+ * Parse an `If-None-Match` header value and check whether any tag matches the
+ * given ETag. Supports weak validators (`W/"..."`) and comma-separated lists
+ * per RFC 7232 section 3.3.
+ */
+function parseETagList(ifNoneMatch: string, etag: string): boolean {
+	const normalizedETag = etag.replace(/^W\//i, "");
+	const tags = ifNoneMatch
+		.split(",")
+		.map((t) => t.trim())
+		.filter(Boolean);
+	for (const tag of tags) {
+		if (tag === "*") return true;
+		if (tag.replace(/^W\//i, "") === normalizedETag) return true;
+	}
+	return false;
 }

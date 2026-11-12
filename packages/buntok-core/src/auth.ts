@@ -35,7 +35,17 @@ export class JwtService {
 	constructor(
 		private secret: string,
 		private options: JwtOptions = {},
-	) { }
+	) {
+		if (
+			process.env.NODE_ENV !== "production" &&
+			textEncoder.encode(secret).byteLength < 32
+		) {
+			console.warn(
+				`[buntok] JwtService secret is only ${textEncoder.encode(secret).byteLength} bytes. ` +
+					"HS256 keys should be at least 32 bytes (256 bits) of random data.",
+			);
+		}
+	}
 
 	async sign(
 		payload: Record<string, unknown>,
@@ -157,8 +167,10 @@ export function requireAuth(
 		// Fallback to Authorization header (always try, even if AUTH_STORE=cookie)
 		if (!token) {
 			const authHeader = ctx.request.headers.get("Authorization");
-			if (authHeader?.startsWith("Bearer ")) {
-				token = authHeader.split(" ")[1];
+			const bearer = authHeader?.match(/^bearer\s+(.+)$/i);
+			const bearerToken = bearer?.[1]?.trim();
+			if (bearerToken) {
+				token = bearerToken;
 			}
 		}
 

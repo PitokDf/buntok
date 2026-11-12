@@ -25,6 +25,8 @@ export interface PayPalDriverConfig {
 	clientSecret: string;
 	/** Use sandbox mode (default: false) */
 	isProduction?: boolean;
+	/** PayPal webhook ID (required for webhook signature verification) */
+	webhookId?: string;
 }
 
 // ─── API Request/Response Types ───────────────────────────────────────────────
@@ -127,6 +129,7 @@ export class PayPalDriver implements PaymentDriver {
 	private clientId: string;
 	private clientSecret: string;
 	private apiBase: string;
+	private webhookId?: string;
 	private accessToken?: string;
 	private tokenExpiry = 0;
 
@@ -140,6 +143,7 @@ export class PayPalDriver implements PaymentDriver {
 		this.clientId = config.clientId;
 		this.clientSecret = config.clientSecret;
 		this.apiBase = config.isProduction ? API_BASE_PROD : API_BASE_SANDBOX;
+		this.webhookId = config.webhookId;
 	}
 
 	// ─── Auth ─────────────────────────────────────────────────────────────
@@ -366,14 +370,42 @@ export class PayPalDriver implements PaymentDriver {
 		payload: string,
 		signature: string,
 		secret: string,
+		headers?: Headers,
 	): Promise<boolean> {
-		// PayPal webhook verification via API
-		// In production, use PayPal's webhook verification API:
-		// POST /v1/notifications/verify-webhook-signature
-		// For now, basic check
+		// PayPal webhook signatures are certificate-based and cannot be
+		// verified offline - they must be confirmed against PayPal's
+		// verify-webhook-signature API. Any network/API failure fails closed.
+		const webhookId = secret || this.webhookId;
+		if (!webhookId) return false;
+
+		let event: unknown;
 		try {
-			JSON.parse(payload) as PayPalWebhookBody;
-			return signature.length > 0;
+			event = JSON.parse(payload);
+		} catch {
+			return false;
+		}
+
+		try {
+			const token = await this.getAccessToken();
+			const res = await fetch(`${this.apiBase}/v1/notifications/verify-webhook-signature`, {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					auth_algo: headers?.get("paypal-auth-algo") ?? "",
+					cert_id: headers?.get("paypal-cert-id") ?? "",
+					transmission_id: headers?.get("paypal-transmission-id") ?? "",
+					transmission_sig: signature,
+					transmission_time: headers?.get("paypal-transmission-time") ?? "",
+					webhook_id: webhookId,
+					webhook_event: event,
+				}),
+			});
+			if (!res.ok) return false;
+			const data = (await res.json()) as { verification_status?: string };
+			return data.verification_status === "SUCCESS";
 		} catch {
 			return false;
 		}

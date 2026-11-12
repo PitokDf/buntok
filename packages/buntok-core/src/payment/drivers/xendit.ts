@@ -12,6 +12,7 @@ import type {
 import {
 	normalizeCheckoutStatus,
 	normalizeRefundStatus,
+	safeEqual,
 } from "../helpers";
 import {
 	PaymentProviderError,
@@ -296,19 +297,10 @@ export class XenditDriver implements PaymentDriver {
 		secret: string,
 	): Promise<boolean> {
 		try {
-			const encoder = new TextEncoder();
-			const key = await crypto.subtle.importKey(
-				"raw",
-				encoder.encode(secret),
-				{ name: "HMAC", hash: "SHA-256" },
-				false,
-				["sign"],
-			);
-			const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
-			const computed = Array.from(new Uint8Array(sig))
-				.map((b) => b.toString(16).padStart(2, "0"))
-				.join("");
-			return computed === signature;
+			// Xendit's `x-callback-token` header is a static verification
+			// token - compare it directly with the configured secret, in
+			// constant time.
+			return await safeEqual(secret, signature);
 		} catch {
 			return false;
 		}

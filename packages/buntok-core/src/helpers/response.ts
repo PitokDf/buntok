@@ -17,7 +17,58 @@ import { BuntokFile } from "./file";
 
 const TEXT_CT = { "Content-Type": "text/plain; charset=utf-8" };
 
-export function toResponse(value: unknown, request?: Request): Response {
+/**
+ * How `ctx.json()` (and other JSON responses) handle `BigInt` values.
+ *
+ * - `"string"` (default) - serialize as a decimal string, matching the
+ *   common Express `JSON.stringify` replacer workaround.
+ * - `"throw"` - throw a descriptive error instead of the opaque native
+ *   `TypeError: Do not know how to serialize a BigInt`.
+ */
+export type BigIntMode = "string" | "throw";
+
+export interface JsonConfig {
+	bigint?: BigIntMode;
+}
+
+const BIGINT_REPLACER = (_key: string, value: unknown): unknown =>
+	typeof value === "bigint" ? value.toString() : value;
+
+/**
+ * Serialize JSON with BigInt support. Uses the native `Response.json()` fast
+ * path whenever possible and only falls back to a custom replacer when the
+ * payload actually contains a `BigInt`, so non-BigInt responses keep the
+ * exact same behavior (and content-type) as before.
+ */
+export function jsonResponse(
+	value: unknown,
+	status = 200,
+	bigint: BigIntMode = "string",
+): Response {
+	const init = status === 200 ? undefined : { status };
+	try {
+		return Response.json(value, init);
+	} catch (err) {
+		if (err instanceof TypeError && /BigInt/i.test(err.message)) {
+			if (bigint === "string") {
+				return new Response(JSON.stringify(value, BIGINT_REPLACER), {
+					...(init ?? {}),
+					headers: { "Content-Type": "application/json; charset=utf-8" },
+				});
+			}
+			throw new TypeError(
+				'BigInt tidak bisa diserialisasi - aktifkan app.json({ bigint: "string" })',
+			);
+		}
+		throw err;
+	}
+}
+
+export function toResponse(
+	value: unknown,
+	request?: Request,
+	bigint: BigIntMode = "string",
+): Response {
 	if (value instanceof Response) return value;
 	// Lazy file (BuntokFile) - convert at response time so Range can be read
 	if (value instanceof BuntokFile) return value.toResponse(request);
@@ -44,7 +95,7 @@ export function toResponse(value: unknown, request?: Request): Response {
 		return new Response(value as any);
 	}
 	// Array, plain object, etc. -> JSON
-	return Response.json(value);
+	return jsonResponse(value, 200, bigint);
 }
 
 export function toResponseMaybeAsync(

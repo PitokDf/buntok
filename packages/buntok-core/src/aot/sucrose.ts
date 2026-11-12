@@ -196,12 +196,23 @@ export function analyzeHandler(
 			source.includes(".created(") ||
 			source.includes(".noContent(");
 
-		// If handler is passed to another function, conservatively assume all properties needed
-		if (
+		// If handler is passed to another function, conservatively assume all
+		// properties needed. Also covers `(x) => h(x)` delegation: the callee
+		// may read any ctx property off the parameter, which source scanning
+		// of `x.*` cannot see (the parameter may not even be named `ctx`).
+		const firstParam = extractParamName(source);
+		const firstParamEscaped = firstParam
+			? firstParam.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+			: "";
+		const passesCtxToCallee =
 			source.includes("handler(") ||
 			source.includes("fn(") ||
-			source.includes("next()")
-		) {
+			source.includes("next()") ||
+			(firstParam !== null &&
+				firstParamEscaped.length > 0 &&
+				new RegExp(`\\w+\\(\\s*${firstParamEscaped}\\s*[,)]`).test(source));
+
+		if (passesCtxToCallee) {
 			return {
 				needsBody: true,
 				needsQuery: true,

@@ -1,6 +1,6 @@
 {
 	"name": "@buntok/core",
-	"version": "2.2.4",
+	"version": "2.2.5",
 	"description": "Blazing-fast, type-safe HTTP framework for Bun - AOT-compiled routing, decorators, Zod validation & IoC",
 	"module": "dist/core-exports.js",
 	"type": "module",
@@ -488,6 +488,17 @@
 			},
 			"default": "./dist/plugins/graphql/yoga.js"
 		},
+		"./plugins/socket-io": {
+			"import": {
+				"types": "./dist/plugins/socket-io.d.ts",
+				"default": "./dist/plugins/socket-io.js"
+			},
+			"require": {
+				"types": "./dist/plugins/socket-io.d.cts",
+				"default": "./dist/plugins/socket-io.cjs"
+			},
+			"default": "./dist/plugins/socket-io.js"
+		},
 		"./cli/templates": {
 			"import": {
 				"types": "./dist/cli/templates.d.ts",
@@ -503,9 +514,8 @@
 	},
 	"files": [
 		"dist",
-		"public",
-		"scripts",
-		"README.md"
+		"README.md",
+		"scripts/buntok-skill"
 	],
 	"scripts": {
 		"test": "bun test tests",
@@ -555,10 +565,19 @@
 		"graphql": ">=16.0.0",
 		"graphql-yoga": ">=5.0.0",
 		"@opentelemetry/api": ">=1.0.0",
-		"ioredis": "",
-		"bullmq": "",
-		"amqplib": "",
-		"reflect-metadata": ">=0.1.0"
+		"@opentelemetry/sdk-node": ">=0.40.0",
+		"@opentelemetry/resources": ">=1.0.0",
+		"@opentelemetry/sdk-trace-node": ">=1.0.0",
+		"ioredis": "*",
+		"bullmq": "*",
+		"amqplib": "*",
+		"reflect-metadata": ">=0.1.0",
+		"socket.io": ">=4.8.0",
+		"@socket.io/bun-engine": ">=0.1.0",
+		"nodemailer": ">=6.0.0",
+		"@faker-js/faker": ">=8.0.0",
+		"localtunnel": ">=2.0.0",
+		"@buntok/prisma": ">=0.0.0"
 	},
 	"peerDependenciesMeta": {
 		"bun": {
@@ -576,6 +595,15 @@
 		"@opentelemetry/api": {
 			"optional": true
 		},
+		"@opentelemetry/sdk-node": {
+			"optional": true
+		},
+		"@opentelemetry/resources": {
+			"optional": true
+		},
+		"@opentelemetry/sdk-trace-node": {
+			"optional": true
+		},
 		"ioredis": {
 			"optional": true
 		},
@@ -586,6 +614,24 @@
 			"optional": true
 		},
 		"reflect-metadata": {
+			"optional": true
+		},
+		"socket.io": {
+			"optional": true
+		},
+		"@socket.io/bun-engine": {
+			"optional": true
+		},
+		"nodemailer": {
+			"optional": true
+		},
+		"@faker-js/faker": {
+			"optional": true
+		},
+		"localtunnel": {
+			"optional": true
+		},
+		"@buntok/prisma": {
 			"optional": true
 		}
 	}

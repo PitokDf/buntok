@@ -105,7 +105,9 @@ describe("Context missing methods", () => {
 			const ctx = makeCtx();
 			const res = ctx.html("<h1>Hello</h1>");
 			expect(res.status).toBe(200);
-			expect(res.headers.get("Content-Type")).toBe("text/html");
+			expect(res.headers.get("Content-Type")).toBe(
+				"text/html; charset=utf-8",
+			);
 		});
 
 		it("should return HTML response with custom status", () => {

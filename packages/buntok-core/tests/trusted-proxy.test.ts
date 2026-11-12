@@ -21,7 +21,8 @@ describe("trusted proxy", () => {
 		const response = await app.request("/ip", {
 			headers: { "x-forwarded-for": "198.51.100.10, 10.0.0.2" },
 		});
-		expect(await response.text()).toBe("198.51.100.10");
+		// depth: 1 = entri terakhir XFF (yang ditambahkan proxy terdekat)
+		expect(await response.text()).toBe("10.0.0.2");
 	});
 
 	it("correlates the request ID through the Buntok pipeline", async () => {

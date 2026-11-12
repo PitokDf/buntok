@@ -37,7 +37,7 @@ export function groupBy<T>(
 	arr: T[],
 	key: keyof T | ((item: T) => string),
 ): Record<string, T[]> {
-	const result: Record<string, T[]> = {};
+	const result: Record<string, T[]> = Object.create(null);
 	for (const item of arr) {
 		const k = typeof key === "function" ? key(item) : String(item[key]);
 		if (!result[k]) {

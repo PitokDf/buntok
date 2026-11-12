@@ -59,6 +59,39 @@ class LookupCache {
 	}
 }
 
+function splitSegments(path: string): string[] {
+	const normalized =
+		path.length > 1 && path.endsWith("/") ? path.replace(/\/+$/, "") : path;
+	return normalized.split("/");
+}
+
+/** Extract ordered param names from a route path (e.g. `/orgs/:orgId/members` → `["orgId"]`). */
+function extractParamNames(path: string): string[] {
+	const names: string[] = [];
+	for (const segment of splitSegments(path)) {
+		if (segment.startsWith(":")) names.push(segment.slice(1));
+		else if (segment.startsWith("*")) names.push(segment.slice(1) || "*");
+	}
+	return names;
+}
+
+/**
+ * Cold-path matcher mirroring the trie: `:param` matches one segment and
+ * `*name` matches the rest. Only used to build `Allow` headers.
+ */
+function matchesRoute(routePath: string, requestSegments: string[]): boolean {
+	const routeSegments = splitSegments(routePath);
+	for (let i = 0; i < routeSegments.length; i++) {
+		const segment = routeSegments[i];
+		if (segment === undefined) return false;
+		if (segment[0] === "*") return true;
+		if (i >= requestSegments.length) return false;
+		if (segment[0] === ":" || segment === requestSegments[i]) continue;
+		return false;
+	}
+	return routeSegments.length === requestSegments.length;
+}
+
 export class Router {
 	// biome-ignore lint/suspicious/noExplicitAny: generic router handler
 	public staticRoutes: Map<string, Map<string, (...args: any[]) => any>> =
@@ -77,6 +110,10 @@ export class Router {
 	private nativeTrie: NativeTrie;
 	// biome-ignore lint/suspicious/noExplicitAny: generic router handler
 	private handlerRegistry: Map<number, (...args: any[]) => any> = new Map();
+	// route path per handlerId - used to restore correct param names when the
+	// native trie reuses a param node across routes (e.g. /orgs/:id and
+	// /orgs/:orgId/members share a node).
+	private handlerPaths: Map<number, string> = new Map();
 	private nextHandlerId = 0;
 
 	constructor() {
@@ -109,6 +146,7 @@ export class Router {
 		// Register in trie for dynamic routes
 		const handlerId = this.nextHandlerId++;
 		this.handlerRegistry.set(handlerId, handler);
+		this.handlerPaths.set(handlerId, path);
 		const compositeKey = `${upperMethod}:${path}`;
 		this.nativeTrie.insert(compositeKey, handlerId);
 		let dynMethodMap = this.dynamicRoutes.get(path);
@@ -120,14 +158,47 @@ export class Router {
 	}
 
 	public find(method: string, path: string): LookupResult {
-		const result = this.findOnce(method, path);
+		// Normalize trailing slash for static-path lookup: `/ip/` → `/ip`
+		// (root `/` is left untouched).
+		const lookupPath =
+			path.length > 1 && path.endsWith("/")
+				? path.replace(/\/+$/, "")
+				: path;
+
+		const result = this.findOnce(method, lookupPath);
 		// Standards-track behavior (Elysia/Hono/Express): a HEAD request is
 		// answered by the GET route when no HEAD route is registered - Bun.serve
 		// does the same for native route values, so the JS path mirrors it.
 		if (result.handler === null && method === "HEAD") {
-			return this.findOnce("GET", path);
+			return this.findOnce("GET", lookupPath);
 		}
 		return result;
+	}
+
+	/**
+	 * All methods registered for a path, regardless of verb. Used to answer
+	 * `405 Method Not Allowed` with an `Allow` header instead of a misleading
+	 * `404`. Only called on route misses, so the dynamic-route scan is cold.
+	 */
+	public allowedMethods(path: string): string[] {
+		const methods = new Set<string>();
+		const staticMap = this.staticRoutes.get(path);
+		if (staticMap) {
+			for (const method of staticMap.keys()) methods.add(method);
+		}
+
+		if (this.dynamicRoutes.size > 0) {
+			const requestSegments = splitSegments(path);
+			for (const [routePath, methodMap] of this.dynamicRoutes) {
+				if (matchesRoute(routePath, requestSegments)) {
+					for (const method of methodMap.keys()) methods.add(method);
+				}
+			}
+		}
+
+		// HEAD is implicitly served by GET (see find()).
+		if (methods.has("GET")) methods.add("HEAD");
+		return [...methods].sort();
 	}
 
 	private findOnce(method: string, path: string): LookupResult {
@@ -152,9 +223,27 @@ export class Router {
 		if (nativeResult.handlerId !== -1) {
 			const handler = this.handlerRegistry.get(nativeResult.handlerId);
 			if (handler) {
+				let params = nativeResult.params;
+				// The native trie may reuse a param node across routes, so the
+				// param *names* it reports can belong to the first registered
+				// route instead of this one. Restore names from this route's
+				// path and zip with the captured values in segment order.
+				const routePath = this.handlerPaths.get(nativeResult.handlerId);
+				if (routePath) {
+					const paramNames = extractParamNames(routePath);
+					if (paramNames.length > 0) {
+						const values = Object.values(params);
+						params = Object.fromEntries(
+							paramNames.map((name, i) => [
+								name,
+								values[i] ?? "",
+							]),
+						);
+					}
+				}
 				const result: LookupResult = {
 					handler,
-					params: nativeResult.params,
+					params,
 				};
 				this.lookupCache.set(method, path, result);
 				return result;

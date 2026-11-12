@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import type { Context } from "../context";
 
 export interface ServeFileOptions {
@@ -202,6 +203,26 @@ export class BuntokFile {
 			"Accept-Ranges": "bytes",
 			...this.#headers,
 		};
+
+		// `Bun.file().size` is 0 for missing files too, so only pay the
+		// existence check for empty-sized files. Previously a missing file
+		// produced an empty 200 instead of a 404.
+		if (size === 0 && !existsSync(this.path)) {
+			return new Response(
+				JSON.stringify({
+					success: false,
+					error: "Not Found",
+					message: "File not found",
+				}),
+				{
+					status: 404,
+					headers: {
+						"Content-Type": "application/json",
+						...this.#headers,
+					},
+				},
+			);
+		}
 
 		const rangeHeader = request?.headers.get("range");
 		if (rangeHeader) {

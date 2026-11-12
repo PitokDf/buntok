@@ -472,9 +472,12 @@ describe("const ctx.text/html/json helpers → native", () => {
 				expect(n.headers.get("etag")).not.toBeNull();
 				expect(j.headers.get("etag")).toBeNull();
 				expect(n.status).toBe(j.status);
-				expect(n.headers.get("content-type")).toBe(
-					j.headers.get("content-type"),
-				);
+				// JS path adds charset=utf-8 to text/html; native (Bun) does not.
+				const normalizeCt = (ct: string | null) =>
+					ct ? ct.split(";")[0].trim() : ct;
+				expect(
+					normalizeCt(n.headers.get("content-type")),
+				).toBe(normalizeCt(j.headers.get("content-type")));
 				expect(await n.text()).toBe(await j.text());
 				expect(n.headers.get("x-powered-by")).toBe(
 					j.headers.get("x-powered-by"),
@@ -647,9 +650,12 @@ describe("bare object/array/scalar literal → native", () => {
 				expect(n.headers.get("etag")).not.toBeNull();
 				expect(j.headers.get("etag")).toBeNull();
 				expect(n.status).toBe(j.status);
-				expect(n.headers.get("content-type")).toBe(
-					j.headers.get("content-type"),
-				);
+				// JS path adds charset=utf-8 to text/html; native (Bun) does not.
+				const normalizeCt = (ct: string | null) =>
+					ct ? ct.split(";")[0].trim() : ct;
+				expect(
+					normalizeCt(n.headers.get("content-type")),
+				).toBe(normalizeCt(j.headers.get("content-type")));
 				expect(await n.text()).toBe(await j.text());
 			}
 
@@ -984,19 +990,19 @@ describe("static function handler promotion (native)", () => {
 		}
 	});
 
-	it("falls through to fetch() for unmatched methods and paths (404 parity)", async () => {
+	it("falls through to fetch() for unmatched methods and paths (405/404 parity)", async () => {
 		const { native, js } = buildPair((app) => {
 			app.post("/only", async (ctx) => ctx.json(await ctx.body()));
 		});
 		try {
-			for (const [method, path] of [
-				["GET", "/only"],
-				["POST", "/missing"],
-				["GET", "/missing"],
+			for (const [method, path, expected] of [
+				["GET", "/only", 405],
+				["POST", "/missing", 404],
+				["GET", "/missing", 404],
 			] as const) {
 				const a = await fetch(`http://localhost:${native.server?.port}${path}`, { method });
 				const b = await fetch(`http://localhost:${js.server?.port}${path}`, { method });
-				expect(a.status).toBe(404);
+				expect(a.status).toBe(expected);
 				expect(a.status).toBe(b.status);
 			}
 		} finally {

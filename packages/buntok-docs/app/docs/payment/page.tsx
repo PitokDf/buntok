@@ -223,6 +223,13 @@ await stripe.cancelSubscription(sub.id);`}
       <p className="my-3 text-text-secondary leading-relaxed">
         Handle webhook events with signature verification:
       </p>
+      <Callout type="info">
+        Signature verification is now enforced: PayPal verifies through its{" "}
+        <code>verify-webhook-signature</code> API (fails closed on any
+        error), Stripe validates every <code>v1</code> signature during secret
+        rotation, and Xendit/Midtrans use constant-time comparison. Always
+        pass the real webhook secret - never an empty string.
+      </Callout>
       <CodeBlock
         code={`import { paymentWebhook } from "@buntok/core/payment";
 

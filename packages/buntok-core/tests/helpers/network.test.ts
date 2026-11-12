@@ -36,7 +36,7 @@ describe("getClientIP", () => {
 		const req = new Request("http://localhost", {
 			headers: { "x-forwarded-for": "198.51.100.10, 10.0.0.2, 10.0.0.3" },
 		});
-		expect(getClientIP(req, { depth: 2 })).toBe("198.51.100.10");
+		expect(getClientIP(req, { depth: 2 })).toBe("10.0.0.2");
 	});
 });
 

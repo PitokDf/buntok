@@ -69,14 +69,17 @@ export function compress(options: CompressOptions = {}): Middleware {
 			return result;
 		}
 
-		// If no Content-Length, we must buffer to check size - but only compress
-		// if above threshold. For small responses without Content-Length, skip
-		// compression entirely to avoid unnecessary buffering + new Response.
-		if (!contentLength) return result;
-
+		// No Content-Length (ctx.json / object returns) - buffer once and
+		// check the real size. Only compress when above the threshold.
 		const buffer = new Uint8Array(await result.arrayBuffer());
 		if (buffer.byteLength < opts.threshold) {
-			return result;
+			// The body was consumed while measuring it - rebuild the response
+			// (returning `result` would send an empty body).
+			return new Response(buffer, {
+				status: result.status,
+				statusText: result.statusText,
+				headers: new Headers(result.headers),
+			});
 		}
 
 		let compressed: Uint8Array;

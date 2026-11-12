@@ -34,6 +34,7 @@ export const DOC_ROUTES: DocRoute[] = [
   { href: "/docs/testing", title: "Testing", section: "Advanced", description: "Unit testing, integration testing, test utilities, mocking." },
   { href: "/docs/factory", title: "Factory", section: "Advanced", description: "Type-safe data factories for generating test and seed data with @faker-js/faker." },
 
+  { href: "/docs/custom-integrations", title: "Custom Integrations", section: "Integrations", description: "Mount third-party HTTP and WebSocket handlers on the same Bun server with app.integrate." },
   { href: "/docs/cache", title: "Cache", section: "Integrations", description: "Caching layer, MemoryCacheDriver, Redis driver, cache strategies, TTL." },
   { href: "/docs/graphql", title: "GraphQL", section: "Integrations", description: "GraphQL integration with Apollo Server and Yoga, schema, resolvers." },
   { href: "/docs/opentelemetry", title: "OpenTelemetry", section: "Integrations", description: "Distributed tracing with OpenTelemetry, per-request spans, OTLP exporter." },

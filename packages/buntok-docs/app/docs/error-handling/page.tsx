@@ -53,6 +53,7 @@ export default function ErrorHandlingPage() {
               ["ForbiddenError", "403", "Access denied"],
               ["NotFoundError", "404", "Resource not found"],
               ["MethodNotAllowedError", "405", "HTTP method not allowed"],
+              ["PayloadTooLargeError", "413", "Request body over the limit"],
               ["ConflictError", "409", "Resource conflict (duplicate, etc.)"],
               [
                 "UnprocessableEntityError",

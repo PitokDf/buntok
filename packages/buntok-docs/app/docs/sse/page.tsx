@@ -180,6 +180,12 @@ export default function SSEPage() {
                 "undefined",
                 "Callback to replay missed events on reconnection",
               ],
+              [
+                "heartbeatInterval",
+                "number",
+                "30000",
+                "Keep-alive comment interval in ms; 0 disables. Must stay below the server idle timeout.",
+              ],
             ].map(([opt, type, def, desc]) => (
               <tr
                 key={opt}
@@ -209,6 +215,14 @@ export default function SSEPage() {
   });
 });`}
       />
+
+      <Callout type="warning">
+        Bun&apos;s raw server idle timeout is only <strong>10 seconds</strong>,
+        shorter than the default 30s heartbeat - the stream would die before the
+        first heartbeat. Buntok raises it to <strong>120s</strong>; if you raise{" "}
+        <code>heartbeatInterval</code> beyond that, raise{" "}
+        <code>app.httpIdleTimeout(seconds)</code> (max 255) to match.
+      </Callout>
 
       {/* ──────────────── RECONNECTION SUPPORT ──────────────── */}
       <Heading

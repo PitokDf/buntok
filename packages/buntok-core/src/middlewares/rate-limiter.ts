@@ -215,11 +215,7 @@ export function slidingWindowRateLimiter(
 	const getKey =
 		options.keyGenerator ||
 		((ctx: Context) => {
-			return (
-				ctx.request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-				ctx.request.headers.get("x-real-ip") ||
-				"unknown"
-			);
+			return ctx.ip || "unknown";
 		});
 
 	return async (ctx, next) => {

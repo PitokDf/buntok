@@ -13,7 +13,8 @@ export interface DownloadOptions {
  * downloadFile(ctx, "./reports/report.pdf", "report-2026.pdf")
  */
 export async function downloadFile(
-	ctx: Context,
+	// biome-ignore lint/suspicious/noExplicitAny: helper works with any app DI shape
+	ctx: Context<any, any>,
 	filePath: string,
 	filename?: string,
 	options?: DownloadOptions,
@@ -42,7 +43,8 @@ export async function downloadFile(
  * downloadBuffer(ctx, pdfBytes, "document.pdf")
  */
 export function downloadBuffer(
-	ctx: Context,
+	// biome-ignore lint/suspicious/noExplicitAny: helper works with any app DI shape
+	ctx: Context<any, any>,
 	data: ArrayBuffer | Uint8Array | Blob,
 	filename: string,
 	options?: DownloadOptions,

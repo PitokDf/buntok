@@ -23,7 +23,7 @@ describe("resolveOrigin", () => {
 	});
 
 	it("should return the configured string origin", () => {
-		const result = resolveOrigin("http://example.com", {
+		const result = resolveOrigin("http://allowed.com", {
 			origin: "http://allowed.com",
 		});
 		expect(result).toBe("http://allowed.com");
@@ -36,11 +36,11 @@ describe("resolveOrigin", () => {
 		expect(result).toBe("http://example.com");
 	});
 
-	it("should return empty string when origin not in array", () => {
+	it("should return null when origin not in array", () => {
 		const result = resolveOrigin("http://evil.com", {
 			origin: ["http://example.com", "http://other.com"],
 		});
-		expect(result).toBe("");
+		expect(result).toBeNull();
 	});
 
 	it("should return request origin when function returns true", () => {
@@ -50,11 +50,11 @@ describe("resolveOrigin", () => {
 		expect(result).toBe("http://example.com");
 	});
 
-	it("should return empty string when function returns false", () => {
+	it("should return null when function returns false", () => {
 		const result = resolveOrigin("http://evil.com", {
 			origin: (origin) => origin.includes("example"),
 		});
-		expect(result).toBe("");
+		expect(result).toBeNull();
 	});
 });
 
@@ -89,7 +89,7 @@ describe("applyCorsHeaders", () => {
 		applyCorsHeaders(response, "http://evil.com", {
 			origin: ["http://allowed.com"],
 		});
-		expect(response.headers.get("Access-Control-Allow-Origin")).toBe("");
+		expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
 	});
 });
 
@@ -116,7 +116,10 @@ describe("cors middleware", () => {
 			headers: ["Content-Type"],
 			credentials: true,
 		});
-		const req = new Request("http://localhost/test", { method: "OPTIONS" });
+		const req = new Request("http://localhost/test", {
+			method: "OPTIONS",
+			headers: { Origin: "http://example.com" },
+		});
 		const ctx = new Context(req, {});
 		const next = async () => new Response("ok");
 
@@ -164,7 +167,10 @@ describe("app.cors()", () => {
 		});
 		app.get("/test", (ctx) => ctx.json({ ok: true }));
 
-		const res = await app.request("/test", { method: "OPTIONS" });
+		const res = await app.request("/test", {
+			method: "OPTIONS",
+			headers: { Origin: "http://example.com" },
+		});
 
 		expect(res.status).toBe(204);
 		expect(res.headers.get("Access-Control-Allow-Origin")).toBe(
@@ -257,7 +263,7 @@ describe("CORS on error responses", () => {
 		});
 
 		expect(res.status).toBe(400);
-		expect(res.headers.get("Access-Control-Allow-Origin")).toBe("");
+		expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();
 	});
 
 	it("should not add CORS headers when app.cors() is not used", async () => {

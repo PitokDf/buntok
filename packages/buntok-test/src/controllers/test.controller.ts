@@ -17,7 +17,7 @@ import { CronJob } from "@buntok/core/schedule";
 import { LocalDiskStorage } from "@buntok/core/upload";
 import { handleUploads } from "@buntok/core/upload";
 
-const scrt = "pitok-123";
+const scrt = "03f37b0631b5612312c90ed2626cbaacd92b75a3d4add91ed6281fe86a88b905";
 
 @Dependencies(TestService)
 @Controller("/tests")
@@ -36,6 +36,7 @@ export class TestController {
 		),
 	)
 	async generateToken(ctx: ZodCtx<{ body: { name: string; role: string } }>) {
+		console.log("name", ctx.valid("body").name);
 		const body = ctx.valid("body");
 		const jwt = new JwtService(scrt);
 		const token = await jwt.sign({ name: body.name, role: body.role });

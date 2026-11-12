@@ -11,7 +11,12 @@ import type {
 	SubscriptionResult,
 	WebhookEvent,
 } from "../types";
-import { normalizeCheckoutStatus, normalizeRefundStatus, normalizeSubscriptionStatus } from "../helpers";
+import {
+	normalizeCheckoutStatus,
+	normalizeRefundStatus,
+	normalizeSubscriptionStatus,
+	safeEqual,
+} from "../helpers";
 import {
 	PaymentConfigurationError,
 	PaymentProviderError,
@@ -337,13 +342,17 @@ export class StripeDriver implements PaymentDriver {
 		if (!secret) return false;
 
 		try {
-			const parts = Object.fromEntries(
-				signature.split(",").map((p) => p.split("=")),
-			);
-			const timestamp = Number(parts.t);
-			const receivedSig = parts.v1;
+			const parts = signature.split(",").map((p) => p.split("="));
+			let timestamp: number | undefined;
+			const receivedSigs: string[] = [];
+			for (const part of parts) {
+				const [k, v] = part;
+				if (k === "t") timestamp = Number(v);
+				else if (k === "v1" && v) receivedSigs.push(v);
+			}
 
-			if (!timestamp || !receivedSig) return false;
+			// Stripe may send multiple `v1` signatures during secret rotation.
+			if (!timestamp || receivedSigs.length === 0) return false;
 
 			// Reject if timestamp is > 5 minutes old
 			const tolerance = 300;
@@ -351,7 +360,10 @@ export class StripeDriver implements PaymentDriver {
 
 			const signedPayload = `${timestamp}.${payload}`;
 			const computed = await this.hmacSha256(signedPayload, secret);
-			return computed === receivedSig;
+			for (const receivedSig of receivedSigs) {
+				if (await safeEqual(computed, receivedSig)) return true;
+			}
+			return false;
 		} catch {
 			return false;
 		}

@@ -257,6 +257,7 @@ app.get("/profile", requireAuth(secret), async (ctx) => {
       </Heading>
       <ul className="my-3 ml-6 list-disc text-text-secondary space-y-1">
         <li>Store JWT_SECRET in environment variables, not in code</li>
+        <li>Use at least 32 bytes of randomness; <code>JwtService</code> warns in non-production when the secret is shorter</li>
         <li>Use appropriate expiration times (1 hour for access tokens, 7 days for refresh tokens)</li>
         <li>Always use HTTPS in production</li>
         <li>Use <code>httpOnly: true</code> for cookies to prevent XSS attacks</li>

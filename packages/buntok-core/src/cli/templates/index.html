@@ -21,30 +21,58 @@
   <script src="./tailwind.js"></script>
   <link href="./font-googles.css" rel="stylesheet">
   <style>
-    /* Sync tokens with buntok-docs app/globals.css - tetap orange #f97316, no AI slop */
+    /* Design tokens: single accent (#f97316), 3 text/background levels, 2 radii */
     :root {
       --bg-primary: #ffffff;
       --bg-secondary: #fafafa;
       --bg-tertiary: #f4f4f5;
+      --bg-elevated: #ffffff;
       --text-primary: #18181b;
-      --text-secondary: #52525b;
-      --border-primary: #e4e4e7;
-      --border-hover: #d4d4d8;
+      --text-secondary: #5b5b63;
+      --text-tertiary: #909098;
+      --border-primary: #e6e6e9;
+      --border-hover: #cfcfd4;
       --accent: #f97316;
-      --accent-muted: rgba(249, 115, 22, 0.1);
+      --accent-hover: #ea6a0a;
+      --accent-soft: rgba(249, 115, 22, 0.10);
+      --accent-muted: rgba(249, 115, 22, 0.10);
+      --accent-contrast: #1a1206;
+      --radius: 6px;
+      --radius-sm: 4px;
+      --success: #16a34a;
+      --success-soft: rgba(22, 163, 74, 0.12);
+      --warning: #b45309;
+      --warning-soft: rgba(217, 119, 6, 0.12);
+      --danger: #dc2626;
+      --danger-soft: rgba(220, 38, 38, 0.12);
+      --info: #2563eb;
+      --info-soft: rgba(37, 99, 235, 0.12);
       --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
     }
     html.dark {
       --bg-primary: #0f0e11;
       --bg-secondary: #18161a;
-      --bg-tertiary: #1c1a1e;
+      --bg-tertiary: #221f26;
+      --bg-elevated: #1c1a1f;
       --text-primary: #fafafb;
-      --text-secondary: #a1a1aa;
-      --border-primary: #27272a;
-      --border-hover: #3f3f46;
+      --text-secondary: #a7a7b0;
+      --text-tertiary: #74747d;
+      --border-primary: #343139;
+      --border-hover: #4a454f;
       --accent: #f97316;
+      --accent-hover: #fb8a3c;
+      --accent-soft: rgba(249, 115, 22, 0.12);
       --accent-muted: rgba(249, 115, 22, 0.12);
+      --accent-contrast: #0f0e11;
+      --success: #22c55e;
+      --success-soft: rgba(34, 197, 94, 0.14);
+      --warning: #eab308;
+      --warning-soft: rgba(234, 179, 8, 0.14);
+      --danger: #ef4444;
+      --danger-soft: rgba(239, 68, 68, 0.14);
+      --info: #3b82f6;
+      --info-soft: rgba(59, 130, 246, 0.14);
     }
     body {
       background-color: var(--bg-primary);
@@ -55,12 +83,95 @@
       transition: background-color 0.15s ease, color 0.15s ease;
     }
     .font-mono { font-family: var(--font-mono); }
-    
-    .badge-get { background: rgba(34, 197, 94, 0.12); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.25); }
-    .badge-post { background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); }
-    .badge-put { background: rgba(234, 179, 8, 0.12); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.25); }
-    .badge-delete { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); }
-    .badge-patch { background: rgba(168, 85, 247, 0.12); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.25); }
+
+    /* === Shared components === */
+    .bt-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      height: 32px; padding: 0 12px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-primary); background: var(--bg-primary);
+      color: var(--text-primary); font-size: 12px; font-weight: 500; line-height: 1;
+      white-space: nowrap; cursor: pointer;
+      transition: background-color .15s, border-color .15s, color .15s, opacity .15s;
+    }
+    .bt-btn:hover { background: var(--bg-tertiary); border-color: var(--border-hover); }
+    .bt-btn:active { transform: translateY(0.5px); }
+    .bt-btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); font-weight: 600; }
+    .bt-btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .bt-btn-ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+    .bt-btn-ghost:hover { background: var(--bg-tertiary); border-color: transparent; color: var(--text-primary); }
+    .bt-btn-sm { height: 28px; padding: 0 10px; font-size: 11px; }
+    .bt-icon-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: var(--radius-sm);
+      border: 1px solid transparent; background: transparent; color: var(--text-secondary);
+      cursor: pointer; transition: background-color .15s, color .15s, border-color .15s;
+    }
+    .bt-icon-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+    .bt-input {
+      height: 32px; padding: 0 10px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-primary); background: var(--bg-primary);
+      color: var(--text-primary); font-size: 12px;
+    }
+    .bt-card { border: 1px solid var(--border-primary); border-radius: var(--radius); background: var(--bg-secondary); }
+    .bt-panel { border: 1px solid var(--border-primary); border-radius: var(--radius); background: var(--bg-primary); }
+    .bt-section-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-tertiary); }
+    .bt-kbd { font-family: var(--font-mono); font-size: 10px; padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border-primary); background: var(--bg-tertiary); color: var(--text-secondary); }
+
+    /* Normalize form controls so every panel looks like one system */
+    input[type="text"], input[type="search"], input[type="number"], input[type="password"], input[type="url"], select, textarea {
+      border-width: 1px !important;
+      border-style: solid !important;
+      border-radius: var(--radius-sm) !important;
+      border-color: var(--border-primary) !important;
+      background-color: var(--bg-primary) !important;
+      color: var(--text-primary) !important;
+    }
+    input.border-none, select.border-none, textarea.border-none {
+      border-width: 0 !important;
+    }
+    input[type="text"]:focus, input[type="search"]:focus, input[type="number"]:focus, input[type="password"]:focus, input[type="url"]:focus, select:focus, textarea:focus {
+      outline: none !important;
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    ::selection { background: var(--accent-soft); color: var(--text-primary); }
+
+    /* Sidebar navigation */
+    .sidebar-item {
+      display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+      padding: 6px 8px; border-radius: var(--radius-sm); border-left: 2px solid transparent;
+      color: var(--text-secondary); font-size: 12px;
+      transition: background-color .12s, color .12s, border-color .12s;
+    }
+    .sidebar-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+    .sidebar-item-active { background: var(--accent-soft); border-left-color: var(--accent); color: var(--text-primary); font-weight: 600; }
+    .sidebar-group-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--text-tertiary); padding: 4px 8px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* Client console tabs */
+    .client-tab { padding-bottom: 8px; border-bottom: 2px solid transparent; color: var(--text-secondary); white-space: nowrap; font-weight: 500; transition: color .12s, border-color .12s; }
+    .client-tab:hover { color: var(--text-primary); }
+    .client-tab-active { border-bottom-color: var(--accent); color: var(--accent); }
+
+    /* HTTP status badges */
+    .status-badge {
+      display: inline-flex; align-items: center; font-family: var(--font-mono);
+      font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 3px;
+      border: 1px solid var(--border-primary); color: var(--text-secondary); background: var(--bg-tertiary);
+    }
+    .status-ok { color: var(--success); background: var(--success-soft); border-color: transparent; }
+    .status-warn { color: var(--warning); background: var(--warning-soft); border-color: transparent; }
+    .status-err { color: var(--danger); background: var(--danger-soft); border-color: transparent; }
+    .status-info { color: var(--info); background: var(--info-soft); border-color: transparent; }
+
+    .badge-get { background: var(--success-soft); color: var(--success); border: 1px solid transparent; }
+    .badge-post { background: var(--info-soft); color: var(--info); border: 1px solid transparent; }
+    .badge-put { background: var(--warning-soft); color: var(--warning); border: 1px solid transparent; }
+    .badge-delete { background: var(--danger-soft); color: var(--danger); border: 1px solid transparent; }
+    .badge-patch { background: rgba(168, 85, 247, 0.12); color: #a855f7; border: 1px solid transparent; }
 
     * { scrollbar-width: thin; scrollbar-color: var(--border-primary) transparent; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -107,26 +218,48 @@
       display: flex; flex-direction: column; gap: 8px; pointer-events: none;
     }
     .toast {
-      padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 500;
+      padding: 10px 16px; border-radius: var(--radius); font-size: 12px; font-weight: 500;
       pointer-events: auto; animation: toastIn 0.3s ease;
-      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-      border: 1px solid transparent;
+      background: var(--bg-elevated); color: var(--text-primary);
+      border: 1px solid var(--border-primary); border-left-width: 3px;
     }
-    /* Light theme (default) - soft, readable on white */
-    .toast-success { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
-    .toast-error { background: #fef2f2; color: #991b1b; border-color: #fca5a5; }
-    .toast-info { background: #eff6ff; color: #1e40af; border-color: #93c5fd; }
-    /* Dark theme - keep existing deep colors but ensure contrast */
-    html.dark .toast-success { background: #064e3b; color: #a7f3d0; border-color: #10b981; }
-    html.dark .toast-error { background: #7f1d1d; color: #fecaca; border-color: #ef4444; }
-    html.dark .toast-info { background: #1e3a5f; color: #bfdbfe; border-color: #3b82f6; }
-    html.dark .toast { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2); }
+    .toast-success { border-left-color: var(--success); }
+    .toast-error { border-left-color: var(--danger); }
+    .toast-info { border-left-color: var(--info); }
     @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Env variable autocomplete */
+    #env-suggest {
+      position: fixed; z-index: 210; display: none; min-width: 200px; max-width: 360px;
+      max-height: 200px; overflow-y: auto; padding: 4px;
+      background: var(--bg-elevated); border: 1px solid var(--border-primary);
+      border-radius: var(--radius-sm);
+    }
+    #env-suggest.open { display: block; }
+    .env-suggest-item {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 5px 8px; border-radius: var(--radius-sm); cursor: pointer;
+      font-family: var(--font-mono); font-size: 11px; color: var(--text-primary);
+    }
+    .env-suggest-item .env-suggest-value {
+      color: var(--text-tertiary); font-size: 10px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap; max-width: 160px;
+    }
+    .env-suggest-item.active { background: var(--accent-soft); color: var(--accent); }
+    .env-suggest-item.active .env-suggest-value { color: var(--accent); opacity: 0.75; }
+    .env-suggest-empty {
+      padding: 6px 8px; font-size: 11px; color: var(--text-secondary); cursor: pointer;
+    }
+    .env-suggest-empty:hover { color: var(--text-primary); }
+    .env-suggest-foot {
+      padding: 4px 8px 2px; margin-top: 2px; border-top: 1px solid var(--border-primary);
+      font-size: 9px; color: var(--text-tertiary);
+    }
 
     /* Deprecation badge */
     .badge-deprecated {
-      background: rgba(234, 179, 8, 0.12); color: #eab308;
-      border: 1px solid rgba(234, 179, 8, 0.25); text-decoration: line-through;
+      background: var(--warning-soft); color: var(--warning);
+      border: 1px solid transparent; text-decoration: line-through;
     }
 
     /* === Resizable Sidebar === */
@@ -170,7 +303,7 @@
     }
     #sidebar-resizer:hover,
     #sidebar-resizer.dragging {
-      background: rgba(249,115,22,0.08);
+      background: var(--accent-soft);
     }
     #sidebar-resizer:hover::after,
     #sidebar-resizer.dragging::after {
@@ -205,7 +338,6 @@
       opacity: 0;
       transition: opacity 0.15s, border-color 0.15s;
       pointer-events: none;
-      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     }
     #sidebar-resizer:hover .handle-dot,
     #sidebar-resizer.dragging .handle-dot {
@@ -222,18 +354,17 @@
       align-items: center;
       gap: 6px;
       padding: 6px 10px;
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       background: var(--bg-secondary);
       border: 1px solid var(--border-primary);
       color: var(--text-secondary);
       font-size: 11px;
       font-weight: 600;
-      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
       cursor: pointer;
       transition: border-color 0.15s, color 0.15s;
     }
     #sidebar-expand-btn.visible { display: flex; }
-    #sidebar-expand-btn:hover { border-color: var(--accent); color: var(--accent); }
+    #sidebar-expand-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
 
     /* Mobile drawer */
     #sidebar-overlay {
@@ -254,7 +385,6 @@
         bottom: 0;
         z-index: 30;
         height: calc(100vh - 56px);
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         transform: translateX(0);
       }
       #sidebar.mobile-hidden {
@@ -293,7 +423,7 @@
       <span id="error-message">Failed to load API specification.</span>
     </div>
     <div class="flex items-center gap-2">
-      <button onclick="refreshSwaggerSpec()" class="px-2 py-1 rounded text-[10px] font-bold bg-red-500/20 hover:bg-red-500/30 transition">Retry</button>
+      <button onclick="refreshSwaggerSpec()" class="bt-btn bt-btn-sm">Retry</button>
       <button onclick="openEditorModal()" class="px-2 py-1 rounded text-[10px] font-bold bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition border border-[var(--border-primary)]">Paste JSON</button>
       <button onclick="document.getElementById('error-banner').classList.add('hidden')" class="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)]" aria-label="Dismiss"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
@@ -301,63 +431,66 @@
 
   <!-- Toast Container -->
   <div id="toast-container"></div>
+  <div id="env-suggest" role="listbox" aria-label="Environment variables"></div>
 
-  <!-- ================= NAVBAR (glass, h-12, nuance buntok-docs orange) ================= -->
-  <header class="h-12 sticky top-0 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)]/85 backdrop-blur-xl px-4 lg:px-6 flex items-center justify-between z-30 shrink-0 supports-[backdrop-filter]:bg-[var(--bg-secondary)]/70">
-    <div class="flex items-center gap-3">
-      <!-- Sidebar Toggle - single button for desktop collapse & mobile drawer (was double) -->
-      <button id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar (⌘B)" aria-label="Toggle sidebar" class="p-1.5 rounded-md hover:bg-[var(--bg-tertiary)] border border-transparent hover:border-[var(--border-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition flex items-center justify-center shrink-0">
+  <!-- ================= NAVBAR ================= -->
+  <header class="h-12 sticky top-0 border-b border-[var(--border-primary)] bg-[var(--bg-primary)]/90 backdrop-blur-xl px-4 lg:px-6 flex items-center justify-between z-30 shrink-0 supports-[backdrop-filter]:bg-[var(--bg-primary)]/75">
+    <div class="flex items-center gap-3 min-w-0">
+      <!-- Sidebar Toggle - single button for desktop collapse & mobile drawer -->
+      <button id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar (⌘B)" aria-label="Toggle sidebar" class="bt-icon-btn shrink-0">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
       </button>
-      <img class="h-7 w-7 rounded " src="/favicon.ico" alt="buntok-icon">
-      <div class="flex items-center gap-2">
-        <span class="font-bold text-sm tracking-tight text-[var(--text-primary)]" id="header-api-title">Scalar API Reference</span>
-        <span class="text-[10px] font-mono px-2 py-0.5 rounded-full border border-[var(--border-primary)] text-[var(--text-secondary)]" id="header-api-version">v1.0.0</span>
+      <img class="h-7 w-7 rounded" src="/favicon.ico" alt="buntok-icon">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="font-semibold text-sm tracking-tight text-[var(--text-primary)] truncate" id="header-api-title">Scalar API Reference</span>
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded-full border border-[var(--border-primary)] text-[var(--text-tertiary)] shrink-0" id="header-api-version">v1.0.0</span>
       </div>
-      
+
       <!-- Server Selector -->
       <div class="hidden md:flex items-center ml-2">
-        <select id="server-select" onchange="handleServerChange(this.value)" class="text-xs bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-md px-2.5 py-1 text-[var(--text-secondary)] focus:outline-none focus:border-[#f97316]">
+        <select id="server-select" onchange="handleServerChange(this.value)" class="bt-input text-[var(--text-secondary)] h-7" style="height:28px">
         </select>
       </div>
     </div>
 
     <!-- Actions -->
-    <div class="flex items-center gap-2 text-xs">
+    <div class="flex items-center gap-1.5 text-xs">
       <!-- Search Trigger -->
-      <button onclick="openSearchModal()" class="hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-[var(--bg-primary)] border border-[var(--border-primary)] hover:border-[var(--border-hover)] text-[var(--text-secondary)] transition">
-        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        <span>Search</span>
-        <kbd class="text-[10px] font-mono bg-[var(--bg-tertiary)] px-1 rounded border border-[var(--border-primary)]">⌘K</kbd>
-      </button>
+      <div class="hidden sm:block">
+        <button onclick="openSearchModal()" class="bt-btn bt-btn-ghost">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <span>Search</span>
+          <kbd class="bt-kbd">⌘K</kbd>
+        </button>
+      </div>
 
       <!-- Refresh Swagger Spec -->
-      <button onclick="refreshSwaggerSpec()" id="btn-refresh" title="Reload swagger.json" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--bg-primary)] border border-[var(--border-primary)] hover:border-[#f97316] text-[var(--text-primary)] transition">
-        <svg id="refresh-icon" class="w-3.5 h-3.5 text-[#f97316]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
-        <span class="hidden md:inline font-medium">Refresh Docs</span>
+      <button onclick="refreshSwaggerSpec()" id="btn-refresh" title="Reload swagger.json" class="bt-btn">
+        <svg id="refresh-icon" class="w-3.5 h-3.5 text-[var(--text-secondary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+        <span class="hidden md:inline">Refresh</span>
       </button>
 
       <!-- Auth Trigger -->
-      <button onclick="openAuthModal()" id="btn-auth" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--bg-primary)] border border-[var(--border-primary)] hover:border-[#f97316] text-[var(--text-primary)] transition">
+      <button onclick="openAuthModal()" id="btn-auth" class="bt-btn">
         <svg class="w-3.5 h-3.5 text-[var(--text-secondary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <span class="font-medium">Auth</span>
-        <span id="auth-indicator" class="w-1.5 h-1.5 rounded-full bg-zinc-500"></span>
+        <span>Auth</span>
+        <span id="auth-indicator" class="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]"></span>
       </button>
 
       <!-- Raw Spec Editor Trigger -->
-      <button onclick="openEditorModal()" title="View or paste raw Swagger Spec" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--bg-primary)] border border-[var(--border-primary)] hover:border-[var(--hover-border)] text-[var(--text-primary)] transition">
-        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-        <span class="hidden lg:inline font-medium">JSON Spec</span>
+      <button onclick="openEditorModal()" title="View or paste raw Swagger Spec" class="bt-btn">
+        <svg class="w-3.5 h-3.5 text-[var(--text-secondary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <span class="hidden lg:inline">JSON Spec</span>
       </button>
 
       <!-- MP13: Environment Variables -->
-      <button onclick="openEnvModal()" title="Environment Variables" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--bg-primary)] border border-[var(--border-primary)] hover:border-[#f97316] text-[var(--text-primary)] transition">
-        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17V7l8-4 8 4v10"/><path d="M4 12h16"/><path d="M4 17l8 4 8-4"/></svg>
-        <span class="hidden lg:inline font-medium">Env</span>
+      <button onclick="openEnvModal()" title="Environment Variables" class="bt-btn">
+        <svg class="w-3.5 h-3.5 text-[var(--text-secondary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17V7l8-4 8 4v10"/><path d="M4 12h16"/><path d="M4 17l8 4 8-4"/></svg>
+        <span class="hidden lg:inline">Env</span>
       </button>
 
       <!-- Theme Switcher -->
-      <button onclick="toggleTheme()" title="Toggle Dark/Light Mode" class="p-2 rounded-md bg-[var(--bg-primary)] border border-[var(--border-primary)] hover:border-[var(--border-hover)] text-[var(--text-primary)] transition">
+      <button onclick="toggleTheme()" title="Toggle Dark/Light Mode" class="bt-icon-btn">
         <svg id="theme-sun" class="w-3.5 h-3.5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
         <svg id="theme-moon" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
       </button>
@@ -380,10 +513,9 @@
       <!-- Sidebar header with collapse -->
       <div class="p-3 border-b border-[var(--border-primary)] space-y-2">
         <div class="flex items-center justify-between gap-2">
-          <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Explorer</span>
+          <span class="bt-section-label">Explorer</span>
           <div class="flex items-center gap-1">
-            <span class="text-[10px] text-[var(--text-secondary)] hidden lg:inline">Drag ↔ resize</span>
-            <button id="sidebar-collapse-btn" onclick="toggleSidebar()" title="Collapse sidebar (⌘B)" class="p-1 rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+            <button id="sidebar-collapse-btn" onclick="toggleSidebar()" title="Collapse sidebar (⌘B)" aria-label="Collapse sidebar" class="bt-icon-btn" style="width:24px;height:24px">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/></svg>
             </button>
           </div>
@@ -398,9 +530,9 @@
             spellcheck="false"
             oninput="handleSidebarSearch(this.value)"
             placeholder="Filter endpoints..."
-            class="w-full text-xs pl-8 pr-3 py-1.5 rounded-md bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]"
+            class="bt-input w-full pl-8 pr-3"
           >
-          <svg class="w-3.5 h-3.5 absolute left-2.5 top-2 text-[var(--text-secondary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <svg class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </div>
       </div>
 
@@ -429,42 +561,42 @@
       
       <!-- OVERVIEW VIEW -->
       <div id="view-overview" class="max-w-4xl mx-auto space-y-8">
-        <div class="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-6 space-y-4">
+        <div class="bt-card p-6 space-y-4">
           <div class="flex items-center gap-3">
-            <img class="h-10 w-10 rounded-lg" src="/favicon.ico" alt="buntok-icon">
+            <img class="h-10 w-10 rounded" src="/favicon.ico" alt="buntok-icon">
             <div>
-              <h1 class="text-xl font-bold text-[var(--text-primary)]" id="overview-title">Scalar API Reference</h1>
-              <p class="text-xs text-[var(--text-secondary)] font-mono" id="overview-version">v1.0.0 • OpenAPI 3.0.0</p>
+              <h1 class="text-xl font-semibold tracking-tight text-[var(--text-primary)]" id="overview-title">Scalar API Reference</h1>
+              <p class="text-[11px] text-[var(--text-tertiary)] font-mono" id="overview-version">v1.0.0 • OpenAPI 3.0.0</p>
             </div>
           </div>
           <p class="text-sm text-[var(--text-secondary)] leading-relaxed" id="overview-desc">Welcome to the interactive API Reference.</p>
-          
+
           <!-- MP24: License/Contact info -->
-          <p class="text-[10px] text-[var(--text-secondary)] hidden" id="overview-info-footer"></p>
-          
-          <div class="pt-4 border-t border-[var(--border-primary)] grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-primary)]">
-              <span class="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Total Endpoints</span>
-              <p class="text-lg font-bold text-[var(--text-primary)] mt-1" id="overview-count">0</p>
+          <p class="text-[10px] text-[var(--text-tertiary)] hidden" id="overview-info-footer"></p>
+
+          <div class="pt-4 border-t border-[var(--border-primary)] grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="bt-panel p-3">
+              <span class="bt-section-label">Total Endpoints</span>
+              <p class="text-lg font-semibold text-[var(--text-primary)] mt-1" id="overview-count">0</p>
             </div>
-            <div class="p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-primary)]">
-              <span class="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Active Server</span>
+            <div class="bt-panel p-3">
+              <span class="bt-section-label">Active Server</span>
               <p class="text-xs font-mono text-[var(--text-primary)] mt-2 truncate" id="overview-server">-</p>
             </div>
-            <div class="p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-primary)] flex items-center justify-between">
-              <div>
-                <span class="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Authentication</span>
-                <p class="text-xs font-medium text-[var(--text-primary)] mt-1" id="overview-auth-status">None configured</p>
+            <div class="bt-panel p-3 flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <span class="bt-section-label">Authentication</span>
+                <p class="text-xs font-medium text-[var(--text-primary)] mt-1 truncate" id="overview-auth-status">None configured</p>
               </div>
-              <button onclick="openAuthModal()" class="text-xs text-[#f97316] hover:underline font-medium">Configure</button>
+              <button onclick="openAuthModal()" class="text-xs text-[var(--accent)] hover:underline font-medium shrink-0">Configure</button>
             </div>
           </div>
         </div>
 
         <!-- Tag Summary Cards -->
-        <div class="space-y-4">
-          <h2 class="text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)]">API Resource Categories</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="overview-tags-grid">
+        <div class="space-y-3">
+          <h2 class="bt-section-label">API Resource Categories</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="overview-tags-grid">
             <!-- Injected via JS -->
           </div>
         </div>
@@ -478,15 +610,15 @@
           <!-- Endpoint Header -->
           <div class="space-y-3">
             <div class="flex items-center gap-2">
-              <span id="doc-badge" class="px-2 py-0.5 rounded text-xs font-bold font-mono uppercase badge-get">GET</span>
-              <span id="doc-tag" class="text-xs px-2 py-0.5 rounded bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-[var(--text-secondary)]">Tag</span>
+              <span id="doc-badge" class="px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase badge-get">GET</span>
+              <span id="doc-tag" class="text-[10px] px-2 py-0.5 rounded bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-secondary)]">Tag</span>
               <span id="doc-deprecated-badge" class="hidden text-[10px] px-2 py-0.5 rounded font-bold badge-deprecated">DEPRECATED</span>
             </div>
-            <h1 class="text-2xl font-bold tracking-tight text-[var(--text-primary)]" id="doc-summary">Endpoint Title</h1>
-            
-            <div class="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] font-mono text-xs">
-              <span class="text-[var(--text-primary)] font-semibold" id="doc-path">/path</span>
-              <button onclick="copyToClipboard(document.getElementById('doc-path').innerText, 'Path copied!')" class="text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)]">Copy</button>
+            <h1 class="text-2xl font-semibold tracking-tight text-[var(--text-primary)]" id="doc-summary">Endpoint Title</h1>
+
+            <div class="bt-panel flex items-center justify-between gap-3 p-2.5 pl-3 font-mono text-xs">
+              <span class="text-[var(--text-primary)] truncate" id="doc-path">/path</span>
+              <button onclick="copyToClipboard(document.getElementById('doc-path').innerText, 'Path copied!')" class="bt-btn bt-btn-sm bt-btn-ghost shrink-0">Copy</button>
             </div>
 
             <p class="text-xs text-[var(--text-secondary)] leading-relaxed" id="doc-desc">Endpoint description goes here.</p>
@@ -494,8 +626,8 @@
 
           <!-- Parameters Section -->
           <div id="doc-params-section" class="space-y-3 pt-4 border-t border-[var(--border-primary)]">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Parameters</h3>
-            <div class="rounded-lg border border-[var(--border-primary)] overflow-hidden">
+            <h3 class="bt-section-label">Parameters</h3>
+            <div class="bt-panel overflow-hidden">
               <table class="w-full text-left text-xs">
                 <thead class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] text-[10px] text-[var(--text-secondary)] uppercase">
                   <tr>
@@ -514,22 +646,29 @@
           <!-- Request Body Section with Multi-Format Support -->
           <div id="doc-body-section" class="space-y-3 pt-4 border-t border-[var(--border-primary)]">
             <div class="flex items-center justify-between flex-wrap gap-2">
-              <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Request Body</h3>
+              <h3 class="bt-section-label">Request Body</h3>
               <!-- Format Selector Buttons -->
-              <div class="flex items-center gap-1 bg-[var(--bg-primary)] p-0.5 rounded border border-[var(--border-primary)]" id="doc-body-type-selector">
-                <button onclick="setBodyType('json')" id="doc-btn-type-json" class="px-2 py-0.5 rounded text-[10px] font-mono bg-[#f97316] text-black font-bold">json</button>
-                <button onclick="setBodyType('form-data')" id="doc-btn-type-form-data" class="px-2 py-0.5 rounded text-[10px] font-mono bg-transparent text-[var(--text-secondary)]">form-data</button>
-                <button onclick="setBodyType('x-www-form-urlencoded')" id="doc-btn-type-x-www-form-urlencoded" class="px-2 py-0.5 rounded text-[10px] font-mono bg-transparent text-[var(--text-secondary)]">urlencoded</button>
-                <button onclick="setBodyType('raw')" id="doc-btn-type-raw" class="px-2 py-0.5 rounded text-[10px] font-mono bg-transparent text-[var(--text-secondary)]">raw</button>
-                <button onclick="setBodyType('xml')" id="doc-btn-type-xml" class="px-2 py-0.5 rounded text-[10px] font-mono bg-transparent text-[var(--text-secondary)]">xml</button>
-                <button onclick="setBodyType('none')" id="doc-btn-type-none" class="px-2 py-0.5 rounded text-[10px] font-mono bg-transparent text-[var(--text-secondary)]">none</button>
+              <div class="flex items-center gap-0.5 bg-[var(--bg-tertiary)] p-0.5 rounded border border-[var(--border-primary)]" id="doc-body-type-selector">
+                <button onclick="setBodyType('json')" id="doc-btn-type-json" class="px-2 py-0.5 rounded-sm text-[10px] font-mono bg-[var(--accent-soft)] text-[var(--accent)] font-semibold">json</button>
+                <button onclick="setBodyType('form-data')" id="doc-btn-type-form-data" class="px-2 py-0.5 rounded-sm text-[10px] font-mono bg-transparent text-[var(--text-secondary)]">form-data</button>
+                <button onclick="setBodyType('x-www-form-urlencoded')" id="doc-btn-type-x-www-form-urlencoded" class="px-2 py-0.5 rounded-sm text-[10px] font-mono bg-transparent text-[var(--text-secondary)]">urlencoded</button>
+                <button onclick="setBodyType('raw')" id="doc-btn-type-raw" class="px-2 py-0.5 rounded-sm text-[10px] font-mono bg-transparent text-[var(--text-secondary)]">raw</button>
+                <button onclick="setBodyType('xml')" id="doc-btn-type-xml" class="px-2 py-0.5 rounded-sm text-[10px] font-mono bg-transparent text-[var(--text-secondary)]">xml</button>
+                <button onclick="setBodyType('none')" id="doc-btn-type-none" class="px-2 py-0.5 rounded-sm text-[10px] font-mono bg-transparent text-[var(--text-secondary)]">none</button>
               </div>
             </div>
 
+            <!-- Auto-generated sample notice -->
+            <div id="doc-body-sample-notice" class="hidden flex items-center gap-2 text-[10px] flex-wrap">
+              <span class="px-1.5 py-0.5 rounded border border-[var(--accent)]/30 bg-[var(--accent-soft)] text-[var(--accent)] font-mono">Sample data — auto-generated</span>
+              <span class="text-[var(--text-secondary)]">Edit any field to use your own values.</span>
+              <button onclick="resetBodyToSample()" class="text-[var(--accent)] hover:underline font-sans">Reset to sample</button>
+            </div>
+
             <!-- JSON Body Container -->
-            <div id="doc-body-container-json" class="rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-3 space-y-2">
+            <div id="doc-body-container-json" class="bt-card p-3 space-y-2">
               <!-- Type-Aware Form (auto-populated from OpenAPI schema) -->
-              <div id="doc-body-schema-table" class="hidden rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] overflow-hidden">
+              <div id="doc-body-schema-table" class="hidden bt-panel overflow-hidden">
                 <div class="flex justify-between items-center px-3 py-2 border-b border-[var(--border-primary)]">
                   <span class="text-[10px] text-[var(--text-secondary)] font-semibold">Form Fields (from schema):</span>
                 </div>
@@ -551,22 +690,22 @@
                 <summary class="flex justify-between items-center cursor-pointer text-[10px] text-[var(--text-secondary)] hover:text-[var(--accent)] transition">
                   <span class="font-semibold">Raw JSON Editor</span>
                   <div class="flex gap-2 items-center">
-                    <button onclick="event.stopPropagation(); prettifyClientBody()" class="text-[10px] text-[#f97316] hover:underline">Format</button>
+                    <button onclick="event.stopPropagation(); prettifyClientBody()" class="text-[10px] text-[var(--accent)] hover:underline">Format</button>
                     <button onclick="event.stopPropagation(); formatAndCopyBody()" class="text-[10px] text-[var(--accent)] hover:underline">Copy</button>
                     <svg class="w-3 h-3 transition group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
                   </div>
                 </summary>
-                <textarea id="doc-body-input" oninput="syncBodyToClient(this.value)" rows="6" class="w-full mt-2 p-2.5 text-xs font-mono rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]"></textarea>
+                <textarea id="doc-body-input" oninput="syncBodyToClient(this.value)" rows="6" class="w-full mt-2 p-2.5 text-xs font-mono rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"></textarea>
               </details>
             </div>
 
             <!-- Form Data Key-Value Table Container -->
-            <div id="doc-body-container-form-data" class="hidden rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-3 space-y-2">
+            <div id="doc-body-container-form-data" class="hidden bt-card p-3 space-y-2">
               <div class="flex justify-between items-center">
                 <span class="text-[10px] text-[var(--text-secondary)] font-semibold">Multipart Form-Data Key-Value Pairs:</span>
-                <button onclick="addFormDataRow()" class="text-[10px] text-[#f97316] hover:underline font-medium">+ Add Field</button>
+                <button onclick="addFormDataRow()" class="text-[10px] text-[var(--accent)] hover:underline font-medium">+ Add Field</button>
               </div>
-              <div class="border border-[var(--border-primary)] rounded overflow-hidden">
+              <div class="border border-[var(--border-primary)] rounded-sm overflow-hidden">
                 <table class="w-full text-left text-xs">
                   <thead class="bg-[var(--bg-primary)] text-[10px] text-[var(--text-secondary)] border-b border-[var(--border-primary)]">
                     <tr>
@@ -583,12 +722,12 @@
             </div>
 
             <!-- x-www-form-urlencoded Table Container -->
-            <div id="doc-body-container-urlencoded" class="hidden rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-3 space-y-2">
+            <div id="doc-body-container-urlencoded" class="hidden bt-card p-3 space-y-2">
               <div class="flex justify-between items-center">
                 <span class="text-[10px] text-[var(--text-secondary)] font-semibold">URL-Encoded Form Data:</span>
-                <button onclick="addUrlEncodedRow()" class="text-[10px] text-[#f97316] hover:underline font-medium">+ Add Parameter</button>
+                <button onclick="addUrlEncodedRow()" class="text-[10px] text-[var(--accent)] hover:underline font-medium">+ Add Parameter</button>
               </div>
-              <div class="border border-[var(--border-primary)] rounded overflow-hidden">
+              <div class="border border-[var(--border-primary)] rounded-sm overflow-hidden">
                 <table class="w-full text-left text-xs">
                   <thead class="bg-[var(--bg-primary)] text-[10px] text-[var(--text-secondary)] border-b border-[var(--border-primary)]">
                     <tr>
@@ -605,55 +744,55 @@
             </div>
 
             <!-- Raw Text Container -->
-            <div id="doc-body-container-raw" class="hidden rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-3">
+            <div id="doc-body-container-raw" class="hidden bt-card p-3">
               <span class="text-[10px] text-[var(--text-secondary)] font-semibold block mb-2">Raw Text Payload:</span>
-              <textarea id="raw-body-input" oninput="handleRawBodyChange(this.value)" rows="5" placeholder="Enter raw body content..." class="w-full p-2.5 text-xs font-mono rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]"></textarea>
+              <textarea id="raw-body-input" oninput="handleRawBodyChange(this.value)" rows="5" placeholder="Enter raw body content..." class="w-full p-2.5 text-xs font-mono"></textarea>
             </div>
 
             <!-- XML Container -->
-            <div id="doc-body-container-xml" class="hidden rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-3">
+            <div id="doc-body-container-xml" class="hidden bt-card p-3">
               <span class="text-[10px] text-[var(--text-secondary)] font-semibold block mb-2">XML Payload (application/xml):</span>
-              <textarea id="xml-body-input" oninput="handleXmlBodyChange(this.value)" rows="6" placeholder="<request>&#10;  <item>value</item>&#10;</request>" class="w-full p-2.5 text-xs font-mono rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]"></textarea>
+              <textarea id="xml-body-input" oninput="handleXmlBodyChange(this.value)" rows="6" placeholder="<request>&#10;  <item>value</item>&#10;</request>" class="w-full p-2.5 text-xs font-mono"></textarea>
             </div>
 
             <!-- None Container -->
-            <div id="doc-body-container-none" class="hidden rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-4 text-center text-xs text-[var(--text-secondary)]">
+            <div id="doc-body-container-none" class="hidden bt-card p-4 text-center text-xs text-[var(--text-secondary)]">
               This request does not have or require a body payload.
             </div>
           </div>
 
           <!-- Responses Section -->
           <div id="doc-responses-section" class="space-y-3 pt-4 border-t border-[var(--border-primary)]">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Responses</h3>
+            <h3 class="bt-section-label">Responses</h3>
             <div class="space-y-2" id="doc-responses-list">
               <!-- Injected via JS -->
             </div>
           </div>
         </div>
 
-        <!-- Postman-style Interactive Client Console - sticky dengan max-h agar Send tidak hilang -->
+        <!-- Interactive client console -->
         <div class="xl:col-span-5 space-y-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
-          <div class="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-4 space-y-4 shadow-md">
-            
+          <div class="bt-card p-4 space-y-4">
+
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span class="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">API Client Console</span>
+                <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">API Client Console</span>
               </div>
-              <span class="text-[10px] font-mono text-[var(--text-secondary)]" id="console-mode">Direct / Live</span>
+              <span class="text-[10px] font-mono text-[var(--text-tertiary)]" id="console-mode">Direct / Live</span>
             </div>
 
-            <!-- Postman-like Request Type Switch (HTTP | WebSocket | SSE) -->
-            <div class="flex p-0.5 rounded-full bg-[var(--bg-primary)] border border-[var(--border-primary)] w-fit">
-              <button id="console-mode-http" onclick="switchConsoleMode('http')" class="px-3.5 py-1 rounded-full text-xs font-medium bg-[#f97316] text-black flex items-center gap-1.5">
+            <!-- Request Type Switch (HTTP | WebSocket | SSE) -->
+            <div class="flex p-0.5 rounded-md bg-[var(--bg-primary)] border border-[var(--border-primary)] w-fit">
+              <button id="console-mode-http" onclick="switchConsoleMode('http')" class="px-3 py-1 rounded-sm text-xs font-medium bg-[var(--accent-soft)] text-[var(--accent)] flex items-center gap-1.5">
                 <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><path d="M4 8h16"/><path d="M4 16h12"/></svg>
                 HTTP
               </button>
-              <button id="console-mode-ws" onclick="switchConsoleMode('ws')" class="px-3.5 py-1 rounded-full text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" id="console-mode-ws-dot"></span>
+              <button id="console-mode-ws" onclick="switchConsoleMode('ws')" class="px-3 py-1 rounded-sm text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]" id="console-mode-ws-dot"></span>
                 WebSocket
               </button>
-              <button id="console-mode-sse" onclick="switchConsoleMode('sse')" class="px-3.5 py-1 rounded-full text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1.5">
+              <button id="console-mode-sse" onclick="switchConsoleMode('sse')" class="px-3 py-1 rounded-sm text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1.5">
                 <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4"/><path d="M12 16v4"/><path d="M4 12h4"/><path d="M16 12h4"/></svg>
                 SSE
               </button>
@@ -661,37 +800,62 @@
 
             <!-- HTTP Panel (default) -->
             <div id="console-http-panel" class="space-y-4">
-            <!-- Server Selector (moved from header for glass header) -->
+            <!-- Server Selector -->
             <div class="flex items-center gap-2">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] shrink-0">Server</span>
-              <select id="server-select-console" onchange="handleServerChange(this.value)" class="flex-1 text-xs bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-md px-2 py-1 text-[var(--text-secondary)] focus:outline-none focus:border-[#f97316]"></select>
+              <span class="bt-section-label shrink-0">Server</span>
+              <select id="server-select-console" onchange="handleServerChange(this.value)" class="bt-input flex-1 text-[var(--text-secondary)]"></select>
             </div>
 
             <!-- URL Bar -->
             <div class="flex gap-2">
-              <span id="client-method-badge" class="px-2.5 py-1.5 rounded text-xs font-mono font-bold uppercase badge-get flex items-center">GET</span>
-              <input type="text" id="client-url-input" class="flex-1 text-xs font-mono p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]">
-              <button onclick="executeLiveRequest()" id="btn-send-request" class="bg-[#f97316] hover:bg-orange-600 text-black px-4 py-2 rounded text-xs font-bold transition flex items-center gap-1.5 shadow-md">
+              <span id="client-method-badge" class="px-2.5 rounded text-xs font-mono font-bold uppercase badge-get flex items-center">GET</span>
+              <input type="text" id="client-url-input" class="flex-1 text-xs font-mono px-2.5">
+              <button onclick="executeLiveRequest()" id="btn-send-request" class="bt-btn bt-btn-primary">>
                 <span>Send</span>
               </button>
+            </div>
+            <div class="-mt-2 flex items-center justify-between gap-2 text-[10px]">
+              <span class="text-[var(--text-tertiary)]">Use <code class="font-mono text-[var(--text-secondary)]">{{variable}}</code> in URL, headers, or body.</span>
+              <button onclick="openEnvModal()" class="shrink-0 text-[var(--accent)] hover:underline font-medium">Env (<span id="env-var-count">0</span>)</button>
             </div>
 
             <!-- Client Tabs - HTTP only -->
             <div class="border-b border-[var(--border-primary)] flex gap-4 text-xs font-medium overflow-x-auto">
-              <button onclick="setClientTab('headers')" id="tab-btn-headers" class="pb-2 border-b-2 border-[var(--text-secondary)] hover:text-[var(--text-primary)] whitespace-nowrap">Headers</button>
-              <button onclick="setClientTab('cookies')" id="tab-btn-cookies" class="pb-2 border-b-2 border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] whitespace-nowrap">Cookies</button>
-              <button onclick="setClientTab('snippets')" id="tab-btn-snippets" class="pb-2 border-b-2 border-[var(--text-secondary)] hover:text-[var(--text-primary)] whitespace-nowrap">Code Snippets</button>
-              <button onclick="setClientTab('res-headers')" id="tab-btn-res-headers" class="pb-2 border-b-2 border-[#f97316] text-[#f97316] whitespace-nowrap">Res Headers</button>
+              <button onclick="setClientTab('headers')" id="tab-btn-headers" class="client-tab client-tab-active">Headers</button>
+              <button onclick="setClientTab('cookies')" id="tab-btn-cookies" class="client-tab">Cookies</button>
+              <button onclick="setClientTab('snippets')" id="tab-btn-snippets" class="client-tab">Code Snippets</button>
+              <button onclick="setClientTab('res-headers')" id="tab-btn-res-headers" class="client-tab">Res Headers</button>
             </div>
 
             <!-- Tab: Headers -->
             <div id="client-tab-headers" class="hidden space-y-2 text-xs font-mono">
-              <div class="p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] space-y-1">
+              <div class="bt-panel p-2 space-y-1">
                 <div class="flex justify-between text-[11px]"><span class="text-[var(--text-secondary)]">Content-Type:</span> <span id="client-header-content-type">application/json</span></div>
-                <div class="flex justify-between text-[11px]"><span class="text-[var(--text-secondary)]">Authorization:</span> <span id="client-header-auth" class="text-zinc-500">None</span></div>
-                <div class="flex justify-between text-[11px]"><span class="text-[var(--text-secondary)]">X-API-KEY:</span> <span id="client-header-apikey" class="text-zinc-500">None</span></div>
+                <div class="flex justify-between text-[11px]"><span class="text-[var(--text-secondary)]">Authorization:</span> <span id="client-header-auth" class="text-[var(--text-tertiary)]">None</span></div>
+                <div class="flex justify-between text-[11px]"><span class="text-[var(--text-secondary)]">X-API-KEY:</span> <span id="client-header-apikey" class="text-[var(--text-tertiary)]">None</span></div>
               </div>
-              <button onclick="openAuthModal()" class="w-full py-1.5 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-xs text-[#f97316] hover:bg-[var(--bg-tertiary)] font-sans">
+
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] text-[var(--text-secondary)]">Custom headers (saved per endpoint)</span>
+                <button onclick="addHeaderRow()" class="text-[10px] text-[var(--accent)] hover:underline">+ Add Header</button>
+              </div>
+              <div id="header-table-wrap" class="border border-[var(--border-primary)] rounded-sm overflow-hidden">
+                <table class="w-full text-left text-xs">
+                  <thead class="bg-[var(--bg-primary)] text-[10px] text-[var(--text-secondary)] border-b border-[var(--border-primary)]">
+                    <tr>
+                      <th class="p-1.5 w-6 text-center" aria-label="Enabled"><svg class="w-3 h-3 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg></th>
+                      <th class="p-1.5 w-2/5">Name</th>
+                      <th class="p-1.5">Value</th>
+                      <th class="p-1.5 w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="header-tbody" class="divide-y divide-[var(--border-primary)]">
+                  </tbody>
+                </table>
+              </div>
+              <p id="header-empty-hint" class="text-[10px] text-[var(--text-secondary)]">No custom headers yet. Add one to send it with the request.</p>
+
+              <button onclick="openAuthModal()" class="bt-btn w-full">
                 Manage Auth Headers
               </button>
             </div>
@@ -700,9 +864,9 @@
             <div id="client-tab-cookies" class="hidden space-y-2">
               <div class="flex items-center justify-between">
                 <span class="text-[10px] text-[var(--text-secondary)]">Cookies sent with request</span>
-                <button onclick="addCookieRow()" class="text-[10px] text-[#f97316] hover:underline">+ Add</button>
+                <button onclick="addCookieRow()" class="text-[10px] text-[var(--accent)] hover:underline">+ Add</button>
               </div>
-              <div class="border border-[var(--border-primary)] rounded overflow-hidden">
+              <div class="border border-[var(--border-primary)] rounded-sm overflow-hidden">
                 <table class="w-full text-left text-xs">
                   <thead class="bg-[var(--bg-primary)] text-[10px] text-[var(--text-secondary)] border-b border-[var(--border-primary)]">
                     <tr>
@@ -721,88 +885,88 @@
             <!-- Tab: Code Snippets -->
             <div id="client-tab-snippets" class="hidden space-y-2">
               <div class="flex gap-1.5 text-[10px] flex-wrap">
-                <button onclick="generateSnippet('curl')" id="snip-curl" class="px-2 py-1 rounded bg-[#f97316] text-black font-bold">cURL</button>
-                <button onclick="generateSnippet('fetch')" id="snip-fetch" class="px-2 py-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)]">Fetch JS</button>
-                <button onclick="generateSnippet('python')" id="snip-python" class="px-2 py-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)]">Python</button>
-                <button onclick="generateSnippet('go')" id="snip-go" class="px-2 py-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)]">Go</button>
-                <button onclick="generateSnippet('php')" id="snip-php" class="px-2 py-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)]">PHP</button>
+                <button onclick="generateSnippet('curl')" id="snip-curl" class="px-2 py-1 rounded-sm bg-[var(--accent-soft)] text-[var(--accent)] font-semibold">cURL</button>
+                <button onclick="generateSnippet('fetch')" id="snip-fetch" class="px-2 py-1 rounded-sm bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)]">Fetch JS</button>
+                <button onclick="generateSnippet('python')" id="snip-python" class="px-2 py-1 rounded-sm bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)]">Python</button>
+                <button onclick="generateSnippet('go')" id="snip-go" class="px-2 py-1 rounded-sm bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)]">Go</button>
+                <button onclick="generateSnippet('php')" id="snip-php" class="px-2 py-1 rounded-sm bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)]">PHP</button>
               </div>
-              <pre class="p-2.5 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[11px] font-mono overflow-x-auto text-[var(--text-primary)] max-h-48" id="snippet-output"><code></code></pre>
+              <pre class="bt-panel p-2.5 text-[11px] font-mono overflow-x-auto text-[var(--text-primary)] max-h-48" id="snippet-output"><code></code></pre>
             </div>
 
             <!-- Tab: Response Headers -->
             <div id="client-tab-res-headers" class="space-y-2">
-              <div id="res-headers-box" class="p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[10px] font-mono max-h-48 overflow-y-auto space-y-0.5">
-                <span class="text-zinc-500">No response yet. Send a request to see headers.</span>
+              <div id="res-headers-box" class="bt-panel p-2 text-[10px] font-mono max-h-48 overflow-y-auto space-y-0.5">
+                <span class="text-[var(--text-tertiary)]">No response yet. Send a request to see headers.</span>
               </div>
             </div>
 
             <!-- Response Panel (HTTP only) -->
             <div class="pt-3 border-t border-[var(--border-primary)] space-y-2">
-              <div class="flex items-center justify-between text-[10px] text-[var(--text-secondary)]">
-                <span class="font-bold uppercase">Response</span>
-                <div class="flex items-center gap-2 font-mono">
-                  <span id="res-status" class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">---</span>
-                  <span id="res-time">0 ms</span>
+              <div class="flex items-center justify-between">
+                <span class="bt-section-label">Response</span>
+                <div class="flex items-center gap-2 font-mono text-[10px]">
+                  <span id="res-status" class="status-badge">---</span>
+                  <span id="res-time" class="text-[var(--text-tertiary)]">0 ms</span>
                 </div>
               </div>
-              <pre id="client-response-box" class="p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[11px] font-mono overflow-x-auto max-h-60 text-[var(--text-primary)]"><code>Ready. Click "Send" to test API.</code></pre>
+              <pre id="client-response-box" class="bt-panel p-3 text-[11px] font-mono overflow-x-auto max-h-60 text-[var(--text-primary)]"><code>Ready. Click "Send" to test API.</code></pre>
               <div class="flex justify-end">
-                <button onclick="copyResponseData()" class="text-[10px] text-[#f97316] hover:underline">Copy Response</button>
+                <button onclick="copyResponseData()" class="bt-btn bt-btn-sm bt-btn-ghost">Copy Response</button>
               </div>
             </div>
             </div><!-- /#console-http-panel -->
 
-            <!-- WebSocket Standalone Panel (Postman-like, outside HTTP tabs) -->
+            <!-- WebSocket Standalone Panel -->
             <div id="console-ws-panel" class="hidden space-y-3">
               <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span class="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">WebSocket</span>
-                <span id="ws-status" class="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">DISCONNECTED</span>
+                <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">WebSocket</span>
+                <span id="ws-status" class="status-badge ml-auto">DISCONNECTED</span>
               </div>
               <div class="flex gap-1.5">
-                <input id="ws-url" type="text" placeholder="ws://localhost:3000/chat" class="flex-1 text-xs font-mono p-1.5 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]" />
-                <button id="ws-connect-btn" onclick="toggleWS()" class="px-3 py-1.5 rounded-md bg-[#f97316] text-black text-xs font-bold hover:bg-orange-600 transition shrink-0">Connect</button>
+                <input id="ws-url" type="text" placeholder="ws://localhost:3000/chat" class="flex-1 text-xs font-mono" />
+                <button id="ws-connect-btn" onclick="toggleWS()" class="bt-btn bt-btn-primary shrink-0">Connect</button>
               </div>
               <div class="flex gap-2 items-center">
-                <input id="ws-token" type="text" placeholder="token query ?token= (optional)" class="flex-1 text-[11px] font-mono p-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)] focus:outline-none focus:border-[#f97316]" />
-                <button onclick="clearWSLog()" class="text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)]">Clear</button>
+                <input id="ws-token" type="text" placeholder="token query ?token= (optional)" class="flex-1 text-[11px] font-mono" />
+                <button onclick="clearWSLog()" class="bt-btn bt-btn-sm bt-btn-ghost">Clear</button>
               </div>
-              <div id="ws-log" class="h-48 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] p-2 font-mono text-[11px] overflow-y-auto space-y-0.5">
-                <span class="text-zinc-500">No messages yet. Connect to start.</span>
+              <div id="ws-log" class="h-48 bt-panel p-2 font-mono text-[11px] overflow-y-auto space-y-0.5">
+                <span class="text-[var(--text-tertiary)]">No messages yet. Connect to start.</span>
               </div>
               <div class="flex gap-1.5">
-                <select id="ws-msg-type" class="text-xs bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded px-2 py-1.5 text-[var(--text-secondary)]">
+                <select id="ws-msg-type" class="bt-input text-[var(--text-secondary)]">
                   <option value="text">Text</option>
                   <option value="json">JSON</option>
                 </select>
-                <input id="ws-input" type="text" placeholder='{"event":"ping"}' class="flex-1 text-xs font-mono p-1.5 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]" onkeydown="if(event.key==='Enter') sendWS()" />
-                <button onclick="sendWS()" class="px-3 py-1.5 rounded bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-xs hover:border-[#f97316] text-[var(--text-primary)]">Send</button>
+                <input id="ws-input" type="text" placeholder='{"event":"ping"}' class="flex-1 text-xs font-mono" onkeydown="if(event.key==='Enter') sendWS()" />
+                <button onclick="sendWS()" class="bt-btn bt-btn-sm">Send</button>
               </div>
               <label class="flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)]">
-                <input type="checkbox" id="ws-heartbeat" class="accent-[#f97316]" /> Heartbeat 30s ping
+                <input type="checkbox" id="ws-heartbeat" class="accent-[var(--accent)]" /> Heartbeat 30s ping
               </label>
             </div>
 
-            <!-- SSE Standalone Panel (Postman-like) -->
+            <!-- SSE Standalone Panel -->
             <div id="console-sse-panel" class="hidden space-y-3">
               <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
-                <span class="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">Server-Sent Events</span>
-                <span id="sse-status" class="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">DISCONNECTED</span>
+                <span class="w-1.5 h-1.5 rounded-full bg-[var(--info)]"></span>
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Server-Sent Events</span>
+                <span id="sse-status" class="status-badge ml-auto">DISCONNECTED</span>
               </div>
               <div class="flex gap-1.5">
-                <input id="sse-url" type="text" placeholder="http://localhost:3000/events" class="flex-1 text-xs font-mono p-1.5 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]" />
-                <button id="sse-connect-btn" onclick="toggleSSE()" class="px-3 py-1.5 rounded-md bg-[#f97316] text-black text-xs font-bold hover:bg-orange-600 transition shrink-0">Connect</button>
+                <input id="sse-url" type="text" placeholder="http://localhost:3000/events" class="flex-1 text-xs font-mono" />
+                <button id="sse-connect-btn" onclick="toggleSSE()" class="bt-btn bt-btn-primary shrink-0">Connect</button>
               </div>
               <div class="flex gap-1.5">
-                <input id="sse-last-id" type="text" placeholder="Last-Event-ID (optional)" class="flex-1 text-[11px] font-mono p-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)]" />
-                <button onclick="clearSSELog()" class="text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)]">Clear</button>
+                <input id="sse-last-id" type="text" placeholder="Last-Event-ID (optional)" class="flex-1 text-[11px] font-mono" />
+                <button onclick="clearSSELog()" class="bt-btn bt-btn-sm bt-btn-ghost">Clear</button>
               </div>
-              <div id="sse-log" class="h-48 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] p-2 font-mono text-[11px] overflow-y-auto space-y-0.5">
-                <span class="text-zinc-500">No events yet. Connect to start.</span>
+              <div id="sse-log" class="h-48 bt-panel p-2 font-mono text-[11px] overflow-y-auto space-y-0.5">
+                <span class="text-[var(--text-tertiary)]">No events yet. Connect to start.</span>
               </div>
-              <p class="text-[10px] text-[var(--text-secondary)]">SSE via <code>fetch</code> stream (supports Authorization). Query <code>?lastEventId=</code> auto if needed.</p>
+              <p class="text-[10px] text-[var(--text-secondary)]">SSE via <code class="text-[var(--text-primary)]">fetch</code> stream (supports Authorization). Query <code class="text-[var(--text-primary)]">?lastEventId=</code> auto if needed.</p>
             </div>
         </div>
 
@@ -813,14 +977,14 @@
 
   <!-- ================= AUTH MODAL ================= -->
   <div id="modal-auth" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-    <div class="w-full max-w-md rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-6 space-y-5 shadow-md">
+    <div class="w-full max-w-md rounded-md border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-6 space-y-5">
       <div class="flex items-center justify-between">
-        <h3 class="text-sm font-bold text-[var(--text-primary)]">Authentication Configuration</h3>
-        <button onclick="closeAuthModal()" class="p-1.5 rounded-md hover:bg-[var(--bg-tertiary)] text-zinc-500 hover:text-[var(--text-primary)] transition" aria-label="Close"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+        <h3 class="text-sm font-semibold text-[var(--text-primary)]">Authentication Configuration</h3>
+        <button onclick="closeAuthModal()" class="bt-icon-btn" style="width:28px;height:28px" aria-label="Close"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       </div>
 
       <!-- HP5: Security warning -->
-      <div class="flex items-start gap-2 p-2 rounded bg-yellow-500/10 border border-yellow-500/30 text-[10px] text-yellow-400">
+      <div class="flex items-start gap-2 p-2.5 rounded-sm border border-[var(--warning)]/30 bg-[var(--warning-soft)] text-[10px] text-[var(--warning)]">
         <svg class="w-3.5 h-3.5 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
         <span>Credentials are stored in your browser's localStorage. Do not use production tokens on shared computers.</span>
       </div>
@@ -828,32 +992,32 @@
       <div class="space-y-4 text-xs">
         <div>
           <label class="block font-semibold text-[var(--text-primary)] mb-1">Bearer Token (JWT)</label>
-          <input type="text" id="auth-bearer-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="w-full p-2 font-mono rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]">
-          <p class="text-[10px] text-[var(--text-secondary)] mt-1">Attached as <code>Authorization: Bearer &lt;token&gt;</code></p>
+          <input type="text" id="auth-bearer-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="w-full p-2 font-mono text-xs">
+          <p class="text-[10px] text-[var(--text-secondary)] mt-1">Attached as <code class="text-[var(--text-primary)]">Authorization: Bearer &lt;token&gt;</code></p>
         </div>
 
         <div>
           <label class="block font-semibold text-[var(--text-primary)] mb-1">API Key Header</label>
-          <input type="text" id="auth-apikey-input" placeholder="sec_live_99214a..." class="w-full p-2 font-mono rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]">
-          <p class="text-[10px] text-[var(--text-secondary)] mt-1">Attached as <code>X-API-KEY: &lt;key&gt;</code></p>
+          <input type="text" id="auth-apikey-input" placeholder="sec_live_99214a..." class="w-full p-2 font-mono text-xs">
+          <p class="text-[10px] text-[var(--text-secondary)] mt-1">Attached as <code class="text-[var(--text-primary)]">X-API-KEY: &lt;key&gt;</code></p>
         </div>
 
         <!-- MP10: Basic Auth -->
         <div class="pt-2 border-t border-[var(--border-primary)]">
           <label class="block font-semibold text-[var(--text-primary)] mb-1">Basic Auth</label>
           <div class="flex gap-2">
-            <input type="text" id="auth-basic-user" placeholder="username" class="flex-1 p-2 font-mono rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]">
-            <input type="password" id="auth-basic-pass" placeholder="password" class="flex-1 p-2 font-mono rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]">
+            <input type="text" id="auth-basic-user" placeholder="username" class="flex-1 p-2 font-mono text-xs">
+            <input type="password" id="auth-basic-pass" placeholder="password" class="flex-1 p-2 font-mono text-xs">
           </div>
-          <p class="text-[10px] text-[var(--text-secondary)] mt-1">Attached as <code>Authorization: Basic &lt;base64&gt;</code></p>
+          <p class="text-[10px] text-[var(--text-secondary)] mt-1">Attached as <code class="text-[var(--text-primary)]">Authorization: Basic &lt;base64&gt;</code></p>
         </div>
       </div>
 
       <div class="flex justify-between items-center pt-2">
-        <button onclick="fillDemoAuth()" class="text-xs text-[#f97316] hover:underline">Use Demo Token</button>
+        <button onclick="fillDemoAuth()" class="text-xs text-[var(--accent)] hover:underline">Use Demo Token</button>
         <div class="flex gap-2">
-          <button onclick="closeAuthModal()" class="px-3 py-1.5 rounded text-xs border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]">Cancel</button>
-          <button onclick="saveAuthModal()" class="px-4 py-1.5 rounded text-xs bg-[#f97316] text-black font-bold hover:bg-orange-600">Save Credentials</button>
+          <button onclick="closeAuthModal()" class="bt-btn">Cancel</button>
+          <button onclick="saveAuthModal()" class="bt-btn bt-btn-primary">Save Credentials</button>
         </div>
       </div>
     </div>
@@ -861,50 +1025,50 @@
 
   <!-- ================= ENVIRONMENT VARIABLES MODAL ================= -->
   <div id="modal-env" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-    <div class="w-full max-w-lg rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-6 space-y-4 shadow-md">
+    <div class="w-full max-w-lg rounded-md border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-6 space-y-4">
       <div class="flex items-center justify-between">
         <div>
-          <h3 class="text-sm font-bold text-[var(--text-primary)]">Environment Variables</h3>
-          <p class="text-xs text-[var(--text-secondary)]">Define <code>{{variable}}</code> placeholders for URLs, headers, and body.</p>
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">Environment Variables</h3>
+          <p class="text-xs text-[var(--text-secondary)]">Define <code class="text-[var(--text-primary)]">{{variable}}</code> placeholders, then use them in the URL, headers, cookies, or request body. Values are stored in this browser.</p>
         </div>
-        <button onclick="closeEnvModal()" class="p-1.5 rounded-md hover:bg-[var(--bg-tertiary)] text-zinc-500 hover:text-[var(--text-primary)] transition" aria-label="Close"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+        <button onclick="closeEnvModal()" class="bt-icon-btn" style="width:28px;height:28px" aria-label="Close"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       </div>
-      <textarea id="env-editor" rows="10" class="w-full p-3 font-mono text-xs rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316] resize-none" placeholder='{ "baseUrl": "http://localhost:3000", "token": "my-jwt-token" }'></textarea>
+      <textarea id="env-editor" rows="10" class="w-full p-3 font-mono text-xs resize-none" placeholder='{ "baseUrl": "http://localhost:3000", "token": "my-jwt-token" }'></textarea>
       <div class="flex justify-end gap-2">
-        <button onclick="closeEnvModal()" class="px-3 py-1.5 rounded text-xs border border-[var(--border-primary)]">Cancel</button>
-        <button onclick="saveEnvModal()" class="px-4 py-1.5 rounded text-xs bg-[#f97316] text-black font-bold hover:bg-orange-600">Save</button>
+        <button onclick="closeEnvModal()" class="bt-btn">Cancel</button>
+        <button onclick="saveEnvModal()" class="bt-btn bt-btn-primary">Save</button>
       </div>
     </div>
   </div>
 
   <!-- ================= SWAGGER JSON EDITOR MODAL ================= -->
   <div id="modal-editor" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-    <div class="w-full max-w-3xl rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-6 space-y-4 shadow-md flex flex-col h-[85vh]">
+    <div class="w-full max-w-3xl rounded-md border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-6 space-y-4 flex flex-col h-[85vh]">
       <div class="flex items-center justify-between">
         <div>
-          <h3 class="text-sm font-bold text-[var(--text-primary)]">Swagger / OpenAPI JSON Specification</h3>
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">Swagger / OpenAPI JSON Specification</h3>
           <p class="text-xs text-[var(--text-secondary)]">View, modify, or load custom OpenAPI 3.0 / Swagger 2.0 specs.</p>
         </div>
-        <button onclick="closeEditorModal()" class="p-1.5 rounded-md hover:bg-[var(--bg-tertiary)] text-zinc-500 hover:text-[var(--text-primary)] transition" aria-label="Close"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+        <button onclick="closeEditorModal()" class="bt-icon-btn" style="width:28px;height:28px" aria-label="Close"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       </div>
 
       <div class="flex items-center gap-2">
         <input type="file" id="spec-file-input" accept=".json" onchange="handleFileUpload(event)" class="hidden">
-        <button onclick="document.getElementById('spec-file-input').click()" class="px-2.5 py-1 rounded text-xs bg-[var(--bg-primary)] border border-[var(--border-primary)] hover:border-[#f97316]">
+        <button onclick="document.getElementById('spec-file-input').click()" class="bt-btn bt-btn-sm">
           Upload JSON File
         </button>
-        <button onclick="exportJsonFile()" class="px-2.5 py-1 rounded text-xs bg-[var(--bg-primary)] border border-[var(--border-primary)] hover:border-[var(--border-hover)]">
+        <button onclick="exportJsonFile()" class="bt-btn bt-btn-sm">
           Download JSON
         </button>
       </div>
 
-      <textarea id="spec-raw-editor" class="flex-1 w-full p-3 font-mono text-xs rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316] resize-none"></textarea>
+      <textarea id="spec-raw-editor" class="flex-1 w-full p-3 font-mono text-xs resize-none"></textarea>
 
       <div class="flex justify-between items-center">
-        <span id="editor-error" class="text-xs text-red-500"></span>
+        <span id="editor-error" class="text-xs text-[var(--danger)]"></span>
         <div class="flex gap-2">
-          <button onclick="closeEditorModal()" class="px-3 py-1.5 rounded text-xs border border-[var(--border-primary)]">Close</button>
-          <button onclick="applyEditedSpec()" class="px-4 py-1.5 rounded text-xs bg-[#f97316] text-black font-bold hover:bg-orange-600">Apply & Render</button>
+          <button onclick="closeEditorModal()" class="bt-btn">Close</button>
+          <button onclick="applyEditedSpec()" class="bt-btn bt-btn-primary">Apply &amp; Render</button>
         </div>
       </div>
     </div>
@@ -912,10 +1076,10 @@
 
   <!-- ================= SEARCH MODAL ================= -->
   <div id="modal-search" class="hidden fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/60 backdrop-blur-sm p-4" onclick="if(event.target===this) closeSearchModal()">
-    <div class="w-full max-w-xl rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-4 space-y-3 shadow-md">
+    <div class="w-full max-w-xl rounded-md border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-4 space-y-3">
       <div class="relative">
-        <input type="text" id="search-dialog-input" oninput="handleSearchDialogInput(this.value)" placeholder="Search operations, paths, summaries, tags..." class="w-full text-sm pl-9 pr-4 py-2 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]">
-        <svg class="w-4 h-4 absolute left-3 top-2.5 text-[var(--text-secondary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="search-dialog-input" oninput="handleSearchDialogInput(this.value)" placeholder="Search operations, paths, summaries, tags..." class="w-full text-sm pl-9 pr-4 py-2">
+        <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       </div>
       <div id="search-dialog-results" class="max-h-80 overflow-y-auto space-y-1 text-xs">
         <!-- Results Injected via JS -->
@@ -951,6 +1115,8 @@
     let formDataRows = [];
     let urlEncodedRows = [];
     let cookieRows = JSON.parse(localStorage.getItem('scalar_cookie_rows') || '[]');
+    let customHeaders = [];
+    let bodyUserEdited = false;
     let rawBodyText = '';
     let xmlBodyText = '';
     let specLoadError = false;
@@ -1166,6 +1332,7 @@
         rawBody: rawBodyText,
         xmlBody: xmlBodyText,
         bodySchemaValues: { ...bodySchemaValues },
+        bodyUserEdited,
         formData: formDataRows.map(r => ({
           key: r.key,
           value: r.type === 'file' ? '' : r.value,
@@ -1179,6 +1346,11 @@
           resolvedSchema: r.resolvedSchema || null,
         })),
         urlEncoded: urlEncodedRows.map(r => ({
+          key: r.key,
+          value: r.value,
+          enabled: r.enabled
+        })),
+        customHeaders: customHeaders.map(r => ({
           key: r.key,
           value: r.value,
           enabled: r.enabled
@@ -1211,9 +1383,198 @@
       }
     }
 
+    const ENV_VAR_PATTERN = /\{\{\s*([\w.-]+)\s*\}\}/g;
     function substituteEnvVars(str) {
-      return str.replace(/\{\{(\w+)\}\}/g, (match, key) => envVars[key] ?? match);
+      if (typeof str !== 'string') return str;
+      return str.replace(ENV_VAR_PATTERN, (match, key) =>
+        Object.prototype.hasOwnProperty.call(envVars, key) ? String(envVars[key]) : match
+      );
     }
+    function getUnresolvedEnvVars(str) {
+      if (typeof str !== 'string') return [];
+      const missing = [];
+      ENV_VAR_PATTERN.lastIndex = 0;
+      for (const match of str.matchAll(ENV_VAR_PATTERN)) {
+        const key = match[1];
+        if (!Object.prototype.hasOwnProperty.call(envVars, key) && !missing.includes(key))
+          missing.push(key);
+      }
+      return missing;
+    }
+    function updateEnvIndicator() {
+      const el = document.getElementById('env-var-count');
+      if (el) el.textContent = String(Object.keys(envVars).length);
+    }
+
+    // === Env variable autocomplete (triggered by "{{") ===
+    let envSuggestTarget = null;
+    let envSuggestRange = null;
+    let envSuggestItems = [];
+    let envSuggestIndex = 0;
+
+    function envSuggestEl() { return document.getElementById('env-suggest'); }
+
+    function isEnvSuggestField(el) {
+      if (!el || el.id === 'env-editor') return false;
+      if (el.tagName === 'TEXTAREA') return true;
+      if (el.tagName !== 'INPUT') return false;
+      const type = (el.getAttribute('type') || 'text').toLowerCase();
+      return type === 'text' || type === 'search' || type === 'url';
+    }
+
+    function getEnvSuggestContext(el) {
+      if (typeof el.selectionStart !== 'number') return null;
+      const value = el.value;
+      const caret = el.selectionStart;
+      const open = value.lastIndexOf('{{', caret);
+      if (open === -1) return null;
+      const closeBefore = value.indexOf('}}', open);
+      if (closeBefore !== -1 && closeBefore < caret) return null;
+      const partial = value.slice(open + 2, caret);
+      if (!/^[\w.-]*$/.test(partial)) return null;
+      let end = caret;
+      while (end < value.length && /[\w.-]/.test(value[end])) end++;
+      if (value.startsWith('}}', end)) end += 2;
+      return { start: open, end, partial };
+    }
+
+    function updateEnvSuggest(el) {
+      const ctx = getEnvSuggestContext(el);
+      if (!ctx) { hideEnvSuggest(); return; }
+      const needle = ctx.partial.toLowerCase();
+      let keys = Object.keys(envVars);
+      if (needle) keys = keys.filter(k => k.toLowerCase().includes(needle));
+      keys.sort((a, b) => {
+        const ap = needle && a.toLowerCase().startsWith(needle);
+        const bp = needle && b.toLowerCase().startsWith(needle);
+        if (ap !== bp) return ap ? -1 : 1;
+        return a.localeCompare(b);
+      });
+      envSuggestTarget = el;
+      envSuggestRange = ctx;
+      envSuggestItems = keys;
+      envSuggestIndex = 0;
+      renderEnvSuggest();
+    }
+
+    function renderEnvSuggest() {
+      const el = envSuggestEl();
+      if (!el || !envSuggestTarget) return;
+      el.innerHTML = '';
+      if (envSuggestItems.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'env-suggest-empty';
+        empty.textContent = 'No env vars defined - open Env';
+        empty.addEventListener('click', () => { hideEnvSuggest(); openEnvModal(); });
+        el.appendChild(empty);
+      } else {
+        envSuggestItems.slice(0, 50).forEach((key, i) => {
+          const item = document.createElement('div');
+          item.className = 'env-suggest-item' + (i === envSuggestIndex ? ' active' : '');
+          item.setAttribute('role', 'option');
+          item.setAttribute('aria-selected', i === envSuggestIndex ? 'true' : 'false');
+          const name = document.createElement('span');
+          name.textContent = '{{' + key + '}}';
+          const value = document.createElement('span');
+          value.className = 'env-suggest-value';
+          const rawValue = String(envVars[key]);
+          value.textContent = /token|secret|pass|key|auth/i.test(key)
+            ? '\u2022'.repeat(Math.min(rawValue.length, 8))
+            : rawValue;
+          item.appendChild(name);
+          item.appendChild(value);
+          item.addEventListener('mousedown', (e) => e.preventDefault());
+          item.addEventListener('click', () => insertEnvSuggestion(key));
+          el.appendChild(item);
+        });
+        const foot = document.createElement('div');
+        foot.className = 'env-suggest-foot';
+        foot.textContent = 'Up/Down navigate - Enter insert - Esc close';
+        el.appendChild(foot);
+      }
+      el.classList.add('open');
+      positionEnvSuggest();
+      const active = el.querySelector('.env-suggest-item.active');
+      if (active) active.scrollIntoView({ block: 'nearest' });
+    }
+
+    function positionEnvSuggest() {
+      const el = envSuggestEl();
+      const target = envSuggestTarget;
+      if (!el || !target) return;
+      const rect = target.getBoundingClientRect();
+      const width = Math.min(Math.max(rect.width, 200), 360);
+      el.style.width = width + 'px';
+      el.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)) + 'px';
+      const panelHeight = Math.min(el.scrollHeight || 200, 200);
+      if (rect.bottom + panelHeight + 8 > window.innerHeight && rect.top > panelHeight) {
+        el.style.top = (rect.top - panelHeight - 4) + 'px';
+      } else {
+        el.style.top = (rect.bottom + 4) + 'px';
+      }
+    }
+
+    function insertEnvSuggestion(key) {
+      const el = envSuggestTarget;
+      const range = envSuggestRange;
+      if (!el || !range) return;
+      const replacement = '{{' + key + '}}';
+      el.value = el.value.slice(0, range.start) + replacement + el.value.slice(range.end);
+      const caret = range.start + replacement.length;
+      el.focus();
+      el.setSelectionRange(caret, caret);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      hideEnvSuggest();
+    }
+
+    function hideEnvSuggest() {
+      const el = envSuggestEl();
+      if (el) el.classList.remove('open');
+      envSuggestTarget = null;
+      envSuggestRange = null;
+      envSuggestItems = [];
+      envSuggestIndex = 0;
+    }
+
+    function handleEnvSuggestKeydown(e) {
+      const el = envSuggestEl();
+      if (!el || !el.classList.contains('open') || e.target !== envSuggestTarget) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        if (envSuggestItems.length === 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const delta = e.key === 'ArrowDown' ? 1 : -1;
+        envSuggestIndex = (envSuggestIndex + delta + envSuggestItems.length) % envSuggestItems.length;
+        renderEnvSuggest();
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        if (envSuggestItems.length === 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        insertEnvSuggestion(envSuggestItems[envSuggestIndex]);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        hideEnvSuggest();
+      }
+    }
+
+    document.addEventListener('input', (e) => {
+      if (isEnvSuggestField(e.target)) updateEnvSuggest(e.target);
+    });
+    document.addEventListener('click', (e) => {
+      if (envSuggestEl()?.contains(e.target)) return;
+      if (isEnvSuggestField(e.target)) updateEnvSuggest(e.target);
+      else hideEnvSuggest();
+    });
+    document.addEventListener('keydown', handleEnvSuggestKeydown, true);
+    document.addEventListener('focusout', (e) => {
+      if (!isEnvSuggestField(e.target)) return;
+      setTimeout(() => {
+        if (document.activeElement !== envSuggestTarget) hideEnvSuggest();
+      }, 120);
+    });
+    window.addEventListener('scroll', () => hideEnvSuggest(), true);
+    window.addEventListener('resize', () => hideEnvSuggest());
 
     function openEnvModal() {
       const editor = document.getElementById('env-editor');
@@ -1228,9 +1589,16 @@
     function saveEnvModal() {
       try {
         const raw = document.getElementById('env-editor').value;
-        envVars = JSON.parse(raw);
+        const parsed = JSON.parse(raw || '{}');
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          showToast('Environment must be a JSON object', 'error');
+          return;
+        }
+        envVars = parsed;
         localStorage.setItem('scalar_env_vars', JSON.stringify(envVars));
+        updateEnvIndicator();
         closeEnvModal();
+        generateSnippet(currentSnippetLang);
         showToast('Environment variables saved', 'success');
       } catch (e) {
         showToast('Invalid JSON: ' + e.message, 'error');
@@ -1602,7 +1970,7 @@
       // Enum → select dropdown
       if (enumVals && enumVals.length > 0) {
         const select = document.createElement('select');
-        select.className = options.className || 'w-full text-xs font-mono p-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]';
+        select.className = options.className || 'w-full text-xs font-mono p-1.5';
         enumVals.forEach(val => {
           const opt = document.createElement('option');
           opt.value = String(val);
@@ -1621,8 +1989,8 @@
         const checked = defaultValue === true || defaultValue === 'true' || defaultValue === '1';
         wrapper.innerHTML = `
           <button type="button" role="switch" aria-checked="${checked}" data-value="${checked}"
-            class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#f97316] focus:ring-offset-2 focus:ring-offset-[var(--bg-secondary)] ${checked ? 'bg-[#f97316]' : 'bg-zinc-600'}">
-            <span aria-hidden="true" class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${checked ? 'translate-x-4' : 'translate-x-0'}"></span>
+            class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--bg-secondary)] ${checked ? 'bg-[var(--accent)]' : 'bg-[var(--border-hover)]'}">
+            <span aria-hidden="true" class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white transition duration-200 ease-in-out ${checked ? 'translate-x-4' : 'translate-x-0'}"></span>
           </button>
           <span class="text-[10px] font-mono text-[var(--text-secondary)]">${checked ? 'true' : 'false'}</span>
         `;
@@ -1632,7 +2000,7 @@
           const newVal = btn.getAttribute('data-value') === 'false';
           btn.setAttribute('data-value', String(newVal));
           btn.setAttribute('aria-checked', String(newVal));
-          btn.className = btn.className.replace(newVal ? 'bg-zinc-600' : 'bg-[#f97316]', newVal ? 'bg-[#f97316]' : 'bg-zinc-600');
+          btn.className = btn.className.replace(newVal ? 'bg-[var(--border-hover)]' : 'bg-[var(--accent)]', newVal ? 'bg-[var(--accent)]' : 'bg-[var(--border-hover)]');
           const span = btn.querySelector('span');
           span.className = span.className.replace(newVal ? 'translate-x-0' : 'translate-x-4', newVal ? 'translate-x-4' : 'translate-x-0');
           label.textContent = String(newVal);
@@ -1645,7 +2013,7 @@
       if (type === 'number' || type === 'integer') {
         const input = document.createElement('input');
         input.type = 'number';
-        input.className = options.className || 'w-full text-xs font-mono p-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]';
+        input.className = options.className || 'w-full text-xs font-mono p-1.5';
         if (defaultValue !== undefined && defaultValue !== '') input.value = defaultValue;
         if (resolvedSchema?.minimum !== undefined) input.min = resolvedSchema.minimum;
         if (resolvedSchema?.maximum !== undefined) input.max = resolvedSchema.maximum;
@@ -1664,10 +2032,10 @@
         const wrapper = document.createElement('div');
         wrapper.className = options.className || 'w-full';
         const display = document.createElement('div');
-        display.className = 'flex flex-wrap gap-1 p-1 min-h-[28px] rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] focus-within:border-[#f97316] transition';
+        display.className = 'flex flex-wrap gap-1 p-1 min-h-[28px] rounded-sm bg-[var(--bg-primary)] border border-[var(--border-primary)] focus-within:border-[var(--accent)] transition';
         const hiddenInput = document.createElement('input');
         hiddenInput.type = 'text';
-        hiddenInput.className = 'flex-1 min-w-[80px] text-xs font-mono bg-transparent border-none outline-none text-[var(--text-primary)] placeholder:text-zinc-500';
+        hiddenInput.className = 'flex-1 min-w-[80px] text-xs font-mono bg-transparent border-none outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]';
         const itemType = resolvedSchema?.items?.type;
         const isNumeric = itemType === 'number' || itemType === 'integer';
         hiddenInput.placeholder = isNumeric ? 'Add number + Enter' : 'Add item + Enter';
@@ -1683,8 +2051,8 @@
           display.innerHTML = '';
           items.forEach((item, i) => {
             const chip = document.createElement('span');
-            chip.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#f97316]/15 text-[var(--accent)] text-[10px] font-mono';
-            chip.innerHTML = `${escapeHtml(String(item))}<button type="button" class="hover:text-red-400 transition" data-idx="${i}">&times;</button>`;
+            chip.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] text-[10px] font-mono';
+            chip.innerHTML = `${escapeHtml(String(item))}<button type="button" class="hover:text-[var(--danger)] transition" data-idx="${i}">&times;</button>`;
             chip.querySelector('button').onclick = (e) => {
               e.stopPropagation();
               items.splice(i, 1);
@@ -1733,14 +2101,14 @@
         const objValue = defaultValue && typeof defaultValue === 'object' ? defaultValue : (defaultValue ? JSON.parse(defaultValue) : {});
 
         const display = document.createElement('div');
-        display.className = 'flex flex-wrap gap-1 p-1 min-h-[28px] rounded bg-[var(--bg-primary)] border border-[var(--border-primary)]';
+        display.className = 'flex flex-wrap gap-1 p-1 min-h-[28px] rounded-sm bg-[var(--bg-primary)] border border-[var(--border-primary)]';
         display.innerHTML = `<span class="text-[10px] font-mono text-[var(--text-secondary)]">Object (${Object.keys(objValue).length} keys)</span>`;
 
         const details = document.createElement('details');
         details.className = 'group';
         details.innerHTML = `
           <summary class="text-[10px] text-[var(--accent)] cursor-pointer hover:underline">Edit JSON</summary>
-          <textarea rows="3" class="w-full mt-1 p-1.5 text-[10px] font-mono rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316] resize-none">${escapeHtml(JSON.stringify(objValue, null, 2))}</textarea>
+          <textarea rows="3" class="w-full mt-1 p-1.5 text-[10px] font-mono resize-none">${escapeHtml(JSON.stringify(objValue, null, 2))}</textarea>
         `;
 
         const textarea = details.querySelector('textarea');
@@ -1761,11 +2129,18 @@
       // Default string → input with format-aware type
       const input = document.createElement('input');
       input.type = htmlInputType;
-      input.className = options.className || 'w-full text-xs font-mono p-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[#f97316]';
+      input.className = options.className || 'w-full text-xs font-mono p-1.5';
       if (defaultValue !== undefined && defaultValue !== '') input.value = defaultValue;
       if (resolvedSchema?.minLength !== undefined) input.minLength = resolvedSchema.minLength;
       if (resolvedSchema?.maxLength !== undefined) input.maxLength = resolvedSchema.maxLength;
       if (resolvedSchema?.pattern) input.pattern = resolvedSchema.pattern;
+      // While the body still holds an auto-generated sample, focusing a field
+      // selects the sample value so typing replaces it instead of appending
+      // (e.g. the default "user@example.com" email).
+      input.addEventListener('focus', () => {
+        if (bodyUserEdited) return;
+        try { input.select(); } catch {}
+      });
       if (onChangeCallback) input.oninput = (e) => onChangeCallback(e.target.value);
       return input;
     }
@@ -1822,6 +2197,7 @@
       if (serverSelect) serverSelect.value = selectedServer;
 
       updateAuthIndicator();
+      updateEnvIndicator();
       renderSidebar();
 
       // Restore endpoint from URL hash if present - hash is encodeURIComponent(id)
@@ -1920,7 +2296,7 @@
       container.innerHTML = '';
 
       const overviewBtn = document.createElement('button');
-      overviewBtn.className = 'w-full text-left p-2 rounded-md hover:bg-[var(--bg-tertiary)] flex items-center gap-2 font-medium transition text-xs ' + (!selectedEndpoint ? 'bg-[var(--accent-muted)] text-[var(--accent)]' : 'text-[var(--text-secondary)]');
+      overviewBtn.className = 'sidebar-item ' + (!selectedEndpoint ? 'sidebar-item-active' : '');
       overviewBtn.innerHTML = `
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         <span>API Overview</span>
@@ -1942,9 +2318,9 @@
         section.className = 'space-y-1';
         
         const tagHeader = document.createElement('div');
-        tagHeader.className = 'text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] px-2 py-1 flex items-center justify-between';
+        tagHeader.className = 'sidebar-group-label';
         const tagDesc = specData.tags?.find(t => t.name === tag);
-        tagHeader.innerHTML = `<span class="tag-header-label">${escapeHtml(tag)}</span><span class="tag-count text-[9px] bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">${tagEndpoints.length}</span>`;
+        tagHeader.innerHTML = `<span class="tag-header-label">${escapeHtml(tag)}</span><span class="tag-count text-[9px] font-mono text-[var(--text-tertiary)] bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-primary)]">${tagEndpoints.length}</span>`;
         if (tagDesc?.description) {
           tagHeader.title = tagDesc.description;
         }
@@ -1954,7 +2330,7 @@
           const btn = document.createElement('button');
           const isSelected = selectedEndpoint?.id === ep.id;
           const isDeprecated = ep.deprecated;
-          btn.className = `w-full text-left px-2 py-1.5 rounded-md flex items-center gap-2 transition text-xs ${isSelected ? 'bg-[var(--accent-muted)] text-[var(--accent)] font-semibold' : 'hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)]'}`;
+          btn.className = `sidebar-item ${isSelected ? 'sidebar-item-active' : ''}`;
           btn.innerHTML = `
             <span class="w-10 text-[9px] font-mono font-bold uppercase text-center py-0.5 rounded badge-${ep.method.toLowerCase()}">${ep.method}</span>
             <span class="endpoint-label truncate flex-1 ${isDeprecated ? 'line-through opacity-60' : ''}">${escapeHtml(ep.summary)}</span>
@@ -1997,11 +2373,11 @@
       const tags = [...new Set(endpoints.flatMap(e => e.tags))];
       if (tags.length === 0) {
         grid.innerHTML = `
-          <div class="col-span-full p-8 rounded-lg bg-[var(--bg-secondary)] border border-dashed border-[var(--border-primary)] text-center space-y-3">
+          <div class="col-span-full p-8 bt-card border-dashed text-center space-y-3">
             <p class="text-xs text-[var(--text-secondary)]">No API endpoints currently defined.</p>
             <div class="flex justify-center gap-2">
-              <button onclick="refreshSwaggerSpec()" class="px-3 py-1.5 rounded-md text-xs bg-[#f97316] text-black font-bold hover:bg-orange-600 transition">Fetch Live Spec</button>
-              <button onclick="openEditorModal()" class="px-3 py-1.5 rounded-md text-xs bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)] hover:border-[#f97316] transition">Paste or Upload JSON</button>
+              <button onclick="refreshSwaggerSpec()" class="bt-btn bt-btn-primary">Fetch Live Spec</button>
+              <button onclick="openEditorModal()" class="bt-btn">Paste or Upload JSON</button>
             </div>
           </div>
         `;
@@ -2012,11 +2388,11 @@
           const tagDef = specData.tags?.find(t => t.name === tagName);
           const pct = Math.max(12, Math.round((count / maxCount) * 100));
           const card = document.createElement('div');
-          card.className = 'p-3.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] hover:border-[#f97316] transition cursor-pointer group';
+          card.className = 'bt-card p-3.5 hover:border-[var(--border-hover)] transition-colors cursor-pointer group';
           card.innerHTML = `
             <div class="flex justify-between items-center mb-1">
-              <h4 class="font-bold text-xs text-[var(--text-primary)]">${escapeHtml(tagName)}</h4>
-              <span class="text-[10px] font-mono text-[var(--accent)] bg-[var(--accent-muted)] px-1.5 py-0.5 rounded">${count} endpoints</span>
+              <h4 class="font-semibold text-xs text-[var(--text-primary)]">${escapeHtml(tagName)}</h4>
+              <span class="text-[10px] font-mono text-[var(--text-tertiary)] bg-[var(--bg-primary)] border border-[var(--border-primary)] px-1.5 py-0.5 rounded">${count} endpoints</span>
             </div>
             <p class="text-xs text-[var(--text-secondary)] line-clamp-2">${escapeHtml(tagDef?.description || 'Endpoints for ' + tagName.toLowerCase() + ' operations.')}</p>
             <div class="mt-2 h-1 rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
@@ -2044,6 +2420,9 @@
     async function selectEndpoint(ep) {
       selectedEndpoint = ep;
       bodySchemaValues = {};
+      activeBodySchema = null;
+      customHeaders = [];
+      bodyUserEdited = false;
       isRestoringState = true;
       document.getElementById('view-overview').classList.add('hidden');
       document.getElementById('view-endpoint').classList.remove('hidden');
@@ -2055,7 +2434,7 @@
       window.location.hash = encodeURIComponent(ep.id);
       updateBreadcrumb(ep.tags[0] || 'API', ep.path);
 
-      document.getElementById('doc-badge').className = `px-2 py-0.5 rounded text-xs font-bold font-mono uppercase badge-${ep.method.toLowerCase()}`;
+      document.getElementById('doc-badge').className = `px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase badge-${ep.method.toLowerCase()}`;
       document.getElementById('doc-badge').innerText = ep.method;
       document.getElementById('doc-tag').innerText = ep.tags[0] || 'API';
       document.getElementById('doc-summary').innerText = ep.summary;
@@ -2081,7 +2460,7 @@
 
           const nameCell = document.createElement('td');
           nameCell.className = 'p-2.5 font-mono text-[var(--accent)] font-semibold';
-          nameCell.innerHTML = `${escapeHtml(p.name)} ${p.required ? '<span class="text-red-500 text-[10px]">*</span>' : ''}`;
+          nameCell.innerHTML = `${escapeHtml(p.name)} ${p.required ? '<span class="text-[var(--danger)] text-[10px]">*</span>' : ''}`;
 
           const typeCell = document.createElement('td');
           typeCell.className = 'p-2.5 text-[var(--text-secondary)]';
@@ -2215,6 +2594,8 @@
         // Restore body
         if (savedState.body !== undefined) {
           document.getElementById('doc-body-input').value = savedState.body;
+          // Legacy states have no flag; treat a persisted body as user-edited.
+          bodyUserEdited = savedState.bodyUserEdited === undefined ? true : savedState.bodyUserEdited === true;
         }
         if (savedState.rawBody) rawBodyText = savedState.rawBody;
         if (savedState.xmlBody) xmlBodyText = savedState.xmlBody;
@@ -2241,7 +2622,13 @@
           urlEncodedRows = savedState.urlEncoded;
           renderUrlEncodedTable();
         }
+        // Restore per-endpoint custom headers
+        if (Array.isArray(savedState.customHeaders)) {
+          customHeaders = savedState.customHeaders;
+        }
       }
+      renderHeaderTable();
+      updateBodySampleNotice();
       isRestoringState = false;
 
       // MP9: Display response schema with property table + collapsible JSON
@@ -2250,7 +2637,8 @@
       Object.entries(ep.responses).forEach(([code, r]) => {
         const card = document.createElement('div');
         const isOk = code.startsWith('2');
-        card.className = `p-3 rounded-lg border text-xs ${isOk ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-[var(--border-primary)] bg-[var(--bg-secondary)]'}`;
+        const statusVariant = code.startsWith('2') ? 'status-ok' : (code.startsWith('4') ? 'status-warn' : 'status-err');
+        card.className = 'bt-card p-3 text-xs';
 
         let schemaHtml = '';
         const respSchema = r.content?.['application/json']?.schema;
@@ -2273,10 +2661,10 @@
               const hints = formatConstraintHints(resolvedProp);
 
               tableHtml += `<tr class="hover:bg-[var(--bg-primary)]">
-                <td class="p-1 font-mono text-[var(--accent)]">${escapeHtml(name)}${isReq ? ' <span class="text-red-500 text-[10px]">*</span>' : ''}</td>
-                <td class="p-1 text-[var(--text-secondary)]"><span class="bg-[var(--bg-primary)] px-1 py-0.5 rounded border border-[var(--border-primary)] text-[10px]">${escapeHtml(typeLabel)}</span></td>
+                <td class="p-1 font-mono text-[var(--text-primary)]">${escapeHtml(name)}${isReq ? ' <span class="text-[var(--danger)] text-[10px]">*</span>' : ''}</td>
+                <td class="p-1 text-[var(--text-secondary)]"><span class="bg-[var(--bg-primary)] px-1 py-0.5 rounded-sm border border-[var(--border-primary)] text-[10px]">${escapeHtml(typeLabel)}</span></td>
                 <td class="p-1 text-[var(--text-secondary)]">${escapeHtml(desc)}${hints.length > 0 ? `<div class="text-[10px] opacity-70 mt-0.5">${hints.map(h => escapeHtml(h)).join(' · ')}</div>` : ''}</td>
-                <td class="p-1 text-[var(--accent)] font-mono text-[10px]">${example !== undefined ? escapeHtml(String(example)) : '-'}</td>
+                <td class="p-1 text-[var(--text-secondary)] font-mono text-[10px]">${example !== undefined ? escapeHtml(String(example)) : '-'}</td>
               </tr>`;
             });
             tableHtml += '</tbody></table>';
@@ -2285,13 +2673,13 @@
 
           // Collapsible JSON sample
           if (sample && Object.keys(sample).length > 0) {
-            schemaHtml += `<details class="mt-2"><summary class="text-[10px] text-[var(--text-secondary)] cursor-pointer hover:text-[var(--accent)]">JSON Sample</summary><pre class="mt-1 p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[10px] font-mono overflow-x-auto text-[var(--text-secondary)]">${escapeHtml(JSON.stringify(sample, null, 2))}</pre></details>`;
+            schemaHtml += `<details class="mt-2"><summary class="text-[10px] text-[var(--text-secondary)] cursor-pointer hover:text-[var(--accent)]">JSON Sample</summary><pre class="mt-1 p-2 rounded-sm bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[10px] font-mono overflow-x-auto text-[var(--text-secondary)]">${escapeHtml(JSON.stringify(sample, null, 2))}</pre></details>`;
           }
         }
 
         card.innerHTML = `
           <div class="flex items-center gap-2 mb-1">
-            <span class="px-1.5 py-0.5 rounded font-mono font-bold text-[10px] ${isOk ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">${escapeHtml(code)}</span>
+            <span class="status-badge ${statusVariant}">${escapeHtml(code)}</span>
             <span class="font-medium text-[var(--text-primary)]">${escapeHtml(r.description || 'Response')}</span>
           </div>
           ${schemaHtml}
@@ -2300,7 +2688,7 @@
       });
 
       updateClientUrl();
-      document.getElementById('client-method-badge').className = `px-2.5 py-1.5 rounded text-xs font-mono font-bold uppercase badge-${ep.method.toLowerCase()}`;
+      document.getElementById('client-method-badge').className = `px-2.5 rounded text-xs font-mono font-bold uppercase badge-${ep.method.toLowerCase()} flex items-center`;
       document.getElementById('client-method-badge').innerText = ep.method;
       document.getElementById('doc-body-input').value = bodyInput.value;
 
@@ -2314,24 +2702,22 @@
       if (savedRes) {
         resBox.innerHTML = savedRes.bodyHtml;
         statusBadge.innerText = savedRes.statusText;
-        statusBadge.className = savedRes.statusOk
-          ? 'px-1.5 py-0.5 rounded font-mono font-bold bg-emerald-500/20 text-emerald-400'
-          : 'px-1.5 py-0.5 rounded font-mono font-bold bg-red-500/20 text-red-400';
+        statusBadge.className = statusVariantClass(parseInt(savedRes.statusText, 10), savedRes.statusOk);
         timeBadge.innerText = `${savedRes.duration} ms`;
         if (savedRes.headers && Object.keys(savedRes.headers).length > 0) {
           const headersHtml = Object.entries(savedRes.headers).map(([k, v]) =>
-            `<div class="flex gap-2"><span class="text-[var(--accent)] font-mono">${escapeHtml(k)}</span><span class="text-[var(--text-secondary)]">${escapeHtml(v)}</span></div>`
+            `<div class="flex gap-2"><span class="text-[var(--text-primary)] font-mono">${escapeHtml(k)}</span><span class="text-[var(--text-secondary)]">${escapeHtml(v)}</span></div>`
           ).join('');
           resHeadersBox.innerHTML = headersHtml;
         } else {
-          resHeadersBox.innerHTML = '<span class="text-zinc-500">No response headers.</span>';
+          resHeadersBox.innerHTML = '<span class="text-[var(--text-tertiary)]">No response headers.</span>';
         }
       } else {
         resBox.innerHTML = '<code>Ready. Click "Send" to execute request.</code>';
         statusBadge.innerText = '---';
-        statusBadge.className = 'px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400';
+        statusBadge.className = 'status-badge';
         timeBadge.innerText = '0 ms';
-        resHeadersBox.innerHTML = '<span class="text-zinc-500">No response yet. Send a request to see headers.</span>';
+        resHeadersBox.innerHTML = '<span class="text-[var(--text-tertiary)]">No response yet. Send a request to see headers.</span>';
       }
 
       generateSnippet(currentSnippetLang);
@@ -2343,9 +2729,9 @@
         const btn = document.getElementById('doc-btn-type-' + t);
         if (btn) {
           if (t === type) {
-            btn.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-[#f97316] text-black font-bold';
+            btn.className = 'px-2 py-0.5 rounded-sm text-[10px] font-mono bg-[var(--accent-soft)] text-[var(--accent)] font-semibold';
           } else {
-            btn.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-transparent text-[var(--text-secondary)]';
+            btn.className = 'px-2 py-0.5 rounded-sm text-[10px] font-mono bg-transparent text-[var(--text-secondary)]';
           }
         }
       });
@@ -2371,6 +2757,7 @@
         document.getElementById('doc-body-input').value = '';
       }
 
+      updateBodySampleNotice();
       generateSnippet(currentSnippetLang);
       if (!isRestoringState) saveEndpointState();
     }
@@ -2394,7 +2781,7 @@
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = row.enabled;
-        checkbox.className = 'accent-[#f97316]';
+        checkbox.className = 'accent-[var(--accent)]';
         checkbox.onchange = () => { row.enabled = checkbox.checked; saveEndpointState(); };
         checkCell.appendChild(checkbox);
         tr.appendChild(checkCell);
@@ -2405,7 +2792,7 @@
         const keyInput = document.createElement('input');
         keyInput.type = 'text';
         keyInput.value = row.key;
-        keyInput.className = 'w-full text-xs font-mono p-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)]';
+        keyInput.className = 'w-full text-xs font-mono p-1.5';
         keyInput.placeholder = 'Field name';
         keyInput.oninput = () => { row.key = keyInput.value; saveEndpointState(); };
         keyCell.appendChild(keyInput);
@@ -2427,7 +2814,7 @@
             <div class="flex items-center gap-1.5">
               <label class="file-input-label flex-1 cursor-pointer">
                 <input type="file"${acceptAttr}${multipleAttr} onchange="handleFormDataFileUpload(${idx}, event)" class="hidden">
-                <div class="flex items-center gap-1.5 px-2 py-1 rounded border border-dashed border-[var(--border-primary)] hover:border-[#f97316] bg-[var(--bg-primary)] transition text-xs text-[var(--text-secondary)]">
+                <div class="flex items-center gap-1.5 px-2 py-1 rounded border border-dashed border-[var(--border-primary)] hover:border-[var(--accent)] bg-[var(--bg-primary)] transition text-xs text-[var(--text-secondary)]">
                   <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                   <span>${row.multiple ? 'Drop files or click' : 'Drop file or click'}${row.accept ? ' (' + escapeHtml(row.accept.split(',').slice(0, 2).join(', ')) + (row.accept.split(',').length > 2 ? '...' : '') + ')' : ''}</span>
                 </div>
@@ -2448,7 +2835,7 @@
         // Delete button cell
         const delCell = document.createElement('td');
         delCell.className = 'p-1.5 text-center';
-        delCell.innerHTML = `<button class="p-1 rounded hover:bg-red-500/10 text-zinc-500 hover:text-red-500 transition" aria-label="Delete"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
+        delCell.innerHTML = `<button class="p-1 rounded hover:bg-[var(--danger-soft)] text-[var(--text-tertiary)] hover:text-[var(--danger)] transition" aria-label="Delete"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
         delCell.querySelector('button').onclick = () => { formDataRows.splice(idx, 1); renderFormDataTable(); saveEndpointState(); };
         tr.appendChild(delCell);
 
@@ -2463,17 +2850,17 @@
       return `<div class="file-list space-y-1" data-form-idx="${idx}">
         ${files.map((f, fi) => `
           <div class="file-item flex items-center gap-1.5 text-[10px] font-mono text-[var(--text-secondary)] bg-[var(--bg-primary)] rounded px-1.5 py-0.5">
-            <svg class="w-3 h-3 shrink-0 text-[#f97316]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <svg class="w-3 h-3 shrink-0 text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <span class="truncate flex-1">${escapeHtml(f.name)}</span>
             <span class="text-[var(--text-tertiary)] shrink-0">${formatFileSize(f.size)}</span>
-            <button onclick="removeFile(${idx}, ${fi})" class="shrink-0 p-0.5 rounded hover:bg-red-500/10 text-zinc-500 hover:text-red-500 transition" aria-label="Remove file">
+            <button onclick="removeFile(${idx}, ${fi})" class="shrink-0 p-0.5 rounded hover:bg-[var(--danger-soft)] text-[var(--text-tertiary)] hover:text-[var(--danger)] transition" aria-label="Remove file">
               <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
           </div>
         `).join('')}
         <div class="flex items-center justify-between pt-0.5">
           <span class="text-[10px] text-[var(--text-tertiary)]">${files.length} file${files.length > 1 ? 's' : ''}</span>
-          <button onclick="clearFiles(${idx})" class="text-[10px] text-zinc-500 hover:text-red-500 transition">Clear all</button>
+          <button onclick="clearFiles(${idx})" class="text-[10px] text-[var(--text-tertiary)] hover:text-[var(--danger)] transition">Clear all</button>
         </div>
       </div>`;
     }
@@ -2545,15 +2932,15 @@
       document.querySelectorAll('.file-input-label').forEach(label => {
         label.addEventListener('dragover', (e) => {
           e.preventDefault();
-          label.querySelector('div').classList.add('border-[#f97316]', 'bg-[#f97316]/5');
+          label.querySelector('div').classList.add('border-[var(--accent)]', 'bg-[var(--accent-soft)]');
         });
         label.addEventListener('dragleave', (e) => {
           e.preventDefault();
-          label.querySelector('div').classList.remove('border-[#f97316]', 'bg-[#f97316]/5');
+          label.querySelector('div').classList.remove('border-[var(--accent)]', 'bg-[var(--accent-soft)]');
         });
         label.addEventListener('drop', (e) => {
           e.preventDefault();
-          label.querySelector('div').classList.remove('border-[#f97316]', 'bg-[#f97316]/5');
+          label.querySelector('div').classList.remove('border-[var(--accent)]', 'bg-[var(--accent-soft)]');
           const rowIdx = parseInt(label.closest('tr')?.querySelector('input[type="checkbox"]')?.getAttribute('onchange')?.match(/toggleFormDataRow\((\d+)/)?.[1] ?? '-1');
           if (rowIdx < 0) return;
           const row = formDataRows[rowIdx];
@@ -2585,10 +2972,10 @@
       urlEncodedRows.forEach((row, idx) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td class="p-1.5 text-center"><input type="checkbox" ${row.enabled ? 'checked' : ''} onchange="toggleUrlEncodedRow(${idx}, this.checked)" class="accent-[#f97316]"></td>
-          <td class="p-1.5"><input type="text" value="${row.key}" oninput="updateUrlEncodedKey(${idx}, this.value)" placeholder="Parameter" class="w-full text-xs font-mono p-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)]"></td>
-          <td class="p-1.5"><input type="text" value="${row.value}" oninput="updateUrlEncodedValue(${idx}, this.value)" placeholder="Value" class="w-full text-xs font-mono p-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)]"></td>
-          <td class="p-1.5 text-center"><button onclick="deleteUrlEncodedRow(${idx})" class="p-1 rounded hover:bg-red-500/10 text-zinc-500 hover:text-red-500 transition" aria-label="Delete"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></td>
+          <td class="p-1.5 text-center"><input type="checkbox" ${row.enabled ? 'checked' : ''} onchange="toggleUrlEncodedRow(${idx}, this.checked)" class="accent-[var(--accent)]"></td>
+          <td class="p-1.5"><input type="text" value="${row.key}" oninput="updateUrlEncodedKey(${idx}, this.value)" placeholder="Parameter" class="w-full text-xs font-mono p-1.5"></td>
+          <td class="p-1.5"><input type="text" value="${row.value}" oninput="updateUrlEncodedValue(${idx}, this.value)" placeholder="Value" class="w-full text-xs font-mono p-1.5"></td>
+          <td class="p-1.5 text-center"><button onclick="deleteUrlEncodedRow(${idx})" class="p-1 rounded hover:bg-[var(--danger-soft)] text-[var(--text-tertiary)] hover:text-[var(--danger)] transition" aria-label="Delete"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></td>
         `;
         tbody.appendChild(tr);
       });
@@ -2625,10 +3012,10 @@
       cookieRows.forEach((row, idx) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td class="p-1.5 text-center"><input type="checkbox" ${row.enabled ? 'checked' : ''} onchange="toggleCookieRow(${idx}, this.checked)" class="accent-[#f97316]"></td>
-          <td class="p-1.5"><input type="text" value="${escapeHtml(row.key)}" oninput="updateCookieKey(${idx}, this.value)" placeholder="Name" class="w-full text-xs font-mono p-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)]"></td>
-          <td class="p-1.5"><input type="text" value="${escapeHtml(row.value)}" oninput="updateCookieValue(${idx}, this.value)" placeholder="Value" class="w-full text-xs font-mono p-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-primary)]"></td>
-          <td class="p-1.5 text-center"><button onclick="deleteCookieRow(${idx})" class="p-1 rounded hover:bg-red-500/10 text-zinc-500 hover:text-red-500 transition" aria-label="Delete"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></td>
+          <td class="p-1.5 text-center"><input type="checkbox" ${row.enabled ? 'checked' : ''} onchange="toggleCookieRow(${idx}, this.checked)" class="accent-[var(--accent)]"></td>
+          <td class="p-1.5"><input type="text" value="${escapeHtml(row.key)}" oninput="updateCookieKey(${idx}, this.value)" placeholder="Name" class="w-full text-xs font-mono p-1.5"></td>
+          <td class="p-1.5"><input type="text" value="${escapeHtml(row.value)}" oninput="updateCookieValue(${idx}, this.value)" placeholder="Value" class="w-full text-xs font-mono p-1.5"></td>
+          <td class="p-1.5 text-center"><button onclick="deleteCookieRow(${idx})" class="p-1 rounded hover:bg-[var(--danger-soft)] text-[var(--text-tertiary)] hover:text-[var(--danger)] transition" aria-label="Delete"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></td>
         `;
         tbody.appendChild(tr);
       });
@@ -2652,6 +3039,86 @@
     }
     function saveCookiesToStorage() {
       localStorage.setItem('scalar_cookie_rows', JSON.stringify(cookieRows));
+    }
+
+    // Custom headers CRUD (persisted per endpoint via saveEndpointState)
+    function getEnabledCustomHeaders() {
+      return customHeaders.filter(r => r.enabled && r.key.trim());
+    }
+    function renderHeaderTable() {
+      const tbody = document.getElementById('header-tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      customHeaders.forEach((row, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-1.5 text-center"><input type="checkbox" ${row.enabled ? 'checked' : ''} onchange="toggleHeaderRow(${idx}, this.checked)" class="accent-[var(--accent)]"></td>
+          <td class="p-1.5"><input type="text" value="${escapeHtml(row.key)}" oninput="updateHeaderKey(${idx}, this.value)" placeholder="Header-Name" class="w-full text-xs font-mono p-1.5"></td>
+          <td class="p-1.5"><input type="text" value="${escapeHtml(row.value)}" oninput="updateHeaderValue(${idx}, this.value)" placeholder="Value" class="w-full text-xs font-mono p-1.5"></td>
+          <td class="p-1.5 text-center"><button onclick="deleteHeaderRow(${idx})" class="p-1 rounded hover:bg-[var(--danger-soft)] text-[var(--text-tertiary)] hover:text-[var(--danger)] transition" aria-label="Delete"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      const hint = document.getElementById('header-empty-hint');
+      if (hint) hint.classList.toggle('hidden', customHeaders.length > 0);
+      const wrap = document.getElementById('header-table-wrap');
+      if (wrap) wrap.classList.toggle('hidden', customHeaders.length === 0);
+    }
+    function addHeaderRow() {
+      customHeaders.push({ key: '', value: '', enabled: true });
+      renderHeaderTable();
+      saveEndpointState();
+    }
+    function deleteHeaderRow(idx) {
+      customHeaders.splice(idx, 1);
+      renderHeaderTable();
+      saveEndpointState();
+      generateSnippet(currentSnippetLang);
+    }
+    function toggleHeaderRow(idx, checked) {
+      customHeaders[idx].enabled = checked;
+      saveEndpointState();
+      generateSnippet(currentSnippetLang);
+    }
+    function updateHeaderKey(idx, val) {
+      customHeaders[idx].key = val;
+      saveEndpointState();
+      generateSnippet(currentSnippetLang);
+    }
+    function updateHeaderValue(idx, val) {
+      customHeaders[idx].value = val;
+      saveEndpointState();
+      generateSnippet(currentSnippetLang);
+    }
+
+    // Auto-generated sample body handling
+    function markBodyEdited() {
+      if (bodyUserEdited) return;
+      bodyUserEdited = true;
+      updateBodySampleNotice();
+    }
+    function updateBodySampleNotice() {
+      const notice = document.getElementById('doc-body-sample-notice');
+      if (!notice) return;
+      const input = document.getElementById('doc-body-input');
+      const hasSample = !bodyUserEdited && activeBodyType === 'json' && !!activeBodySchema && !!input && input.value.trim() !== '';
+      notice.classList.toggle('hidden', !hasSample);
+    }
+    function resetBodyToSample() {
+      if (!activeBodySchema) return;
+      const sample = generateSampleFromSchema(activeBodySchema);
+      const input = document.getElementById('doc-body-input');
+      if (input) input.value = sample && Object.keys(sample).length > 0 ? JSON.stringify(sample, null, 2) : '{}';
+      bodySchemaValues = sample && typeof sample === 'object' ? deepMerge({}, sample) : {};
+      bodyUserEdited = false;
+      if (activeBodyType === 'json') {
+        renderBodySchemaTable(activeBodySchema);
+        syncFormInputsFromValues();
+      }
+      updateBodySampleNotice();
+      generateSnippet(currentSnippetLang);
+      saveEndpointState();
+      showToast('Sample body restored', 'success');
     }
 
     // Render request body schema property table (recursive for nested objects)
@@ -2679,7 +3146,7 @@
           headerRow.innerHTML = `
             <td class="p-2 font-mono text-[var(--accent)]" style="padding-left:${indent + 8}px">
               <span class="inline-block w-3 text-[10px] text-[var(--text-secondary)] transition-transform ${isCollapsed ? '' : 'rotate-90'}">▶</span>
-              ${escapeHtml(name)}${isRequired ? ' <span class="text-red-500 text-[10px]">*</span>' : ''}
+              ${escapeHtml(name)}${isRequired ? ' <span class="text-[var(--danger)] text-[10px]">*</span>' : ''}
             </td>
             <td class="p-2 text-[var(--text-secondary)]">
               <span class="bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-primary)] text-[10px]">${escapeHtml(typeLabel)}</span>
@@ -2718,7 +3185,7 @@
           headerRow.className = 'hover:bg-[var(--bg-primary)]';
           headerRow.innerHTML = `
             <td class="p-2 font-mono text-[var(--accent)]" style="padding-left:${indent + 8}px">
-              ${escapeHtml(name)}${isRequired ? ' <span class="text-red-500 text-[10px]">*</span>' : ''}
+              ${escapeHtml(name)}${isRequired ? ' <span class="text-[var(--danger)] text-[10px]">*</span>' : ''}
             </td>
             <td class="p-2 text-[var(--text-secondary)]">
               <span class="bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-primary)] text-[10px]">array&lt;object&gt;</span>
@@ -2748,7 +3215,7 @@
               itemHeader.className = 'flex items-center justify-between px-2 py-1 cursor-pointer hover:bg-[var(--bg-primary)]';
               itemHeader.innerHTML = `
                 <span class="text-[10px] font-mono text-[var(--text-secondary)]">[${idx}] ${Object.keys(itemProps).map(k => `${k}: ${item[k] ?? ''}`).join(', ').slice(0, 60)}</span>
-                <button type="button" class="text-red-400 hover:text-red-300 text-[10px] px-1">&times;</button>
+                <button type="button" class="text-[var(--danger)] hover:opacity-80 text-[10px] px-1">&times;</button>
               `;
               itemHeader.querySelector('button').onclick = (e) => {
                 e.stopPropagation();
@@ -2776,7 +3243,7 @@
                 const propNameCell = document.createElement('td');
                 propNameCell.className = 'p-1.5 font-mono text-[var(--accent)]';
                 propNameCell.style.paddingLeft = '12px';
-                propNameCell.innerHTML = `<span class="text-[10px]">${escapeHtml(propName)}${propRequired ? '<span class="text-red-500">*</span>' : ''}</span>`;
+                propNameCell.innerHTML = `<span class="text-[10px]">${escapeHtml(propName)}${propRequired ? '<span class="text-[var(--danger)]">*</span>' : ''}</span>`;
 
                 const propTypeCell = document.createElement('td');
                 propTypeCell.className = 'p-1.5 text-[var(--text-secondary)]';
@@ -2838,7 +3305,7 @@
         const nameCell = document.createElement('td');
         nameCell.className = 'p-2 font-mono text-[var(--accent)]';
         nameCell.style.paddingLeft = `${indent + 8}px`;
-        nameCell.innerHTML = `${escapeHtml(name)}${isRequired ? ' <span class="text-red-500 text-[10px]">*</span>' : ''}`;
+        nameCell.innerHTML = `${escapeHtml(name)}${isRequired ? ' <span class="text-[var(--danger)] text-[10px]">*</span>' : ''}`;
 
         const typeCell = document.createElement('td');
         typeCell.className = 'p-2 text-[var(--text-secondary)]';
@@ -2920,6 +3387,7 @@
     function syncBodyFromSchemaTable() {
       const bodyInput = document.getElementById('doc-body-input');
       if (!bodyInput || activeBodyType !== 'json') return;
+      markBodyEdited();
       try {
         const current = JSON.parse(bodyInput.value || '{}');
         const merged = deepMerge(current, bodySchemaValues);
@@ -2988,6 +3456,7 @@
     }
 
     function syncBodyToClient(val) {
+      markBodyEdited();
       generateSnippet(currentSnippetLang);
       saveEndpointState();
       // Reverse sync: deep merge parsed JSON into bodySchemaValues
@@ -3018,7 +3487,7 @@
           const boolVal = val === true;
           switchBtn.setAttribute('data-value', String(boolVal));
           switchBtn.setAttribute('aria-checked', String(boolVal));
-          switchBtn.className = switchBtn.className.replace(boolVal ? 'bg-zinc-600' : 'bg-[#f97316]', boolVal ? 'bg-[#f97316]' : 'bg-zinc-600');
+          switchBtn.className = switchBtn.className.replace(boolVal ? 'bg-[var(--border-hover)]' : 'bg-[var(--accent)]', boolVal ? 'bg-[var(--accent)]' : 'bg-[var(--border-hover)]');
           const span = switchBtn.querySelector('span');
           if (span) span.className = span.className.replace(boolVal ? 'translate-x-0' : 'translate-x-4', boolVal ? 'translate-x-4' : 'translate-x-0');
           const label = inputCell.querySelector('span:last-child');
@@ -3061,9 +3530,17 @@
       }
     }
 
+    function statusVariantClass(status, ok) {
+      if (status >= 200 && status < 300) return 'status-badge status-ok';
+      if (status >= 300 && status < 400) return 'status-badge status-info';
+      if (status >= 400 && status < 500) return 'status-badge status-warn';
+      if (status >= 500) return 'status-badge status-err';
+      return ok ? 'status-badge status-ok' : 'status-badge status-err';
+    }
+
     async function executeLiveRequest() {
       if (!selectedEndpoint) return;
-      const url = document.getElementById('client-url-input').value;
+      const url = substituteEnvVars(document.getElementById('client-url-input').value);
       const method = selectedEndpoint.method;
       const resBox = document.getElementById('client-response-box');
       const statusBadge = document.getElementById('res-status');
@@ -3081,10 +3558,6 @@
         showToast(`Missing required parameters: ${missingParams.join(', ')}`, 'error');
         return;
       }
-
-      resBox.innerHTML = '<span class="text-zinc-500 animate-pulse">Executing request to ' + escapeHtml(url) + '...</span>';
-      if (resHeadersBox) resHeadersBox.innerHTML = '';
-      const startTime = performance.now();
 
       try {
         const headers = {};
@@ -3115,7 +3588,7 @@
         if (['POST', 'PUT', 'PATCH'].includes(method)) {
           if (activeBodyType === 'json') {
             headers['Content-Type'] = 'application/json';
-            reqBody = document.getElementById('doc-body-input').value;
+            reqBody = substituteEnvVars(document.getElementById('doc-body-input').value);
           } else if (activeBodyType === 'form-data') {
             const formData = new FormData();
             formDataRows.filter(r => r.enabled && r.key).forEach(r => {
@@ -3128,7 +3601,7 @@
                 else if (t === 'number' || t === 'integer') sendVal = String(Number(sendVal));
                 else if (t === 'array') sendVal = Array.isArray(sendVal) ? sendVal.join(', ') : String(sendVal);
                 else if (typeof sendVal === 'object') sendVal = JSON.stringify(sendVal);
-                formData.append(r.key, sendVal != null ? String(sendVal) : '');
+                formData.append(r.key, substituteEnvVars(sendVal != null ? String(sendVal) : ''));
               }
             });
             reqBody = formData;
@@ -3136,17 +3609,53 @@
             headers['Content-Type'] = 'application/x-www-form-urlencoded';
             const params = new URLSearchParams();
             urlEncodedRows.filter(r => r.enabled && r.key).forEach(r => {
-              params.append(r.key, r.value);
+              params.append(substituteEnvVars(r.key), substituteEnvVars(r.value));
             });
             reqBody = params.toString();
           } else if (activeBodyType === 'xml') {
             headers['Content-Type'] = 'application/xml';
-            reqBody = xmlBodyText;
+            reqBody = substituteEnvVars(xmlBodyText);
           } else if (activeBodyType === 'raw') {
             headers['Content-Type'] = 'text/plain';
-            reqBody = rawBodyText;
+            reqBody = substituteEnvVars(rawBodyText);
           }
         }
+
+        // Per-endpoint custom headers (applied last so they can override defaults)
+        getEnabledCustomHeaders().forEach(r => {
+          headers[r.key.trim()] = r.value;
+        });
+
+        // Resolve {{env}} placeholders in headers
+        Object.keys(headers).forEach(key => {
+          headers[key] = substituteEnvVars(String(headers[key]));
+        });
+
+        // Block the request if any placeholder has no matching env var
+        const unresolved = new Set([
+          ...getUnresolvedEnvVars(url),
+          ...Object.entries(headers).flatMap(([k, v]) => [...getUnresolvedEnvVars(k), ...getUnresolvedEnvVars(String(v))]),
+        ]);
+        if (typeof reqBody === 'string') {
+          getUnresolvedEnvVars(reqBody).forEach(k => unresolved.add(k));
+        } else if (reqBody instanceof FormData) {
+          for (const [, value] of reqBody.entries()) {
+            if (typeof value === 'string') getUnresolvedEnvVars(value).forEach(k => unresolved.add(k));
+          }
+        }
+        if (unresolved.size > 0) {
+          showToast(`Unknown env vars: ${[...unresolved].join(', ')}. Define them in Env.`, 'error');
+          resBox.innerHTML = '<span class="text-[var(--text-tertiary)]">Ready. Click "Send" to execute request.</span>';
+          statusBadge.innerText = '---';
+          statusBadge.className = 'status-badge';
+          timeBadge.innerText = '0 ms';
+          if (resHeadersBox) resHeadersBox.innerHTML = '';
+          return;
+        }
+
+        resBox.innerHTML = '<span class="text-[var(--text-tertiary)]">Executing request to ' + escapeHtml(url) + '...</span>';
+        if (resHeadersBox) resHeadersBox.innerHTML = '';
+        const startTime = performance.now();
 
         const options = { method, headers };
         if (reqBody) options.body = reqBody;
@@ -3156,13 +3665,13 @@
         timeBadge.innerText = `${duration} ms`;
 
         statusBadge.innerText = `${response.status} ${response.statusText}`;
-        statusBadge.className = `px-1.5 py-0.5 rounded font-mono font-bold ${response.ok ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`;
+        statusBadge.className = statusVariantClass(response.status, response.ok);
 
         // MP16: Display response headers in Res Headers tab
         if (resHeadersBox) {
           const headersHtml = [];
           response.headers.forEach((value, key) => {
-            headersHtml.push(`<div class="flex gap-2"><span class="text-[var(--accent)] font-mono">${escapeHtml(key)}</span><span class="text-[var(--text-secondary)]">${escapeHtml(value)}</span></div>`);
+            headersHtml.push(`<div class="flex gap-2"><span class="text-[var(--text-primary)] font-mono">${escapeHtml(key)}</span><span class="text-[var(--text-secondary)]">${escapeHtml(value)}</span></div>`);
           });
           resHeadersBox.innerHTML = headersHtml.join('');
         }
@@ -3198,14 +3707,14 @@
         const duration = Math.round(performance.now() - startTime);
         timeBadge.innerText = `${duration} ms`;
         statusBadge.innerText = 'Error';
-        statusBadge.className = 'px-1.5 py-0.5 rounded font-mono font-bold bg-red-500/20 text-red-400';
+        statusBadge.className = 'status-badge status-err';
 
         let errorMsg = err.message || 'Unknown error';
         if (err.name === 'TypeError' && errorMsg.includes('fetch')) {
           errorMsg = 'Network Error - possibly CORS blocked or server unreachable';
         }
         const errorHtml = `<div class="space-y-2">
-          <div class="text-red-400 font-bold text-xs">REQUEST FAILED</div>
+          <div class="text-[var(--danger)] font-bold text-xs">REQUEST FAILED</div>
           <div class="text-[var(--text-secondary)] text-xs">${escapeHtml(errorMsg)}</div>
           <div class="text-[10px] text-[var(--text-secondary)] mt-2">Tip: This may be a CORS issue. The server must include <code class="bg-[var(--bg-tertiary)] px-1 rounded">Access-Control-Allow-Origin</code> headers.</div>
         </div>`;
@@ -3221,7 +3730,7 @@
           {}
         );
 
-        if (resHeadersBox) resHeadersBox.innerHTML = '<span class="text-zinc-500">No response headers.</span>';
+        if (resHeadersBox) resHeadersBox.innerHTML = '<span class="text-[var(--text-tertiary)]">No response headers.</span>';
       }
     }
 
@@ -3262,9 +3771,9 @@
         const btn = document.getElementById(`tab-btn-${t}`);
         if(!btn) return;
         if (t === tab) {
-          btn.className = 'pb-2 border-b-2 border-[#f97316] text-[#f97316] whitespace-nowrap';
+          btn.className = 'client-tab client-tab-active';
         } else {
-          btn.className = 'pb-2 border-b-2 border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] whitespace-nowrap';
+          btn.className = 'client-tab';
         }
       });
       if (tab === 'headers') {
@@ -3297,8 +3806,8 @@
       const btnHttp = document.getElementById('console-mode-http');
       const btnWs = document.getElementById('console-mode-ws');
       const btnSse = document.getElementById('console-mode-sse');
-      const activeClass = 'px-3.5 py-1 rounded-full text-xs font-medium bg-[#f97316] text-black flex items-center gap-1.5';
-      const idleClass = 'px-3.5 py-1 rounded-full text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1.5';
+      const activeClass = 'px-3 py-1 rounded-sm text-xs font-medium bg-[var(--accent-soft)] text-[var(--accent)] flex items-center gap-1.5';
+      const idleClass = 'px-3 py-1 rounded-sm text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1.5';
       if (httpPanel) httpPanel.classList.toggle('hidden', mode !== 'http');
       if (wsPanel) wsPanel.classList.toggle('hidden', mode !== 'ws');
       if (ssePanel) ssePanel.classList.toggle('hidden', mode !== 'sse');
@@ -3335,21 +3844,21 @@
       const btn = document.getElementById('ws-connect-btn');
       if (el) {
         el.textContent = text;
-        el.className = ok ? 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400' : (text === 'CONNECTING' ? 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400' : 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400');
+        el.className = ok ? 'status-badge status-ok' : (text === 'CONNECTING' ? 'status-badge status-warn' : 'status-badge');
       }
-      if (dot) dot.className = ok ? 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse' : 'w-1.5 h-1.5 rounded-full bg-emerald-500 opacity-60';
+      if (dot) dot.className = ok ? 'w-1.5 h-1.5 rounded-full bg-[var(--success)]' : 'w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]';
       if (btn) {
         btn.textContent = ok || text === 'CONNECTING' ? 'Disconnect' : 'Connect';
-        btn.className = ok ? 'px-3 py-1.5 rounded-md bg-zinc-800 text-zinc-300 text-xs font-bold hover:bg-zinc-700 transition shrink-0' : 'px-3 py-1.5 rounded-md bg-[#f97316] text-black text-xs font-bold hover:bg-orange-600 transition shrink-0';
+        btn.className = ok || text === 'CONNECTING' ? 'bt-btn bt-btn-sm shrink-0' : 'bt-btn bt-btn-primary bt-btn-sm shrink-0';
       }
     }
     function clearWSLog() {
       const log = document.getElementById('ws-log');
-      if (log) log.innerHTML = '<span class="text-zinc-500">No messages yet. Connect to start.</span>';
+      if (log) log.innerHTML = '<span class="text-[var(--text-tertiary)]">No messages yet. Connect to start.</span>';
     }
     function buildWsUrl(raw) {
-      let url = raw.trim();
-      const token = document.getElementById('ws-token')?.value.trim();
+      let url = substituteEnvVars(raw.trim());
+      const token = substituteEnvVars(document.getElementById('ws-token')?.value.trim() || '');
       if (token) {
         const sep = url.includes('?') ? '&' : '?';
         url += sep + 'token=' + encodeURIComponent(token);
@@ -3367,6 +3876,11 @@
       }
       const raw = document.getElementById('ws-url')?.value.trim();
       if (!raw) { showToast('WebSocket URL required', 'error'); return; }
+      const missing = [...new Set([
+        ...getUnresolvedEnvVars(raw),
+        ...getUnresolvedEnvVars(document.getElementById('ws-token')?.value || ''),
+      ])];
+      if (missing.length) { showToast(`Unknown env vars: ${missing.join(', ')}. Define them in Env.`, 'error'); return; }
       let url;
       try { url = buildWsUrl(raw); new URL(url.replace(/^ws/,'http')); } catch { showToast('Invalid WebSocket URL', 'error'); return; }
       try {
@@ -3376,7 +3890,7 @@
       appendWSLog(`<span class="text-[var(--text-secondary)]">[${new Date().toLocaleTimeString()}] → Connecting to ${escapeHtml(url)}...</span>`);
       _ws.onopen = () => {
         setWSStatus('OPEN', true);
-        appendWSLog(`<span class="text-emerald-500">[${new Date().toLocaleTimeString()}] ✓ Connected</span>`);
+        appendWSLog(`<span class="text-[var(--success)]">[${new Date().toLocaleTimeString()}] ✓ Connected</span>`);
         showToast('WebSocket connected', 'success');
         const hb = document.getElementById('ws-heartbeat');
         if (hb?.checked) {
@@ -3392,23 +3906,25 @@
         let data = ev.data;
         let pretty = escapeHtml(data);
         try { const j = JSON.parse(data); pretty = syntaxHighlightJson(j); } catch {}
-        appendWSLog(`<div class="flex gap-1.5"><span class="text-emerald-500 shrink-0">←</span><span class="text-[var(--text-secondary)] shrink-0">[${new Date().toLocaleTimeString()}]</span><span class="break-all">${pretty}</span></div>`);
+        appendWSLog(`<div class="flex gap-1.5"><span class="text-[var(--success)] shrink-0">←</span><span class="text-[var(--text-secondary)] shrink-0">[${new Date().toLocaleTimeString()}]</span><span class="break-all">${pretty}</span></div>`);
       };
       _ws.onclose = (ev) => {
         setWSStatus('DISCONNECTED', false);
-        appendWSLog(`<span class="text-zinc-500">[${new Date().toLocaleTimeString()}] ✕ Closed code=${ev.code} reason=${escapeHtml(ev.reason || '-')}${ev.wasClean?' clean':''}</span>`);
+        appendWSLog(`<span class="text-[var(--text-tertiary)]">[${new Date().toLocaleTimeString()}] ✕ Closed code=${ev.code} reason=${escapeHtml(ev.reason || '-')}${ev.wasClean?' clean':''}</span>`);
         if (_wsHeartbeatTimer) { clearInterval(_wsHeartbeatTimer); _wsHeartbeatTimer = null; }
         _ws = null;
       };
       _ws.onerror = () => {
-        appendWSLog(`<span class="text-red-400">[${new Date().toLocaleTimeString()}] ⚠ WebSocket error</span>`);
+        appendWSLog(`<span class="text-[var(--danger)]">[${new Date().toLocaleTimeString()}] ⚠ WebSocket error</span>`);
         showToast('WebSocket error - check URL/CORS', 'error');
       };
     }
     function sendWS() {
       if (!_ws || _ws.readyState !== WebSocket.OPEN) { showToast('WebSocket not connected', 'error'); return; }
       const type = document.getElementById('ws-msg-type')?.value || 'text';
-      let val = document.getElementById('ws-input')?.value || '';
+      let val = substituteEnvVars(document.getElementById('ws-input')?.value || '');
+      const msgMissing = getUnresolvedEnvVars(val);
+      if (msgMissing.length) { showToast(`Unknown env vars: ${msgMissing.join(', ')}. Define them in Env.`, 'error'); return; }
       if (!val) { showToast('Message empty', 'error'); return; }
       if (type === 'json') {
         try { const obj = JSON.parse(val); val = JSON.stringify(obj); } catch (e) { showToast('Invalid JSON: ' + e.message, 'error'); return; }
@@ -3435,16 +3951,16 @@
       const btn = document.getElementById('sse-connect-btn');
       if (el) {
         el.textContent = text;
-        el.className = ok ? 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400' : (text === 'CONNECTING' ? 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400' : 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400');
+        el.className = ok ? 'status-badge status-ok' : (text === 'CONNECTING' ? 'status-badge status-warn' : 'status-badge');
       }
       if (btn) {
         btn.textContent = ok || text === 'CONNECTING' ? 'Disconnect' : 'Connect';
-        btn.className = ok ? 'px-3 py-1.5 rounded-md bg-zinc-800 text-zinc-300 text-xs font-bold hover:bg-zinc-700 transition shrink-0' : 'px-3 py-1.5 rounded-md bg-[#f97316] text-black text-xs font-bold hover:bg-orange-600 transition shrink-0';
+        btn.className = ok || text === 'CONNECTING' ? 'bt-btn bt-btn-sm shrink-0' : 'bt-btn bt-btn-primary bt-btn-sm shrink-0';
       }
     }
     function clearSSELog() {
       const log = document.getElementById('sse-log');
-      if (log) log.innerHTML = '<span class="text-zinc-500">No events yet. Connect to start.</span>';
+      if (log) log.innerHTML = '<span class="text-[var(--text-tertiary)]">No events yet. Connect to start.</span>';
     }
     async function toggleSSE() {
       if (_sseController) {
@@ -3452,13 +3968,15 @@
         _sseController = null;
         _sseReader = null;
         setSSEStatus('DISCONNECTED', false);
-        appendSSELog(`<span class="text-zinc-500">[${new Date().toLocaleTimeString()}] ✕ Disconnected (client abort)</span>`);
+        appendSSELog(`<span class="text-[var(--text-tertiary)]">[${new Date().toLocaleTimeString()}] ✕ Disconnected (client abort)</span>`);
         return;
       }
       const raw = document.getElementById('sse-url')?.value.trim();
       if (!raw) { showToast('SSE URL required', 'error'); return; }
-      let url = raw.trim();
-      const lastId = document.getElementById('sse-last-id')?.value.trim();
+      const missing = getUnresolvedEnvVars(raw);
+      if (missing.length) { showToast(`Unknown env vars: ${missing.join(', ')}. Define them in Env.`, 'error'); return; }
+      let url = substituteEnvVars(raw.trim());
+      const lastId = substituteEnvVars(document.getElementById('sse-last-id')?.value.trim() || '');
       // append lastEventId as query fallback (buntok sse.ts supports ?lastEventId)
       if (lastId) {
         const sep = url.includes('?') ? '&' : '?';
@@ -3470,13 +3988,13 @@
       appendSSELog(`<span class="text-[var(--text-secondary)]">[${new Date().toLocaleTimeString()}] → Connecting to ${escapeHtml(url)}...</span>`);
       try { localStorage.setItem('scalar_sse_url', raw); if (lastId) localStorage.setItem('scalar_sse_last_id', lastId); } catch {}
       const headers = { 'Accept': 'text/event-stream' };
-      if (bearerToken) headers['Authorization'] = `Bearer ${bearerToken}`;
-      if (apiKey) headers['X-API-KEY'] = apiKey;
+      if (bearerToken) headers['Authorization'] = `Bearer ${substituteEnvVars(bearerToken)}`;
+      if (apiKey) headers['X-API-KEY'] = substituteEnvVars(apiKey);
       if (lastId) headers['Last-Event-ID'] = lastId;
       try {
         const res = await fetch(url, { headers, signal: _sseController.signal });
         if (!res.ok) {
-          appendSSELog(`<span class="text-red-400">[${new Date().toLocaleTimeString()}] ✗ HTTP ${res.status} ${escapeHtml(res.statusText)}</span>`);
+          appendSSELog(`<span class="text-[var(--danger)]">[${new Date().toLocaleTimeString()}] ✗ HTTP ${res.status} ${escapeHtml(res.statusText)}</span>`);
           showToast('SSE failed: ' + res.status, 'error');
           setSSEStatus('DISCONNECTED', false);
           _sseController = null;
@@ -3484,10 +4002,10 @@
         }
         const ctype = res.headers.get('content-type') || '';
         if (!ctype.includes('text/event-stream')) {
-          appendSSELog(`<span class="text-amber-400">[${new Date().toLocaleTimeString()}] ⚠ Content-Type not event-stream: ${escapeHtml(ctype)} - still reading</span>`);
+          appendSSELog(`<span class="text-[var(--warning)]">[${new Date().toLocaleTimeString()}] ⚠ Content-Type not event-stream: ${escapeHtml(ctype)} - still reading</span>`);
         }
         setSSEStatus('OPEN', true);
-        appendSSELog(`<span class="text-emerald-500">[${new Date().toLocaleTimeString()}] ✓ Connected - streaming</span>`);
+        appendSSELog(`<span class="text-[var(--success)]">[${new Date().toLocaleTimeString()}] ✓ Connected - streaming</span>`);
         const reader = res.body.getReader();
         _sseReader = reader;
         const decoder = new TextDecoder();
@@ -3503,7 +4021,7 @@
             if (!rawEvent.trim()) continue;
             if (rawEvent.startsWith(':')) {
               // comment/heartbeat
-              appendSSELog(`<span class="text-zinc-500">[${new Date().toLocaleTimeString()}] : ${escapeHtml(rawEvent.slice(1).trim())}</span>`);
+              appendSSELog(`<span class="text-[var(--text-tertiary)]">[${new Date().toLocaleTimeString()}] : ${escapeHtml(rawEvent.slice(1).trim())}</span>`);
               continue;
             }
             // parse event
@@ -3521,13 +4039,13 @@
             appendSSELog(`<div class="border-l-2 border-[var(--accent)]/40 pl-2"><div class="flex gap-1.5 text-[10px]"><span class="text-[var(--accent)] font-bold">${escapeHtml(event)}</span>${idHtml}<span class="text-[var(--text-secondary)]">[${new Date().toLocaleTimeString()}]</span></div><div class="break-all">${prettyData}</div></div>`);
           }
         }
-        appendSSELog(`<span class="text-zinc-500">[${new Date().toLocaleTimeString()}] - Stream ended</span>`);
+        appendSSELog(`<span class="text-[var(--text-tertiary)]">[${new Date().toLocaleTimeString()}] - Stream ended</span>`);
         setSSEStatus('DISCONNECTED', false);
       } catch (e) {
         if (e.name === 'AbortError') {
-          appendSSELog(`<span class="text-zinc-500">[${new Date().toLocaleTimeString()}] ✕ Aborted</span>`);
+          appendSSELog(`<span class="text-[var(--text-tertiary)]">[${new Date().toLocaleTimeString()}] ✕ Aborted</span>`);
         } else {
-          appendSSELog(`<span class="text-red-400">[${new Date().toLocaleTimeString()}] ✗ ${escapeHtml(e.message)}</span>`);
+          appendSSELog(`<span class="text-[var(--danger)]">[${new Date().toLocaleTimeString()}] ✗ ${escapeHtml(e.message)}</span>`);
           showToast('SSE error: ' + e.message, 'error');
         }
         setSSEStatus('DISCONNECTED', false);
@@ -3543,9 +4061,9 @@
         const btn = document.getElementById('snip-' + l);
         if (btn) {
           if (l === lang) {
-            btn.className = 'px-2 py-1 rounded bg-[#f97316] text-black font-bold';
+            btn.className = 'px-2 py-1 rounded-sm bg-[var(--accent-soft)] text-[var(--accent)] font-semibold';
           } else {
-            btn.className = 'px-2 py-1 rounded bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)]';
+            btn.className = 'px-2 py-1 rounded-sm bg-[var(--bg-primary)] border border-[var(--border-primary)] text-[var(--text-secondary)]';
           }
         }
       });
@@ -3554,6 +4072,8 @@
       const url = document.getElementById('client-url-input')?.value || selectedServer + selectedEndpoint.path;
       const method = selectedEndpoint.method;
       const isMutation = ['POST', 'PUT', 'PATCH'].includes(method);
+      const customHdrs = getEnabledCustomHeaders();
+      const hasCustomContentType = customHdrs.some(r => r.key.trim().toLowerCase() === 'content-type');
       let code = '';
 
       if (lang === 'curl') {
@@ -3565,12 +4085,16 @@
           const cookieStr = enabledCookiesForSnippet.map(r => `${r.key}=${r.value}`).join('; ');
           code += ` \\\n  --header "Cookie: ${cookieStr}"`;
         }
+        customHdrs.forEach(r => {
+          code += ` \\\n  --header "${r.key.trim()}: ${r.value}"`;
+        });
 
         if (isMutation) {
           if (activeBodyType === 'json') {
             const body = document.getElementById('doc-body-input')?.value || '{}';
             const escapedBody = body.replace(/'/g, "'\\''").replace(/\n/g, ' ');
-            code += ` \\\n  --header "Content-Type: application/json" \\\n  --data '${escapedBody}'`;
+            if (!hasCustomContentType) code += ` \\\n  --header "Content-Type: application/json"`;
+            code += ` \\\n  --data '${escapedBody}'`;
           } else if (activeBodyType === 'form-data') {
             formDataRows.filter(r => r.enabled && r.key).forEach(r => {
               let displayVal = r.value;
@@ -3581,21 +4105,23 @@
               code += ` \\\n  --form '${r.key}=${r.type === 'file' ? '@path/to/file' : String(displayVal || '').replace(/'/g, "'\\''")}'`;
             });
           } else if (activeBodyType === 'x-www-form-urlencoded') {
-            code += ` \\\n  --header "Content-Type: application/x-www-form-urlencoded"`;
+            if (!hasCustomContentType) code += ` \\\n  --header "Content-Type: application/x-www-form-urlencoded"`;
             urlEncodedRows.filter(r => r.enabled && r.key).forEach(r => {
               code += ` \\\n  --data-urlencode '${r.key}=${r.value.replace(/'/g, "'\\''")}'`;
             });
           } else if (activeBodyType === 'xml') {
             const escapedXml = xmlBodyText.replace(/'/g, "'\\''").replace(/\n/g, ' ');
-            code += ` \\\n  --header "Content-Type: application/xml" \\\n  --data '${escapedXml}'`;
+            if (!hasCustomContentType) code += ` \\\n  --header "Content-Type: application/xml"`;
+            code += ` \\\n  --data '${escapedXml}'`;
           } else if (activeBodyType === 'raw') {
             const escapedRaw = rawBodyText.replace(/'/g, "'\\''");
-            code += ` \\\n  --header "Content-Type: text/plain" \\\n  --data '${escapedRaw}'`;
+            if (!hasCustomContentType) code += ` \\\n  --header "Content-Type: text/plain"`;
+            code += ` \\\n  --data '${escapedRaw}'`;
           }
         }
       } else if (lang === 'fetch') {
         let bodySection = '';
-        let contentTypeLine = '"Content-Type": "application/json",\n    ';
+        let contentType = 'application/json';
         if (isMutation) {
           if (activeBodyType === 'json') {
             const raw = document.getElementById('doc-body-input')?.value?.trim() || '{}';
@@ -3603,22 +4129,31 @@
             try { bodyLiteral = JSON.stringify(JSON.parse(raw)); } catch { bodyLiteral = JSON.stringify(raw); }
             bodySection = `body: JSON.stringify(${bodyLiteral}),\n  `;
           } else if (activeBodyType === 'form-data') {
-            contentTypeLine = '';
+            contentType = '';
             bodySection = `body: formData,\n  `;
           } else if (activeBodyType === 'x-www-form-urlencoded') {
-            contentTypeLine = '"Content-Type": "application/x-www-form-urlencoded",\n    ';
+            contentType = 'application/x-www-form-urlencoded';
             bodySection = `body: new URLSearchParams({${urlEncodedRows.filter(r => r.enabled).map(r => `"${r.key}": "${r.value.replace(/"/g,'\\"')}"`).join(', ')}}),\n  `;
           } else if (activeBodyType === 'raw') {
             const esc = rawBodyText.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n');
-            contentTypeLine = '"Content-Type": "text/plain",\n    ';
+            contentType = 'text/plain';
             bodySection = `body: '${esc}',\n  `;
           } else if (activeBodyType === 'xml') {
             const esc = xmlBodyText.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n');
-            contentTypeLine = '"Content-Type": "application/xml",\n    ';
+            contentType = 'application/xml';
             bodySection = `body: '${esc}',\n  `;
           }
         }
-        code = `const response = await fetch("${url}", {\n  method: "${method}",\n  headers: {\n    ${contentTypeLine}${bearerToken ? `"Authorization": "Bearer ${bearerToken}",\n    ` : ''}${apiKey ? `"X-API-KEY": "${apiKey}",\n    ` : ''}},\n  ${bodySection}});\nconst data = await response.json();\nconsole.log(data);`;
+        const fetchHeaderEntries = [];
+        if (contentType && !hasCustomContentType) fetchHeaderEntries.push(`"Content-Type": "${contentType}"`);
+        if (bearerToken) fetchHeaderEntries.push(`"Authorization": "Bearer ${bearerToken}"`);
+        if (apiKey) fetchHeaderEntries.push(`"X-API-KEY": "${apiKey}"`);
+        customHdrs.forEach(r => fetchHeaderEntries.push(`"${r.key.trim().replace(/"/g,'\\"')}": "${String(r.value).replace(/"/g,'\\"')}"`));
+        const fetchHeadersBlock = fetchHeaderEntries.map(h => `    ${h},`).join('\n');
+        const fetchHeadersLiteral = `{\n${fetchHeadersBlock}\n  }`;
+        const initParts = [`method: "${method}"`, `headers: ${fetchHeadersLiteral}`];
+        if (bodySection) initParts.push(bodySection.replace(/,\s*$/, ''));
+        code = `const response = await fetch("${url}", {\n  ${initParts.join(',\n  ')}\n});\nconst data = await response.json();\nconsole.log(data);`;
       } else if (lang === 'python') {
         let pyBody = '';
         if (isMutation) {
@@ -3626,7 +4161,12 @@
           else if (activeBodyType === 'form-data') pyBody = `, data={${formDataRows.filter(r => r.enabled && r.key && r.type !== 'file' && r.type !== 'file-array').map(r => { let v = r.value; if (Array.isArray(v)) v = v.join(', '); else if (typeof v === 'object' && v !== null) v = JSON.stringify(v); else if (typeof v === 'boolean') v = v ? 'True' : 'False'; return `"${r.key}": ${typeof v === 'string' ? `"${v}"` : v}`; }).join(', ')}}`;
           else if (activeBodyType === 'x-www-form-urlencoded') pyBody = `, data={${urlEncodedRows.filter(r => r.enabled).map(r => `"${r.key}": "${r.value}"`).join(', ')}}`;
         }
-        code = `import requests\n\nurl = "${url}"\nheaders = {\n${bearerToken ? `    "Authorization": "Bearer ${bearerToken}",\n` : ''}${apiKey ? `    "X-API-KEY": "${apiKey}",\n` : ''}}\n\nresponse = requests.${method.toLowerCase()}(url, headers=headers${pyBody})\nprint(response.json())`;
+        const pyHeaderEntries = [];
+        if (bearerToken) pyHeaderEntries.push(`    "Authorization": "Bearer ${bearerToken}",`);
+        if (apiKey) pyHeaderEntries.push(`    "X-API-KEY": "${apiKey}",`);
+        customHdrs.forEach(r => pyHeaderEntries.push(`    "${r.key.trim().replace(/"/g,'\\"')}": "${String(r.value).replace(/"/g,'\\"')}",`));
+        const pyHeadersBlock = pyHeaderEntries.length ? `{\n${pyHeaderEntries.join('\n')}\n}` : '{}';
+        code = `import requests\n\nurl = "${url}"\nheaders = ${pyHeadersBlock}\n\nresponse = requests.${method.toLowerCase()}(url, headers=headers${pyBody})\nprint(response.json())`;
       } else if (lang === 'go') {
         let goBody = 'nil';
         let goImports = '\t"fmt"\n\t"net/http"\n\t"io"';
@@ -3644,11 +4184,18 @@
           goBody = `strings.NewReader("${esc}")`;
           goImports = '\t"fmt"\n\t"net/http"\n\t"io"\n\t"strings"';
         }
-        code = `package main\n\nimport (\n${goImports}\n)\n\nfunc main() {\n\treq, _ := http.NewRequest("${method}", "${url}", ${goBody})\n${bearerToken ? `\treq.Header.Add("Authorization", "Bearer ${bearerToken}")\n` : ''}\tres, _ := http.DefaultClient.Do(req)\n\tbody, _ := io.ReadAll(res.Body)\n\tfmt.Println(string(body))\n}`;
+        const goHeaderLines = [];
+        if (bearerToken) goHeaderLines.push(`\treq.Header.Add("Authorization", "Bearer ${bearerToken}")\n`);
+        customHdrs.forEach(r => goHeaderLines.push(`\treq.Header.Add("${r.key.trim().replace(/"/g,'\\"')}", "${String(r.value).replace(/"/g,'\\"')}")\n`));
+        code = `package main\n\nimport (\n${goImports}\n)\n\nfunc main() {\n\treq, _ := http.NewRequest("${method}", "${url}", ${goBody})\n${goHeaderLines.join('')}\tres, _ := http.DefaultClient.Do(req)\n\tbody, _ := io.ReadAll(res.Body)\n\tfmt.Println(string(body))\n}`;
       } else if (lang === 'php') {
-        code = `<?php\n$curl = curl_init();\ncurl_setopt_array($curl, array(\n  CURLOPT_URL => '${url}',\n  CURLOPT_RETURNTRANSFER => true,\n  CURLOPT_CUSTOMREQUEST => '${method}',\n  CURLOPT_HTTPHEADER => array(\n    'Content-Type: application/json'\n  ),\n));\n$response = curl_exec($curl);\ncurl_close($curl);\necho $response;`;
+        const phpHeaderLines = [];
+        if (!hasCustomContentType) phpHeaderLines.push(`    'Content-Type: application/json'`);
+        customHdrs.forEach(r => phpHeaderLines.push(`    '${r.key.trim()}: ${String(r.value).replace(/'/g, "\\'")}'`));
+        code = `<?php\n$curl = curl_init();\ncurl_setopt_array($curl, array(\n  CURLOPT_URL => '${url}',\n  CURLOPT_RETURNTRANSFER => true,\n  CURLOPT_CUSTOMREQUEST => '${method}',\n  CURLOPT_HTTPHEADER => array(\n${phpHeaderLines.join(',\n')}\n  ),\n));\n$response = curl_exec($curl);\ncurl_close($curl);\necho $response;`;
       }
 
+      code = substituteEnvVars(code);
       document.getElementById('snippet-output').innerText = code;
     }
 
@@ -3687,10 +4234,10 @@
       const ind = document.getElementById('auth-indicator');
       const status = document.getElementById('overview-auth-status');
       if (bearerToken || apiKey) {
-        ind.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500';
+        ind.className = 'w-1.5 h-1.5 rounded-full bg-[var(--success)]';
         if (status) status.innerText = 'Active (Token/Key set)';
       } else {
-        ind.className = 'w-1.5 h-1.5 rounded-full bg-zinc-500';
+        ind.className = 'w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]';
         if (status) status.innerText = 'None configured';
       }
     }
@@ -3751,13 +4298,13 @@
       );
 
       if (endpoints.length === 0) {
-        container.innerHTML = '<div class="p-4 text-center text-zinc-500">No matching endpoints found</div>';
+        container.innerHTML = '<div class="p-4 text-center text-[var(--text-tertiary)]">No matching endpoints found</div>';
         return;
       }
 
       endpoints.forEach(ep => {
         const item = document.createElement('div');
-        item.className = 'p-2 rounded-lg hover:bg-[var(--bg-tertiary)] flex items-center justify-between cursor-pointer border border-transparent hover:border-[var(--border-primary)]';
+        item.className = 'p-2 rounded-md hover:bg-[var(--bg-tertiary)] flex items-center justify-between cursor-pointer border border-transparent hover:border-[var(--border-primary)]';
         item.innerHTML = `
           <div class="flex items-center gap-2 truncate">
             <span class="w-10 text-[9px] font-mono font-bold uppercase text-center py-0.5 rounded badge-${ep.method.toLowerCase()}">${ep.method}</span>

@@ -30,6 +30,16 @@ export default function DownloadPage() {
   createZIP,
 } from "@buntok/core/helpers";`}
       />
+      <Callout type="info">
+        Inside a route handler, <code>ctx.file(path, options?)</code> is the
+        shortcut for a lazy file response with MIME detection and Range
+        support. For chunked or non-file sources, use{" "}
+        <code>ctx.stream(source, options?)</code> - both are documented in{" "}
+        <a href="/docs/context" className="text-accent hover:underline">
+          Context
+        </a>
+        .
+      </Callout>
 
       {/* ──────────────── serveFileOrFallback ──────────────── */}
       <Heading
@@ -126,6 +136,32 @@ app.get("/images/:name", async (ctx) => {
         File is served with <strong>inline</strong> content disposition (displayed in browser).
         Use <code>downloadFile</code> for forced downloads with <code>attachment</code> disposition.
       </Callout>
+
+      {/* ──────────────── ctx.download ──────────────── */}
+      <Heading
+        level={2}
+        className="text-2xl font-semibold mt-8 mb-3 text-text-primary border-b border-border-primary pb-2"
+      >
+        ctx.download()
+      </Heading>
+      <p className="my-3 text-text-secondary leading-relaxed">
+        Inside a handler, <code>ctx.download(data, filename, options?)</code>{" "}
+        turns a <code>Uint8Array</code>, <code>ArrayBuffer</code>, or{" "}
+        <code>Blob</code> into an <code>attachment</code> response. The MIME
+        type is inferred from the filename unless overridden.
+      </p>
+      <CodeBlock
+        code={`app.get("/export", (ctx) => {
+  const bytes = buildWorkbook();
+  return ctx.download(bytes, "products.xlsx");
+});
+
+// Override the content type / cache policy
+return ctx.download(bytes, "report.bin", {
+  contentType: "application/octet-stream",
+  cacheControl: "no-store",
+});`}
+      />
 
       {/* ──────────────── downloadFile ──────────────── */}
       <Heading

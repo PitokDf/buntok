@@ -227,7 +227,7 @@ describe("HEAD falls back to the GET route", () => {
 		}
 	});
 
-	it("still 404s when no GET route exists for the path", async () => {
+	it("answers 405 + Allow when no GET route exists for the path", async () => {
 		const app = new Buntok({ handleSignals: false });
 		app.post("/only-post", () => "x");
 		app.listen(0);
@@ -236,7 +236,8 @@ describe("HEAD falls back to the GET route", () => {
 				`http://localhost:${app.server?.port}/only-post`,
 				{ method: "HEAD" },
 			);
-			expect(res.status).toBe(404);
+			expect(res.status).toBe(405);
+			expect(res.headers.get("allow")).toBe("POST");
 		} finally {
 			await app.close();
 		}

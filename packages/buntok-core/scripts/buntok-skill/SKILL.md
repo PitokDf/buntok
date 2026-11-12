@@ -1,6 +1,6 @@
 ---
 name: buntok-skill
-description: Use when the user is building, coding, or asking questions about a project that uses @buntok/core. Covers routing, controllers, decorators, validation, file upload, middleware, helpers, the date library (@buntok/core/date with fp & locales), error handling, IoC container, SSE, WebSocket, and all utility functions.
+description: Use when the user is building, coding, or asking questions about a project that uses @buntok/core. Covers routing, controllers, decorators, validation, file upload, file/stream responses, middleware, helpers, the date library (@buntok/core/date with fp & locales), error handling, IoC container, SSE, WebSocket, Socket.IO, and all utility functions.
 ---
 
 # @buntok/core Skill Guide
@@ -239,6 +239,9 @@ const app = new Buntok();
 | `app.derive` | `(hook)` | Async-ok per-request hook; result merged into `ctx.store` |
 | `app.onStart` | `(hook)` | Fires once when `listen()` succeeds (before the ready callback); errors are logged, not thrown |
 | `app.onStop` | `(hook)` | Fires during `close()` after resources are released; errors are logged |
+| `app.bodyLimit` | `(bytes)` | Max request body size for `ctx.body()`/`ctx.formData()` (default **4 MB**) - over-limit throws `PayloadTooLargeError` (413) |
+| `app.json` | `(options?)` | JSON serializer options - `{ bigint?: "string" (default) \| "throw" }`; `"string"` makes Prisma `BigInt` columns serializable |
+| `app.responseProfile` | `(profile)` | Global envelope for success/error/pagination/validation - used by `ctx.*` helpers and `zValidator` failures |
 | `app.model` | `(name, schema)` / `(record)` | Register schema(s) in the model registry - reference by name in `zValidator`/`zResponse` |
 | `app.getModel` | `(name)` | Get registered schema - throws `Unknown model "name"` if not registered |
 | `app.decorate` | `(key, value)` / `(record)` | Add app-level value to `ctx.di` - returns `Buntok<DI & T>` so the key is typed |
@@ -246,6 +249,8 @@ const app = new Buntok();
 | `app.group` | `(prefix)` | Create route group - returns `RouterGroup` with `use()`, `group()`, same HTTP verbs (inherits group middlewares) |
 | `app.static` | `(routePath, directory, options?)` | Serve static files - `StaticOptions {maxAge?, cacheControl?, etag?}`; traversal-safe, `index.html` fallback, ETag `304` |
 | `app.ws` | `(path, handler)` | Register WebSocket endpoint - exact path only (no params), `WSHandler {open?, message?, close?, drain?, authenticate?}` |
+| `app.integrate` | `(integration)` | Mount a third-party fetch/WebSocket handler on an exact pathname - `BunIntegration {path, label?, fetch, websocket?, serve?}`; bypasses router/middleware/AOT. `label` adds a line to the startup banner. Only one integrated `websocket` handler allowed |
+| `app.httpIdleTimeout` | `(seconds)` | Server HTTP idle timeout (clamped 1-255, default **120**) - Bun's own default is only 10s and kills SSE/long-polling; keep it above your SSE `heartbeatInterval` / Socket.IO `pingInterval`. Applies to a running server via `server.reload()` |
 | `app.listen` | `(port?, callback?)` | Start server - respects `process.env.PORT` or `1212`, auto-increments 10 ports on `EADDRINUSE`, graceful `SIGTERM/SIGINT` 30s |
 | `app.request` | `(input, init?)` | Dispatch request (testing) - string without `http://` auto-prefixed `http://localhost` |
 | `app.fetch` | `(request)` | Dispatch request without binding a port - Vercel/serverless entry point (delegates to `app.request`) |
@@ -369,7 +374,7 @@ Open `http://localhost:1212/docs` to see the auto-generated API docs with live A
 | `title` | `string` | `"API Documentation"` | Page title |
 | `version` | `string` | `"1.0.0"` | API version |
 | `description` | `string` | `""` | API description |
-| `safeOnProduction` | `boolean` | `false` | When `true` + `NODE_ENV=production`, docs return 404 |
+| `safeOnProduction` | `boolean` | `true` | When `true` + `NODE_ENV=production`, docs return 404 |
 
 **Auto-generation:** When `app.apiDocs()` is called, `swagger.json` is generated in the background during `app.listen()`. The generation runs via `setImmediate()` - it does NOT block server startup or affect API response time. The generated document is cached in memory for instant serving.
 
@@ -409,7 +414,8 @@ app.static("/files", "./uploads", { cacheControl: "private, max-age=60" });
 |--------|------|---------|-------------|
 | `maxAge` | `number` | `3600` | `Cache-Control` max-age seconds (ignored if `cacheControl` set) |
 | `cacheControl` | `string` | `"public, max-age=3600"` | Full `Cache-Control` header |
-| `etag` | `boolean` | `true` | ETag + `If-None-Match` → `304`; also directory traversal guard + `index.html` fallback |
+| `etag` | `boolean` | `true` | ETag + `If-None-Match` → `304` (supports `W/` weak validators and tag lists); directory traversal guard + `index.html` fallback |
+| `dotfiles` | `"allow" \| "deny"` | `"deny"` | Block files/directories starting with `.` (`.env`, `.git/`) with `403` |
 
 ### enableReusePort
 
@@ -417,6 +423,15 @@ Linux-only. On macOS/Windows warns and is ignored.
 
 ```ts
 app.enableReusePort(true); // SO_REUSEPORT
+```
+
+### httpIdleTimeout
+
+Server-level HTTP idle timeout in seconds (Bun clamps 1-255; Buntok default **120**, Bun's own default is only **10**). Anything under this limit with zero traffic - SSE before its heartbeat, Socket.IO long-polling between pings, slow request bodies - gets its connection cut. Keep it above the SSE `heartbeatInterval` / Socket.IO `pingInterval`.
+
+```ts
+app.httpIdleTimeout(60);                 // before or after listen()
+new Buntok({ httpIdleTimeout: 60 });     // constructor
 ```
 
 ### Graceful Shutdown
@@ -448,6 +463,7 @@ await app.shutdown();                  // alias for app.close()
 |--------|------|---------|-------------|
 | `handleSignals` | `boolean` | `true` | Auto-register `SIGINT`/`SIGTERM` handlers |
 | `shutdownTimeout` | `number` | `30000` | Max ms to wait for resource cleanup before force exit |
+| `httpIdleTimeout` | `number` | `120` | Server HTTP idle timeout seconds (clamped 1-255) - keep above SSE heartbeat / Socket.IO ping interval |
 
 **Shutdown flow:**
 1. Remove signal handlers (prevent re-entry)
@@ -478,12 +494,18 @@ Configure which proxy peers supply `X-Forwarded-For`, `X-Forwarded-Proto`, etc. 
 // Trust only specific proxy addresses
 app.setTrustedProxy({
   addresses: ["127.0.0.1", "10.0.0.0/8"],
-  depth: 1,  // how many proxies to trust (default: 1)
+  depth: 1,  // how many proxies to trust, counted from the RIGHT of X-FORWARDED-FOR
+             // depth: 1 = the last entry (appended by the nearest trusted proxy)
 });
 
 // Trust all (e.g., behind reverse proxy in same network)
 app.setTrustedProxy();
 ```
+
+`ctx.ip` resolves the real peer IP via `server.requestIP()` once the app is
+listening; outside a running server (e.g. `app.request()` in tests) it falls
+back to `"unknown"`. `X-Forwarded-For` is only read when the direct peer is
+trusted through `addresses` or `depth`.
 
 ---
 
@@ -695,13 +717,16 @@ until the public type is updated.
 |-------------------|------|-------------|
 | `ctx.request` | `Request` | Raw Bun Request object |
 | `ctx.params` | `Record<string, string> & ExtractParams<Path>` | Route parameters (`:id`, `*` → `ctx.params["*"]`) |
-| `ctx.query` | `Record<string, string>` | Parsed query string (lazy, cached; `+` → space) |
-| `ctx.ip` | `string` | Client IP - only `x-forwarded-for` (first entry) else `127.0.0.1`. For `x-real-ip`/`remoteAddress` use `getClientIP(request)` helper |
+| `ctx.query` | `Record<string, string>` | Parsed query string (lazy, cached; last value wins for duplicate keys) |
+| `ctx.queryAll()` | `Record<string, string[]>` | All values per query key (e.g. `?t=a&t=b` → `{ t: ["a","b"] }`) |
+| `ctx.search` | `string` | Raw query string including `?` (empty when none) |
+| `ctx.path` | `string` | `pathname + search` |
+| `ctx.ip` | `string` | Real peer IP from `server.requestIP()` once listening (`"unknown"` outside a server). `X-Forwarded-For` only honored after `app.setTrustedProxy()` |
 | `ctx.store` | `Record<string, any>` | Key-value store between middleware (`uploader` → `store.files`/`store.fields`) |
 | `ctx.di` | `DI` | DI store (`app.di`) - same generic as `Buntok<DI>` |
 | `ctx.user` | `Record<string, unknown> \| undefined` | Set by `requireAuth` - cast to your JWT shape |
-| `await ctx.body<T>()` | `Promise<T>` | Parse JSON body (cached) |
-| `await ctx.formData()` | `Promise<FormData>` | Parse multipart form-data (cached) - safe to call twice, used by `zValidator` + `uploader` |
+| `await ctx.body<T>()` | `Promise<T>` | Parse JSON body (cached) - 4 MB default limit (`app.bodyLimit()`), 413 `PayloadTooLargeError`, invalid JSON → 400 `BadRequestError` |
+| `await ctx.formData()` | `Promise<FormData>` | Parse multipart form-data (cached) - same body limit; safe to call twice, used by `zValidator` + `uploader` |
 | `ctx.getCookie(name)` | `string \| undefined` | Get one cookie (native `request.cookies` or `Cookie` header) |
 | `ctx.getCookies()` | `Record<string, string>` | Get all cookies |
 | `ctx.valid<T>(target)` | `T` | Get data validated by `zValidator` - throws if no validator ran for that target |
@@ -713,28 +738,89 @@ until the public type is updated.
 |--------|--------|-------------|
 | `ctx.json(data, status?)` | `Response` | JSON response |
 | `ctx.text(text, status?)` | `Response` | Plain text response |
-| `ctx.html(html, status?)` | `Response` | HTML response |
+| `ctx.html(html, status?)` | `Response` | HTML response (`text/html; charset=utf-8`) |
 | `ctx.redirect(url, status?)` | `Response` | Redirect (default 302) |
 | `ctx.status(code)` | `Response` | Empty response with status code |
 | `ctx.success(data?, message?, status?)` | `Response` | Standard success envelope |
 | `ctx.error(message, status?, details?)` | `Response` | Standard error envelope |
 | `ctx.paginate(data, total, page, limit)` | `Response` | Offset pagination |
 | `ctx.cursorPaginate(data, nextCursor)` | `Response` | Cursor pagination |
-| `ctx.htmlStream(generator, options?)` | `Response` | Streaming HTML via async generator - yields chunks progressively |
+| `ctx.htmlStream(generator, options?)` | `Response` | Streaming HTML via async generator - yields chunks progressively; implements `cancel()` to release the generator on client disconnect |
+| `ctx.file(path, options?)` | `BuntokFile` | Stream a file from disk - MIME detection + `Range`/`206` support; missing/empty file → 404 |
+| `ctx.download(data, filename, options?)` | `Response` | `Content-Disposition: attachment` for `Uint8Array\|ArrayBuffer\|Blob` - `{contentType?, cacheControl?}` |
+| `ctx.setCookie(name, value, options?)` | `this` | Queue a `Set-Cookie` header (merged into the final response, including errors) |
+| `ctx.deleteCookie(name, options?)` | `this` | Queue an expired `Set-Cookie` to clear a cookie |
+| `ctx.stream(source, options?)` | `Response` | Stream an async iterable or `ReadableStream` |
 | `ctx.sse(callback, options?)` | `Response` | SSE stream |
 
-Response headers can be mutated per-request via `ctx.set.headers` (type `HTTPHeaders` - well-known request/response headers autocomplete, values `string | number` with numbers stringified, `'set-cookie'` accepts `string | string[]` and appends each cookie). The map is merged into the final response **after** built-in headers, so user values win (e.g. over `X-Powered-By` and `x-request-id`):
+#### File & Stream Responses
+
+`ctx.file()` returns a lazy `BuntokFile`; disk access, MIME detection, size, and `Range` handling happen at response time. Its options are `{ type?, headers? }`. `ctx.stream(source, { status?, headers? })` accepts an `AsyncIterable<string | Uint8Array | ArrayBuffer | Blob>` or `ReadableStream<Uint8Array>`.
+
+```ts
+app.get("/video", (ctx) => ctx.file("./public/video.mp4"));
+
+app.get("/report", (ctx) =>
+  ctx.file("./reports/latest.pdf", {
+    type: "application/pdf",
+    headers: { "Cache-Control": "private, max-age=60" },
+  }),
+);
+
+app.get("/stream", (ctx) =>
+  ctx.stream(
+    (async function* () {
+      yield "hello ";
+      yield new TextEncoder().encode("world");
+    })(),
+    { headers: { "Content-Type": "text/plain; charset=utf-8" } },
+  ),
+);
+
+app.get("/proxy", async (ctx) => {
+  const upstream = await fetch("https://example.com/data");
+  return ctx.stream(upstream.body!, {
+    headers: { "Content-Type": "application/octet-stream" },
+  });
+});
+```
+
+`ctx.file()` has no missing-file fallback - use `serveFileOrFallback()` for 404/SPA fallback. For `Content-Disposition: attachment`, use `downloadFile()` / `downloadBuffer()`.
+
+Response headers can be mutated per-request via `ctx.set.headers` (type `HTTPHeaders` - well-known request/response headers autocomplete, values `string | number | null` with numbers stringified and `null` deleting the header, `'set-cookie'` accepts `string | string[]` and appends each cookie). The map is merged into the final response **after** built-in headers, so user values win (e.g. over `X-Powered-By` and `x-request-id`):
 
 ```ts
 app.get("/custom-headers", (ctx) => {
   ctx.set.headers["x-powered-by"] = "benchmark";
   ctx.set.headers["x-a"] = 1; // number → "1"
+  ctx.set.headers["x-secret"] = null; // delete the header
   ctx.set.headers["set-cookie"] = ["a=1; Path=/", "b=2; Path=/"];
   return "ok";
 });
 ```
 
 Sucrose detects `ctx.set` / `set.headers` / a destructured `set` param (including alias param `(c) => c.set.headers`) and keeps the full `Context` for that route.
+
+#### Response Profile & BigInt
+
+Set the envelope once; `ctx.success`/`ctx.error`/`ctx.paginate` and `zValidator` failures follow it.
+
+```ts
+app.responseProfile({
+  success: (data, message) => ({ success: true, message, data }),
+  error: (message, status) => ({ success: false, message, status }),
+  validation: {
+    status: 400,
+    message: "Invalid input data.",
+    errors: (issues) => issues.map((i) => ({
+      path: (i as { path: (string | number)[] }).path.join("."),
+      message: (i as { message: string }).message,
+    })),
+  },
+});
+
+app.json({ bigint: "string" }); // default - Prisma BigInt columns become strings
+```
 
 ---
 
@@ -805,6 +891,8 @@ app.all("/users", allHandler);    // All methods
 
 > **⚠️ Route matching:** Exact static routes are checked before dynamic routes, so `/users/admin` takes precedence over `/users/:id` regardless of registration order. If the same static method and path are registered more than once, the later registration replaces the earlier handler.
 
+> **405 handling:** If the path exists but the method does not, the framework returns `405 Method Not Allowed` with an `Allow` header through the normal middleware pipeline (CORS preflight still works). Unknown paths return `404`. Paths are normalized to a leading slash (`app.get("users")` → `/users`) with a development warning.
+
 ---
 
 ## Middleware
@@ -847,8 +935,12 @@ app.cors({
   methods: ["GET", "POST", "PUT", "DELETE"],
   headers: ["Content-Type", "Authorization"],
   credentials: true,
+  maxAge: 86400, // Access-Control-Max-Age
 });
 // Defaults: methods GET,POST,PUT,DELETE,PATCH,OPTIONS; headers Content-Type,Authorization,x-api-key
+// Behavior: disallowed origins get no Access-Control-Allow-Origin header (not an empty one);
+// reflected origins get Vary: Origin; OPTIONS preflight for a disallowed origin returns 403;
+// Access-Control-Request-Headers is reflected back to the client.
 ```
 
 > **⚠️ Use `app.cors()` instead of `app.use(cors(...))`.** The `app.cors()` method ensures CORS headers are applied to **all** responses, including error responses (400, 422, 500, 404, etc.) generated by the framework. Using `app.use(cors(...))` only applies CORS headers to successful responses - thrown errors bypass the middleware chain and return without CORS headers.
@@ -887,6 +979,10 @@ app.use(rateLimiter({
   keyGenerator: (ctx) => ctx.ip,
   // `sqliteStore` exists in the source middleware but is not currently re-exported from `@buntok/core`.
 }));
+
+// Both `rateLimiter` and `slidingWindowRateLimiter` key on `ctx.ip` (the real
+// peer IP once listening). Client-controlled headers like `X-Forwarded-For`
+// are never used as the key unless you supply a custom `keyGenerator`.
 ```
 
 `RateLimiterOptions {max=100, windowMs=60000, message, statusCode=429, headers=true, skip?, keyGenerator?, store?: RateLimitStore}`.
@@ -896,6 +992,7 @@ app.use(rateLimiter({
 ```ts
 import { requestId, shortId, uuid } from "@buntok/core";
 app.use(requestId()); // RequestIdOptions {header="x-request-id", generator=uuid, store=true, storeKey="requestId"}
+// uuid() is cryptographically secure (crypto.randomUUID)
 app.use(requestId({ header: "x-correlation-id", generator: shortId })); // 8-char
 ```
 
@@ -911,7 +1008,8 @@ app.use(responseTime()); // ResponseTimeOptions {header="x-response-time", forma
 ```ts
 import { helmet } from "@buntok/core";
 app.use(helmet());
-// HelmetOptions {contentTypeOptions, frameOptions, xssProtection, referrerPolicy, hsts, dnsPrefetch, permissionsPolicy, additionalHeaders}
+// HelmetOptions {contentTypeOptions, frameOptions, xssProtection, referrerPolicy, hsts, dnsPrefetch, permissionsPolicy, additionalHeaders, hidePoweredBy}
+// X-Powered-By is removed by default; set hidePoweredBy: false to keep it
 app.use(helmet({ hsts: { maxAge: 31536000, includeSubDomains: true } }));
 ```
 
@@ -924,15 +1022,18 @@ app.get("/slow", timeout(5000), async (ctx) => {
   return ctx.json({ ok: true });
 });
 app.get("/slow2", timeout(5000, "Custom timeout message"), handler);
-// Throws TimeoutError { timeoutMs } on expiry (Promise.race)
+// Throws TimeoutError { status: 504, timeoutMs } on expiry - answered as
+// 504 Gateway Timeout (logged as WARN, not ERROR).
 ```
 
 ### Body Size Limit
 
 ```ts
 import { bodySizeLimit } from "@buntok/core";
+app.bodyLimit(10 * 1024 * 1024); // framework-owned limit for ctx.body()/ctx.formData() (default 4 MB)
 app.use(bodySizeLimit({ maxSize: 10 * 1024 * 1024, statusCode: 413, message: "Payload Too Large" }));
 // BodySizeLimitOptions {maxSize=10MB, statusCode=413, message} - checks Content-Length before parsing
+// Use the middleware for routes that read ctx.request body directly.
 ```
 
 ### Circuit Breaker
@@ -1395,11 +1496,13 @@ Throw directly from handler - framework auto-catches and returns proper response
 | `ForbiddenError` | 403 | No access |
 | `NotFoundError` | 404 | Resource not found |
 | `MethodNotAllowedError` | 405 | HTTP method not allowed |
+| `PayloadTooLargeError` | 413 | Request body exceeds the limit |
 | `ConflictError` | 409 | Data conflict |
 | `UnprocessableEntityError` | 422 | Business logic validation |
 | `TooManyRequestsError` | 429 | Rate limit exceeded |
 | `InternalServerError` | 500 | Server error |
 | `ServiceUnavailableError` | 503 | Service unavailable |
+| `TimeoutError` | 504 | Gateway Timeout (thrown by `timeout()` middleware) |
 
 ```ts
 import { NotFoundError, BadRequestError } from "@buntok/core";
@@ -1593,7 +1696,7 @@ app.setContainer(container);
 app.registerController(UserController);
 ```
 
-`scan()` reads the tokens from `@Dependencies()` and registers factory providers bottom-up. Works with any depth:
+`scan()` reads the tokens from `@Dependencies()` and registers factory providers bottom-up. Only classes with `@Dependencies()` or a zero-argument constructor are auto-registered; anything else must be registered explicitly. `resolve()` cleans up its in-progress state when a provider throws, so a failed resolution does not poison later ones. Works with any depth:
 
 ```ts
 @Dependencies(OrderService, PaymentService)
@@ -1620,7 +1723,7 @@ Circular dependencies are detected and throw with a resolution chain hint.
 
 | Method | Description |
 |--------|-------------|
-| `container.register(token, provider)` | Register provider manually - `Provider = ClassProvider{useClass,scope}\|ValueProvider{useValue}\|FactoryProvider{useFactory,scope}` |
+| `container.register(token, provider)` | Register provider manually - `Provider = ClassProvider{useClass,scope}\|ValueProvider{useValue}\|FactoryProvider{useFactory,scope}`; `useValue: undefined` throws `TypeError` |
 | `container.registerClass(cls, scope?)` | Auto-register class provider - `Scope = "singleton" (default) \| "transient"` |
 | `container.scan(classes[], scope?)` | Auto-scan classes and register with dependency resolution via `@Dependencies()` |
 | `container.resolve(token)` | Resolve instance (ctor via FactoryProvider) |
@@ -1671,18 +1774,17 @@ import { uploader, handleUploads, deleteUploadedFile, LocalDiskStorage, MemorySt
 |--------|------|-------------|
 | `storage` | `StorageDriver` | **Required** - `LocalDiskStorage`, `MemoryStorage`, or custom |
 | `filename` | `(original, file) => { name, ext }` | Global default filename generator |
-| `maxFileSize` | `number` | Global max file size in bytes |
-| `allowedMimeTypes` | `MimeType[]` | Global allowed MIME types |
 | `fields` | `Record<string, UploadFieldConfig>` | Whitelist & per-field validation |
 | `verifyMagicBytes` | `boolean` | Verify file magic bytes against MIME type (default: true) |
+| `messages` | `UploaderMessages` | Override error messages (`required`, `maxFileSize`, `mimeType`, `magicBytes`) |
 
 ### Upload Field Config
 
 | Option | Type | Description |
 |--------|------|-------------|
 | `required` | `boolean` | Required or not (default: false) |
-| `maxFileSize` | `number` | Max file size in bytes (overrides global) |
-| `allowedMimeTypes` | `MimeType[]` | Allowed MIME types (overrides global) - `MimeType = keyof MAGIC_BYTES` |
+| `maxFileSize` | `number` | Max file size in bytes |
+| `allowedMimeTypes` | `MimeType[]` | Allowed MIME types - `MimeType = keyof MAGIC_BYTES` |
 | `filename` | `(original, file) => { name, ext }` | Custom filename for this field |
 | `outputFormat` | `"webp"\|"png"\|"jpeg"\|"avif"` | Convert image via `Bun.Image` - return type narrows to `ImageUploadedFile {kind,width,height,format,originalType?,originalExt?}` |
 | `multiple` | `boolean` | Accept multiple files for this field. When `true`, result type narrows to `T[]`. Default: `false` |
@@ -1695,7 +1797,9 @@ Enabled by default. Verifies that the file's actual content matches the claimed 
 // Magic bytes verification ON (default)
 const result = await handleUploads(ctx, {
   storage: new LocalDiskStorage("./uploads"),
-  allowedMimeTypes: ["image/png", "image/jpeg"],
+  fields: {
+    avatar: { required: true, allowedMimeTypes: ["image/png", "image/jpeg"] },
+  },
 });
 
 // Disable if needed (not recommended)
@@ -1763,6 +1867,8 @@ fields: {
 ```
 
 > Auto-extension: if filename callback doesn't include extension, framework auto-appends from original file.
+
+> Sanitization: client filenames are stripped of path components (`../`, `..\\`) and NUL bytes before use, and `LocalDiskStorage.deleteFile()` refuses paths outside the upload root. Custom storage drivers receive the sanitized name/ext too.
 
 ### Custom Storage Driver (S3, GCS, R2)
 
@@ -1945,7 +2051,7 @@ import {
 
 ### file()
 
-Lazy file response (Elysia-style). Returns a `BuntokFile` - no stat, no `Bun.file()`, no `Response` at registration; the framework converts it at response time via `toResponse(request)` so the request's `Range` header is honored.
+Lazy file response (Elysia-style). Returns a `BuntokFile` - no stat, no `Bun.file()`, no `Response` at registration; the framework converts it at response time via `toResponse(request)` so the request's `Range` header is honored. Inside a handler, `ctx.file(path, options?)` is the equivalent shortcut.
 
 ```ts
 app.get("/video", () => file("public/kyuukurarin.mp4"));
@@ -1998,6 +2104,17 @@ app.get("/reports/:id", async (ctx) => {
 ```
 
 `downloadFile(ctx, filePath, filename?, options?)` → `Promise<Response>`. Options: `{ contentType?, cacheControl? }`. Returns 404 if file not found.
+
+### ctx.download()
+
+Handler shortcut for buffer downloads:
+
+```ts
+app.get("/export", (ctx) => ctx.download(bytes, "products.xlsx"));
+// options: { contentType?, cacheControl? }
+```
+
+`ctx.download(data, filename, options?)` accepts `Uint8Array`, `ArrayBuffer`, or `Blob` and sets `Content-Disposition: attachment`.
 
 ### downloadBuffer
 
@@ -2076,7 +2193,7 @@ import { SSE, SSEBroadcaster, createSSE } from "@buntok/core/sse";
 
 ### Basic Usage
 
-`SSEOptions {maxConnections?, onReconnect?, retry?, sendInitial?, initialEvent?}`. `SSEMessage {event?, data: string|object, id?: string|number}`.
+`SSEOptions {maxConnections?, onReconnect?, retry?, sendInitial?, initialEvent?, heartbeatInterval?, headers?, historyStore?}`. `heartbeatInterval` defaults to `30000` ms (`0` disables the keep-alive comment) and must stay shorter than the server idle timeout (`app.httpIdleTimeout`, default 120s - Bun's raw default of 10s would cut the stream before the first heartbeat). `SSEMessage {event?, data: string|object, id?: string|number}`.
 
 ```ts
 app.get("/events", (ctx) => {
@@ -2201,6 +2318,84 @@ app.ws("/chat", {
     console.log("Disconnected", code);
   },
 });
+```
+
+### Third-party Integrations (`app.integrate`)
+
+`app.integrate()` is not Socket.IO-specific. It mounts a raw Bun handler at one exact pathname on the same server, before Buntok's router/middleware/AOT. Use it for any library that exposes Bun's `(request, server) => Response` contract, optionally with WebSocket upgrades.
+
+```ts
+app.integrate({
+  path: "/vendor/health/",
+  label: "Vendor Health", // printed in the startup banner
+  fetch: () => new Response("ok"),
+});
+
+app.integrate({
+  path: "/custom-ws/",
+  label: "Custom WS",
+  fetch: (request, server) =>
+    server.upgrade(request, { data: { source: "custom" } })
+      ? (undefined as unknown as Response)
+      : new Response("Upgrade Required", { status: 426 }),
+  websocket: {
+    open(ws) { ws.send("connected"); },
+    message(ws, message) { ws.send(message); },
+  },
+  serve: { idleTimeout: 30 },
+});
+```
+
+| Field | Description |
+|-------|-------------|
+| `path` | Exact pathname to intercept (required) |
+| `label` | Human-readable name shown in the startup banner |
+| `fetch` | Raw Bun handler `(request, server) => Response` (required) |
+| `websocket` | Bun WebSocket handler for connections upgraded by this integration |
+| `serve` | Extra `Bun.serve` options merged at `listen()` - `fetch`, `websocket`, `routes`, and `port` are ignored |
+
+`BunIntegration` behavior and limitations:
+
+- **Exact pathname only** - no prefix, params, wildcard, or catch-all.
+- **Bypasses Buntok** - no middleware, auth, `ctx`, DI, request logging, error handler, or lifecycle hooks.
+- **Needs a live server** - integrations are skipped by `app.fetch(request)` without a server (serverless).
+- **One external WebSocket handler** - Bun has a single global `websocket` handler; Buntok composes it with `app.ws()` and throws at startup if multiple integrations provide `websocket`.
+- **Serve options merge at listen()** - adding an integration later refreshes its WebSocket handler and routes, not immutable serve options.
+- Use normal routes (`app.get()`, `app.group()`, `app.static()`) for ordinary HTTP endpoints.
+
+WebSocket connections are separated by the `handler` marker Buntok attaches during `server.upgrade()`, so `app.ws()` keeps working alongside an integration.
+
+### Socket.IO (same port)
+
+Socket.IO needs its own Engine.IO transport. Use `socketIOPlugin`, which wraps the official `@socket.io/bun-engine` and shares Buntok's port without the Node `http.Server` polyfill.
+
+```bash
+bun add socket.io @socket.io/bun-engine
+```
+
+```ts
+import { Buntok } from "@buntok/core";
+import { socketIOPlugin } from "@buntok/core/plugins/socket-io";
+import { Server } from "socket.io";
+
+const app = new Buntok();
+const io = new Server();
+
+io.on("connection", (socket) => {
+  socket.on("hello", (message) => socket.emit("world", message));
+});
+
+await app.plugin(socketIOPlugin({ io }));
+app.listen(1212);
+```
+
+`SocketIOPluginOptions`: `io` (required), `path` (default `"/socket.io/"`), `engine` (forwarded to Bun engine), `closeOnShutdown` (default `true`). The plugin calls `app.integrate({ path, label: "Socket.IO", fetch, websocket, serve })`; Socket.IO connections and `app.ws()` routes are composed into one Bun WebSocket handler. Only one integrated WebSocket handler is allowed. Configure a Socket.IO adapter (e.g. `@socket.io/redis-adapter`) on `io` for multi-instance deployments.
+
+The startup banner shows the mount path:
+
+```text
+Listening on: http://localhost:1212
+Socket.IO:    http://localhost:1212/socket.io/
 ```
 
 ### Authentication
@@ -2381,7 +2576,7 @@ import {
 } from "@buntok/core";
 
 // Hashing - hash/sha256/sha512 are SYNC (Bun.CryptoHasher), hmac/hashVerify are async (WebCrypto)
-const digest = hash("password", "SHA-256"); // "SHA-1"|"SHA-256"|"SHA-384"|"SHA-512"
+const digest = hash("password", "SHA-256"); // "SHA-1"|"SHA-224"|"SHA-256"|"SHA-384"|"SHA-512"|"SHA3-256"|"SHA3-512"|"MD5"
 const d2 = sha256("password");
 const d3 = sha512("password");
 const md5Digest = await md5("password");
@@ -2394,9 +2589,13 @@ randomHex(32);         // hex string
 randomAlphaNumeric(16);
 randomToken(32);
 
-// Encrypt/Decrypt - AES-256-GCM, iv is hex
-const { ciphertext, iv } = await encrypt("secret data", "my-key");
+// Encrypt/Decrypt - AES-256-GCM, iv is generated internally and returned
+const { ciphertext, iv } = await encrypt("secret data", "my-key"); // iv param removed
 const plain = await decrypt(ciphertext, "my-key", iv);
+
+// Derive a key from a password (PBKDF2) - for human passwords, not raw keys
+const { key, salt, iterations } = await deriveKey("my-password");
+const plain2 = await decrypt(ciphertext2, key, iv2);
 ```
 
 ---
@@ -2611,6 +2810,8 @@ import { generateCode, nanoid, ulid, resetCounter } from "@buntok/core";
 
 generateCode("T");       // "T0001"
 generateCode("T");       // "T0002"
+// ⚠️ Counter is in-memory: resets on restart and is not shared across processes.
+// For globally unique IDs (invoices, orders) use nanoid()/ulid()/crypto.randomUUID().
 nanoid();                // "V1StGXR8_Z5jdHi6B-myT"
 ulid();                  // "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 ```
@@ -2655,7 +2856,12 @@ const all = ctx.getCookies(); // or getCookies(request)
 const response = setCookie(ctx.json({ ok: true }), "token", "abc123", {
   httpOnly: true, secure: true, sameSite: "lax", maxAge: 86_400, path: "/", domain: "example.com", partitioned: true,
 });
-// CookieOptions {domain?, maxAge?, expires?, path="/", secure?, httpOnly?, sameSite="strict"|"lax"|"none", partitioned?}
+// CookieOptions {domain?, maxAge?, expires?, path="/", secure?, httpOnly?, sameSite="strict"|"lax"|"none" (default "lax"), partitioned?}
+// `sameSite: "none"` requires `secure: true` (throws otherwise).
+// Cookie names/paths/domains are validated - `;`, `=`, whitespace and control
+// characters throw.
+// Invalid percent-encoding in incoming cookies/query is left as the raw value
+// (cookies) or answered 400 (query).
 parseCookies("a=1; b=2"); // {a:"1", b:"2"}
 serializeCookie("token", "abc", { httpOnly: true, maxAge: 3600 });
 ```
@@ -3167,7 +3373,8 @@ import { JwtService, requireAuth } from "@buntok/core";
 ### JwtService
 
 ```ts
-const jwt = new JwtService("your-secret-key");
+// Use at least 32 bytes of randomness; JwtService warns in non-production when shorter
+const jwt = new JwtService(process.env.JWT_SECRET!);
 
 // Sign token (expires in 1 hour)
 const token = await jwt.sign({ userId: 1, role: "admin" }, 3600);
@@ -3695,6 +3902,12 @@ Default signature headers per provider:
 - Midtrans: `x-signature`
 - Xendit: `x-callback-token`
 - PayPal: `paypal-transmission-sig`
+
+Verification is enforced: PayPal verifies through PayPal's
+`verify-webhook-signature` API and fails closed on any network/API error;
+Stripe validates every `v1` signature during secret rotation; Xendit and
+Midtrans are compared in constant time. PayPal driver requires `webhookId` in
+its config for verification.
 
 ### Error Handling
 

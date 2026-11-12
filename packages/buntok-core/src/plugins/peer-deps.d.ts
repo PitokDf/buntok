@@ -73,3 +73,23 @@ declare module "@opentelemetry/exporter-trace-otlp-http" {
 declare module "nodemailer" {
 	export function createTransport(config: any): any;
 }
+
+declare module "@socket.io/bun-engine" {
+	export class Server {
+		constructor(options?: Record<string, unknown>);
+		handleRequest(
+			request: Request,
+			server: unknown,
+		): Response | Promise<Response>;
+		handler(): {
+			fetch: (
+				request: Request,
+				server: unknown,
+			) => Response | Promise<Response>;
+			websocket: Record<string, unknown>;
+			idleTimeout?: number;
+			maxRequestBodySize?: number;
+		};
+		close?(): void;
+	}
+}

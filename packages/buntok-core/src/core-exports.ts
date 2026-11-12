@@ -35,6 +35,7 @@ export type {
 	AfterHandleHook,
 	AppHook,
 	BeforeHandleHook,
+	BunIntegration,
 	DeriveHook,
 	EnvValidationOptions,
 	ErrorHandler,
@@ -68,10 +69,17 @@ export {
 	type FactoryProvider,
 	type Provider,
 	type Scope,
+	type Token,
 	type ValueProvider,
 } from "./container";
-export { Context } from "./context";
-export type { HTTPHeaders } from "./context";
+export { Context, DEFAULT_BODY_LIMIT } from "./context";
+export type {
+	ContextOptions,
+	CursorPaginationMeta,
+	HTTPHeaders,
+	PaginationMeta,
+	ResponseProfile,
+} from "./context";
 export type { ControllerMeta, RouteMeta } from "./decorators";
 // Emitter
 export { emitter, EventEmitter } from "./emitter";
@@ -108,7 +116,12 @@ export type { RetryOptions } from "./helpers/async";
 // Async helpers
 export { delay, retry } from "./helpers/async";
 // Response helpers
-export { toResponse, toResponseMaybeAsync } from "./helpers/response";
+export {
+	jsonResponse,
+	toResponse,
+	toResponseMaybeAsync,
+} from "./helpers/response";
+export type { BigIntMode, JsonConfig } from "./helpers/response";
 // Error helpers
 export {
 	asyncHandler,
@@ -119,6 +132,7 @@ export {
 	InternalServerError,
 	MethodNotAllowedError,
 	NotFoundError,
+	PayloadTooLargeError,
 	ServiceUnavailableError,
 	TooManyRequestsError,
 	UnauthorizedError,

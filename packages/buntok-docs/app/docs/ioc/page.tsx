@@ -136,6 +136,11 @@ container.registerClass(UserService);`}
 // Use string tokens for config values
 const url = container.resolve<string>("DATABASE_URL");`}
       />
+      <Callout type="warning">
+        <code>useValue</code> rejects <code>undefined</code> at registration
+        time (throws <code>TypeError</code>) so a missing env var fails fast
+        instead of resolving to nothing.
+      </Callout>
 
       <Heading
         level={3}
@@ -205,6 +210,8 @@ container.scan([OrderController]);
 app.setContainer(container);
 
 // Controllers WITHOUT @Dependencies don't need scan()
+// scan() only auto-registers classes that declare @Dependencies or take no
+// constructor args; anything else must be registered explicitly.
 // registerController() creates them directly
 app.registerController(OrderController);
 app.registerController(HealthController);  // no DI, works fine`}

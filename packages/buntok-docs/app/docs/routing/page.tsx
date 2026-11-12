@@ -278,6 +278,16 @@ app.get("/search", ({ query }) => query); // shorthand
         validation, use <code>zValidator("query", schema)</code>.
       </Callout>
 
+      <Callout type="info">
+        A known path with an unsupported method returns{" "}
+        <code>405 Method Not Allowed</code> plus an{" "}
+        <code>Allow</code> header (for example <code>Allow: POST</code>).
+        Unknown paths still return <code>404</code>, and global middleware such
+        as CORS preflight keeps running. Paths without a leading slash are
+        normalized (<code>app.get(&quot;users&quot;)</code> →{" "}
+        <code>/users</code>) with a development warning.
+      </Callout>
+
       {/* ──────────────── ROUTE GROUPS ──────────────── */}
       <Heading
         level={2}

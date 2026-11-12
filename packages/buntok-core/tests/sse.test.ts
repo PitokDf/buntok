@@ -66,6 +66,50 @@ describe("SSE", () => {
 		sse1.close();
 	});
 
+	it("should send heartbeat at the configured interval", async () => {
+		const sseHb = new SSE(new Request("http://localhost:3000/events"), {
+			sendInitial: false,
+			retry: 3000,
+			heartbeatInterval: 15,
+		});
+		const response = sseHb.connect();
+		const reader = response.body!.getReader();
+		const decoder = new TextDecoder();
+		let text = "";
+		const deadline = Date.now() + 500;
+		while (Date.now() < deadline) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			text += decoder.decode(value);
+			if (text.includes(": heartbeat")) break;
+		}
+
+		expect(text).toContain(": heartbeat");
+
+		await reader.cancel().catch(() => {});
+		sseHb.close();
+	});
+
+	it("should not start a heartbeat when heartbeatInterval is 0", async () => {
+		const sseNoHb = new SSE(new Request("http://localhost:3000/events"), {
+			sendInitial: false,
+			heartbeatInterval: 0,
+		});
+		const response = sseNoHb.connect();
+		const reader = response.body!.getReader();
+
+		// Drain the initial retry frame, then wait past any potential heartbeat
+		await reader.read().catch(() => {});
+		const raced = await Promise.race([
+			reader.read().then(() => "data"),
+			new Promise((resolve) => setTimeout(() => resolve("timeout"), 60)),
+		]);
+		expect(raced).toBe("timeout");
+
+		await reader.cancel().catch(() => {});
+		sseNoHb.close();
+	});
+
 	it("should call onReconnect on reconnection", async () => {
 		let called = false;
 		let lastId = "";

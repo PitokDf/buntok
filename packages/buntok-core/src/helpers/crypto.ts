@@ -21,14 +21,22 @@ function toHex(buffer: Uint8Array): string {
 
 export function hash(
 	data: string | ArrayBuffer | Uint8Array,
-	algorithm: "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512" = "SHA-256",
+	algorithm:
+		| "SHA-1"
+		| "SHA-224"
+		| "SHA-256"
+		| "SHA-384"
+		| "SHA-512"
+		| "SHA3-256"
+		| "SHA3-512"
+		| "MD5" = "SHA-256",
 ): string {
-	const algo = algorithm.toLowerCase().replace("-", "") as
-		| "sha1"
-		| "sha256"
-		| "sha384"
-		| "sha512";
-	const hasher = new Bun.CryptoHasher(algo);
+	const algo = algorithm.toLowerCase();
+	// Bun/OpenSSL expects `sha3-256` / `sha3-512` with the hyphen; other
+	// algorithms are referenced without it.
+	const hasherAlgo =
+		algo === "sha3-256" || algo === "sha3-512" ? algo : algo.replace(/-/g, "");
+	const hasher = new Bun.CryptoHasher(hasherAlgo as any);
 	hasher.update(toBuffer(data));
 	return hasher.digest("hex");
 }
@@ -221,11 +229,13 @@ async function importAesKey(
 export async function encrypt(
 	data: string | ArrayBuffer | Uint8Array,
 	key: string | ArrayBuffer | Uint8Array,
-	iv?: Uint8Array,
 ): Promise<{ ciphertext: string; iv: string }> {
 	const cryptoKey = await importAesKey(key);
-	const ivBytes = (iv ??
-		crypto.getRandomValues(new Uint8Array(12))) as Uint8Array<ArrayBuffer>;
+	// IV is always generated internally - never expose caller-controlled IVs
+	// (nonce reuse in AES-GCM is catastrophic).
+	const ivBytes = crypto.getRandomValues(new Uint8Array(12)) as Uint8Array<
+		ArrayBuffer
+	>;
 	const encrypted = await crypto.subtle.encrypt(
 		{ name: "AES-GCM", iv: ivBytes },
 		cryptoKey,
@@ -234,6 +244,70 @@ export async function encrypt(
 	return {
 		ciphertext: toHex(new Uint8Array(encrypted)),
 		iv: toHex(ivBytes),
+	};
+}
+
+/**
+ * Derive a cryptographic key from a password using PBKDF2 (SHA-256).
+ * Use this instead of passing a raw password to `encrypt()` - human passwords
+ * are not suitable as raw AES keys.
+ *
+ * Returns a hex key (suitable as the `key` argument to `encrypt()`), the salt
+ * used, and the iteration count - store salt + iterations alongside the
+ * ciphertext so you can re-derive the same key for decryption.
+ */
+export async function deriveKey(
+	password: string,
+	options: {
+		/** Hex-encoded salt (default: 16 random bytes) */
+		salt?: string;
+		/** Iteration count (default: 200_000) */
+		iterations?: number;
+		/** Hash algorithm (default: SHA-256) */
+		hash?: "SHA-256" | "SHA-512";
+		/** Derived key length in bytes (default: 32) */
+		keylen?: number;
+	} = {},
+): Promise<{ key: string; salt: string; iterations: number }> {
+	const iterations = options.iterations ?? 200_000;
+	const keylen = options.keylen ?? 32;
+	const hash = options.hash ?? "SHA-256";
+
+	let saltBytes: Uint8Array;
+	if (options.salt) {
+		saltBytes = new Uint8Array(
+			options.salt.match(/.{1,2}/g)!.map((h) => Number.parseInt(h, 16)),
+		);
+	} else {
+		saltBytes = crypto.getRandomValues(new Uint8Array(16)) as Uint8Array;
+	}
+
+	const keyMaterial = await crypto.subtle.importKey(
+		"raw",
+		ENCODER.encode(password),
+		{ name: "PBKDF2" },
+		false,
+		["deriveKey"],
+	);
+
+	const derived = await crypto.subtle.deriveKey(
+		{
+			name: "PBKDF2",
+			salt: new Uint8Array(saltBytes),
+			iterations,
+			hash,
+		},
+		keyMaterial,
+		{ name: "AES-GCM", length: keylen * 8 },
+		true,
+		["encrypt", "decrypt"],
+	);
+
+	const exported = await crypto.subtle.exportKey("raw", derived);
+	return {
+		key: toHex(new Uint8Array(exported)),
+		salt: toHex(saltBytes),
+		iterations,
 	};
 }
 

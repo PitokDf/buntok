@@ -51,11 +51,20 @@ export function formatNumber(n: number, locale = "en-US"): string {
  * formatBytes(1048576);    // "1 MB"
  */
 export function formatBytes(bytes: number): string {
-	if (bytes === 0) return "0 B";
+	if (!Number.isFinite(bytes) || bytes === 0) return "0 B";
+	const abs = Math.abs(bytes);
 	const units = ["B", "KB", "MB", "GB", "TB", "PB"];
-	const i = Math.floor(Math.log(bytes) / Math.log(1024));
-	const size = bytes / 1024 ** i;
-	return `${size === 0 ? "0" : size.toFixed(size >= 100 ? 0 : size >= 10 ? 1 : 2)} ${units[i]}`;
+	let i = Math.floor(Math.log(abs) / Math.log(1024));
+	if (i < 0) i = 0;
+	if (i >= units.length) i = units.length - 1;
+	let size = abs / 1024 ** i;
+	// Round up a unit when rounding pushes the value to 1024.
+	const formatted = size.toFixed(size >= 100 ? 0 : size >= 10 ? 1 : 2);
+	if (Number(formatted) >= 1024 && i < units.length - 1) {
+		i += 1;
+		size = abs / 1024 ** i;
+	}
+	return `${bytes < 0 ? "-" : ""}${formatted} ${units[i]}`;
 }
 
 /**

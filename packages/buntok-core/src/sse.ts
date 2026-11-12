@@ -92,8 +92,18 @@ export interface SSEOptions {
 	onReconnect?: (lastEventId: string) => Promise<SSEMessage[]>;
 	/** Pluggable history store - default MemorySSEHistory (similar to StorageDriver) */
 	historyStore?: SSEHistoryStore;
-	/** Additional custom headers */
+	/**
+	 * Additional custom headers
+	 */
 	headers?: Record<string, string>;
+	/**
+	 * Keep-alive heartbeat interval in milliseconds (default: 30000).
+	 * Sent as an SSE comment (`: heartbeat`) to reset proxies and the Bun
+	 * server idle timer. Set to `0` to disable (your own traffic must keep
+	 * the connection active, otherwise the server may idle-timeout it).
+	 * Must be shorter than the server `idleTimeout` (see `app.httpIdleTimeout`).
+	 */
+	heartbeatInterval?: number;
 }
 
 /**
@@ -362,13 +372,16 @@ export class SSE {
 	}
 
 	/**
-	 * Start heartbeat 30s fixed - keep-alive for LB/ALB
+	 * Start the keep-alive heartbeat - configurable, default 30s.
+	 * The comment frame resets both reverse proxies and Bun's server-level
+	 * idle timer, so it must fire before `httpIdleTimeout`.
 	 */
 	private startHeartbeat(): void {
-		// 30s fixed per spec - not configurable per request (industrial default)
+		const interval = this.options.heartbeatInterval ?? 30000;
+		if (!interval || interval <= 0) return; // 0 = disabled
 		this.heartbeatInterval = setInterval(() => {
 			this.sendRaw(": heartbeat\n\n");
-		}, 30000);
+		}, interval);
 	}
 
 	/**

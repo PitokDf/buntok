@@ -17,6 +17,11 @@ export interface HelmetOptions {
 	permissionsPolicy?: string;
 	/** Custom headers to add */
 	additionalHeaders?: Record<string, string>;
+	/**
+	 * Remove the `X-Powered-By: buntok` header (default: `true`).
+	 * Set to `false` if you deliberately want to keep it.
+	 */
+	hidePoweredBy?: boolean;
 }
 
 const DEFAULT_HEADERS: Record<string, string> = {
@@ -64,14 +69,24 @@ export function helmet(options?: HelmetOptions): Middleware {
 
 	// Pre-compute entries to avoid Object.entries() per request
 	const headerEntries = Object.entries(headers);
+	const hidePoweredBy = options?.hidePoweredBy ?? true;
 
-	return async (_ctx, next) => {
+	return async (ctx, next) => {
 		const response = await next();
 		// Set headers directly on the response - avoids copying Headers + creating new Response
 		for (const [key, value] of headerEntries) {
 			if (!response.headers.has(key)) {
 				response.headers.set(key, value);
 			}
+		}
+		if (hidePoweredBy) {
+			response.headers.delete("X-Powered-By");
+			// The framework adds X-Powered-By after middleware returns, so a
+			// `null` entry tells applyCtxHeaders to delete it from the final
+			// response (works on every pipeline/AOT exit path). Mock contexts
+			// used in unit tests may not implement `set`.
+			const headers = ctx.set?.headers;
+			if (headers) headers["X-Powered-By"] = null;
 		}
 		return response;
 	};

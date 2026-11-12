@@ -20,6 +20,7 @@ export default function UploadPage() {
       <p className="my-3 text-text-secondary leading-relaxed">
         Parse multipart/form-data requests for file uploads. Supports storage
         drivers, field validation, magic bytes verification, custom filenames,
+        filename sanitization (path traversal safe),
         and middleware mode.
       </p>
 
@@ -165,16 +166,6 @@ app.post("/upload", async (ctx) => {
                 "Required. LocalDiskStorage or MemoryStorage",
               ],
               [
-                "maxFileSize",
-                "number",
-                "Global max file size in bytes",
-              ],
-              [
-                "allowedMimeTypes",
-                "MimeType[]",
-                "Global allowed MIME types",
-              ],
-              [
                 "filename",
                 "(originalName, file) => { name, ext }",
                 "Global filename generator",
@@ -188,6 +179,11 @@ app.post("/upload", async (ctx) => {
                 "verifyMagicBytes",
                 "boolean",
                 "Verify file magic bytes against MIME type (default: true)",
+              ],
+              [
+                "messages",
+                "UploaderMessages",
+                "Override error messages (size, MIME, magic bytes, required)",
               ],
             ].map(([opt, type, desc]) => (
               <tr
@@ -630,6 +626,14 @@ const result = await handleUploads(ctx, {
   },
 });`}
       />
+
+      <Callout type="info">
+        Filenames from the client are always sanitized: path components
+        (<code>../</code>, <code>..\\</code>) and NUL bytes are stripped before
+        the file is written, and <code>LocalDiskStorage.deleteFile()</code>{" "}
+        refuses paths outside the upload directory. Custom storage drivers
+        receive the sanitized name/ext too.
+      </Callout>
 
       {/* ──────────────── DELETE FILE ──────────────── */}
       <Heading

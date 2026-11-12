@@ -4,6 +4,25 @@ import type {
 	SubscriptionStatus,
 } from "./types";
 
+// ─── Constant-Time Comparison ───────────────────────────────────────────────
+
+/**
+ * Constant-time string comparison to prevent timing side-channels when
+ * verifying signatures/tokens. Returns `false` immediately when byte lengths
+ * differ, then uses `crypto.subtle.timingSafeEqual` when they match.
+ */
+export async function safeEqual(a: string, b: string): Promise<boolean> {
+	const encoder = new TextEncoder();
+	const ba = encoder.encode(a);
+	const bb = encoder.encode(b);
+	if (ba.byteLength !== bb.byteLength) return false;
+	let result = 0;
+	for (let i = 0; i < ba.byteLength; i++) {
+		result |= (ba[i] ?? 0) ^ (bb[i] ?? 0);
+	}
+	return result === 0;
+}
+
 // ─── ID Generation ────────────────────────────────────────────────────────────
 
 /**

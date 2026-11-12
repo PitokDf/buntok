@@ -54,6 +54,7 @@ export default defineConfig({
 		"src/plugins/graphql/index.ts",
 		"src/plugins/graphql/apollo.ts",
 		"src/plugins/graphql/yoga.ts",
+		"src/plugins/socket-io.ts",
 
 		// CLI (dev-only tooling)
 		"src/cli/index.ts",
@@ -63,6 +64,11 @@ export default defineConfig({
 	dts: false,
 	splitting: true,
 	sourcemap: true,
+	// Keep sourcemaps useful for stack traces without shipping the entire
+	// TypeScript source inside every .map file (large package size).
+	esbuildOptions(options) {
+		options.sourcesContent = false;
+	},
 	clean: true,
 	target: "es2022",
 	outDir: "dist",
@@ -81,6 +87,9 @@ export default defineConfig({
 		"@opentelemetry/semantic-conventions",
 		"@opentelemetry/sdk-trace-node",
 		"@opentelemetry/exporter-trace-otlp-http",
+		// Socket.IO peer deps
+		"socket.io",
+		"@socket.io/bun-engine",
 		// Queue driver peer deps
 		"ioredis",
 		"bullmq",

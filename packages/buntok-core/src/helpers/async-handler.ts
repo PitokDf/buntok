@@ -31,13 +31,17 @@ export function asyncHandler<DI = Record<string, unknown>>(
 									? "Method Not Allowed"
 									: status === 409
 										? "Conflict"
-										: status === 422
+										: status === 413
+											? "Payload Too Large"
+											: status === 422
 											? "Unprocessable Entity"
 											: status === 429
 												? "Too Many Requests"
 												: status === 503
 													? "Service Unavailable"
-													: "Internal Server Error";
+													: status === 504
+														? "Gateway Timeout"
+														: "Internal Server Error";
 
 			return ctx.json({ success: false, error: errorName, message }, status);
 		}
@@ -93,6 +97,13 @@ export class ConflictError extends HttpError {
 	constructor(message = "Conflict") {
 		super(409, message);
 		this.name = "ConflictError";
+	}
+}
+
+export class PayloadTooLargeError extends HttpError {
+	constructor(message = "Payload Too Large") {
+		super(413, message);
+		this.name = "PayloadTooLargeError";
 	}
 }
 
